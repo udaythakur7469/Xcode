@@ -1,0 +1,11 @@
+import express from "express";
+import { fetchBaseClassCode, getAllSubmissions, getUserSubmissions, runCode, storeBaseClassCode, submitCode, } from "../controllers/submissionController.js";
+import { authMiddleware } from "../middlewares/authMiddleware.js";
+const router = express.Router();
+router.route("/add-base-code").post(storeBaseClassCode);
+router.route("/get-base-code").get(fetchBaseClassCode);
+router.route("/runCode").post(authMiddleware, runCode);
+router.route("/submitCode").post(authMiddleware, submitCode);
+router.route("/getUserSubmissions").get(authMiddleware, getUserSubmissions);
+router.route("/getAllSubmissions").get(authMiddleware, getAllSubmissions);
+export default router;

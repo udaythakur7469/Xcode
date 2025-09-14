@@ -1,0 +1,483 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================================================
+// User Model
+// Represents a user of the application.
+// =========================================================
+
+model User {
+  // Unique identifier for the user.
+  id Int @id @default(autoincrement())
+
+  // Optional name of the user.
+  name String?
+
+  // Unique email address for the user.
+  email String @unique
+
+  // User's password (should be stored hashed).
+  password String
+
+  // Optional profile picture with a default image.
+  picture String? @default("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM3FwFWSj9qohGE7FhrwJ-PlcK4-tLdWSlGg&s")
+
+  // User's token
+  token String?
+
+  description String?
+
+  institution String?
+
+  links UserLink[]
+
+  Interviews Interview[]
+
+  Feedbacks Feedback[]
+
+  // Relations:
+  // - One-to-many relation with solved problems.
+  solvedProblems SolvedProblems[]
+
+  // - One-to-many relation with submissions.
+  submissions Submission[]
+
+  // - One-to-many relation with problem reactions
+  problemReactions UserProblemReactions[]
+
+  comments Comment[]
+
+  commentReactions CommentReaction[]
+
+  // - One-to-one relation with stats (optional).
+  stats Stats?
+
+  // Timestamp fields.
+  lastLogin DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+}
+
+// =========================================================
+// SolvedProblems Model
+// Represents an instance when a user solved a problem.
+// =========================================================
+
+model SolvedProblems {
+  // Unique identifier for each solved problem record.
+  id Int @id @default(autoincrement())
+
+  // Relation: The user who solved the problem.
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  // Relation: The problem that was solved.
+  problem   Problem @relation(fields: [problemId], references: [id])
+  problemId Int
+
+  // Timestamp for when the problem was solved.
+  solvedAt DateTime @default(now())
+
+  // Ensure each user can only have one record per problem
+  @@unique([userId, problemId])
+}
+
+// =========================================================
+// Stats Model
+// Represents a user's statistics for solved problems.
+// =========================================================
+
+model Stats {
+  // Unique identifier for the stats record.
+  id Int @id @default(autoincrement())
+
+  // Relation: Each stats record is linked to one user.
+  user   User @relation(fields: [userId], references: [id])
+  userId Int  @unique // Unique to enforce a one-to-one relationship.
+
+  // Statistical fields with default values.
+  totalSolved  Int @default(0)
+  easySolved   Int @default(0)
+  mediumSolved Int @default(0)
+  hardSolved   Int @default(0)
+}
+
+// =========================================================
+// Problem Model
+// Represents a coding problem in the system.
+// =========================================================
+
+model Problem {
+  // Unique identifier for each problem.
+  id Int @id @default(autoincrement())
+
+  // Title of the problem.
+  title String
+
+  // Detailed description of the problem.
+  description String
+
+  // Difficulty level (uses the Difficulty enum).
+  difficulty Difficulty
+
+  // Array of tags associated with the problem.
+  tags String[]
+
+  // Status to check whether problem is solved or not
+  solved Boolean @default(false)
+
+  // Relations:
+  // - One-to-many relation with solved problems.
+  solvedProblems SolvedProblems[]
+
+  // - One-to-many relation with examples.
+  examples Example[]
+
+  // - One-to-many relation with test cases.
+  testCases TestCases[]
+
+  hints Hints[]
+
+  // - One-to-many relation with submissions.
+  submissions Submission[]
+
+  // - One-to-many relation with baseCodes.
+  baseCodes BaseCode[]
+
+  // - One-to-one relation with editorial
+  editorial Editorial?
+
+  // - One-to-many relation with user reactions
+  userReactions UserProblemReactions[]
+
+  comment Comment[]
+
+  // - One-to-one relation with problem statistics (optional).
+  problemStats ProblemStats?
+
+  // Timestamp for problem creation.
+  createdAt DateTime @default(now())
+}
+
+// =========================================================
+// Difficulty Enum
+// Represents the allowed difficulty levels for problems.
+// =========================================================
+
+enum Difficulty {
+  easy
+  medium
+  hard
+}
+
+// =========================================================
+// Example Model
+// Represents an example for a problem, including input, output, and explanation.
+// =========================================================
+
+model Example {
+  // Unique identifier for each example.
+  id Int @id @default(autoincrement())
+
+  // Relation: The problem this example belongs to.
+  problem   Problem @relation(fields: [problemId], references: [id])
+  problemId Int
+
+  // Example fields.
+  input       String
+  output      String
+  explanation String
+}
+
+// =========================================================
+// TestCases Model
+// Represents test cases for a problem.
+// =========================================================
+
+model TestCases {
+  // Unique identifier for each test case.
+  id Int @id @default(autoincrement())
+
+  // Relation: The problem this test case belongs to.
+  problem   Problem @relation(fields: [problemId], references: [id])
+  problemId Int
+
+  // Test case details.
+  userInput          String
+  apiInput           String
+  userExpectedOutput String
+  apiExpectedOutput  String
+}
+
+// =========================================================
+// ProblemStats Model
+// Represents statistical data for a problem (one-to-one relation).
+// =========================================================
+
+model ProblemStats {
+  // Unique identifier for the problem stats record.
+  id Int @id @default(autoincrement())
+
+  // Relation: The problem associated with these stats.
+  problem   Problem @relation(fields: [problemId], references: [id])
+  problemId Int     @unique // Unique to enforce one-to-one relationship.
+
+  // Statistical fields for the problem.
+  totalAttempts  Int   @default(0)
+  totalSolved    Int   @default(0)
+  acceptanceRate Float @default(0)
+  // - One-to-many relation with hints.
+}
+
+model Hints {
+  id Int @id @default(autoincrement()) // Unique identifier.
+
+  problem   Problem @relation(fields: [problemId], references: [id])
+  problemId Int // Associated problem.
+
+  hint String // Hint for the problem.
+}
+
+model Editorial {
+  id        Int     @id @default(autoincrement())
+  problemId Int     @unique
+  problem   Problem @relation(fields: [problemId], references: [id])
+
+  videoUrl String?
+
+  bruteForceTitle           String
+  bruteForceIntuition       String
+  bruteForceAlgorithm       String
+  bruteForceCodeCpp         String
+  bruteForceCodeJs          String
+  bruteForceCodePython      String
+  bruteForceCodeJava        String
+  bruteForceTimeComplexity  String
+  bruteForceSpaceComplexity String
+
+  betterTitle           String
+  betterIntuition       String
+  betterAlgorithm       String
+  betterCodeCpp         String
+  betterCodeJs          String
+  betterCodePython      String
+  betterCodeJava        String
+  betterTimeComplexity  String
+  betterSpaceComplexity String
+
+  optimalTitle           String
+  optimalIntuition       String
+  optimalAlgorithm       String
+  optimalCodeCpp         String
+  optimalCodeJs          String
+  optimalCodePython      String
+  optimalCodeJava        String
+  optimalTimeComplexity  String
+  optimalSpaceComplexity String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// =========================================================
+// Submission Model
+// Represents a user's submission for a problem.
+// =========================================================
+
+model Submission {
+  // Unique identifier for each submission.
+  id Int @id @default(autoincrement())
+
+  // Relations:
+  // - The problem being attempted.
+  problem   Problem @relation(fields: [problemId], references: [id])
+  // - The user making the submission.
+  user      User    @relation(fields: [userId], references: [id])
+  problemId Int
+  userId    Int
+
+  // Submission details.
+  code            String
+  language        String
+  status          SubmissionStatus
+  runtime         Int
+  memory          Int
+  testCasesPassed Int
+  totalTestCases  Int
+
+  // Timestamps.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+}
+
+// =========================================================
+// SubmissionStatus Enum
+// Represents the possible statuses of a submission.
+// =========================================================
+
+enum SubmissionStatus {
+  accepted
+  wrong_answer
+  time_limit_exceeded
+  runtime_error
+}
+
+model BaseCode {
+  id            Int     @id @default(autoincrement())
+  problem       Problem @relation(fields: [problemId], references: [id])
+  problemId     Int
+  language      String // e.g., "cpp", "javascript", "python", "java"
+  baseClassCode String? // Store starter code template as a JSON object (key: language, value: code)
+  headerFiles   String? // Store header files as a JSON object (key: language, value: header content)
+  mainClassCode String? // Store main class code as a JSON object (key: language, value: main class code)
+
+  // Ensure each problem-language combination is unique
+  @@unique([problemId, language])
+}
+
+model UserProblemReactions {
+  // Relations
+  user      User    @relation(fields: [userId], references: [id])
+  userId    Int
+  problem   Problem @relation(fields: [problemId], references: [id])
+  problemId Int
+
+  // Reaction type
+  reactionType ReactionType
+
+  // Timestamp for when the reaction was created/updated
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // Compound primary key to ensure a user can only have one reaction per problem
+  @@id([userId, problemId])
+}
+
+// =========================================================
+// ReactionType Enum
+// Represents the allowed reaction types
+// =========================================================
+
+enum ReactionType {
+  like
+  dislike
+}
+
+model UserLink {
+  id        Int      @id @default(autoincrement())
+  key       String?
+  value     String?
+  user      User     @relation(fields: [userId], references: [id])
+  userId    Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+}
+
+model Interview {
+  id                Int           @id @default(autoincrement())
+  userId            Int
+  user              User          @relation(fields: [userId], references: [id])
+  role              String
+  type              InterviewType
+  techStack         String[]
+  level             String
+  amount            Int
+  questions         String[]
+  feedback          Feedback[]
+  finalized         Boolean       @default(false)
+  feedbackFinalized Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt()
+}
+
+enum InterviewType {
+  TECHNICAL
+  BEHAVIORAL
+  MIXED
+}
+
+// =========================================================
+// Feedback Model
+// Represents feedback for an interview
+// =========================================================
+
+model Feedback {
+  id                  Int             @id @default(autoincrement())
+  interviewId         Int
+  interview           Interview       @relation(fields: [interviewId], references: [id])
+  userId              Int
+  user                User            @relation(fields: [userId], references: [id])
+  totalScore          Float
+  categoryScores      CategoryScore[]
+  strengths           String[]
+  areasForImprovement String[]
+  finalAssessment     String
+  finalVerdict        Verdict
+  createdAt           DateTime        @default(now())
+}
+
+enum Verdict {
+  NOT_RECOMMENDED
+  DO_NOT_HIRE
+  PREFER_NOT_TO_HIRE
+  WORTH_CONSIDERING
+  RECOMMENDED
+  MUST_HIRE
+}
+
+// =========================================================
+// CategoryScore Model
+// Represents individual category scores within feedback
+// =========================================================
+
+model CategoryScore {
+  id         Int      @id @default(autoincrement())
+  feedback   Feedback @relation(fields: [feedbackId], references: [id])
+  feedbackId Int
+  name       String
+  score      Float
+  comment    String
+}
+
+model Comment {
+  id        Int               @id @default(autoincrement())
+  content   String
+  authorId  Int
+  author    User              @relation(fields: [authorId], references: [id])
+  problemId Int?
+  problem   Problem?          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  parentId  Int?
+  parent    Comment?          @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]         @relation("CommentToComment")
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  votes     CommentReaction[]
+
+  @@index([problemId])
+  @@index([parentId])
+}
+
+model CommentReaction {
+  id        Int          @id @default(autoincrement())
+  type      ReactionType
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId Int
+  comment   Comment      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([userId, commentId])
+}

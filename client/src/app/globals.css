@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+.blue-gradient-dark {
+  @apply bg-gradient-to-b from-[#171532] to-[#08090D];
+}
+
+.blue-gradient {
+  @apply bg-gradient-to-l from-[#FFFFFF] to-[#CAC5FE];
+}
+
+
+@layer base {
+  :root {
+    --background: #ffffff; /* hsl(0, 0%, 100%) */
+    --foreground: #1c1c1e; /* hsl(240, 10%, 3.9%) */
+
+    --card: #ffffff; /* hsl(0, 0%, 100%) */
+    --card-foreground: #1c1c1e; /* hsl(240, 10%, 3.9%) */
+
+    --popover: #ffffff; /* hsl(0, 0%, 100%) */
+    --popover-foreground: #1c1c1e; /* hsl(240, 10%, 3.9%) */
+
+    --primary: #1a1a1a; /* hsl(240, 5.9%, 10%) */
+    --primary-foreground: #fafafa; /* hsl(0, 0%, 98%) */
+
+    --secondary: #f2f2f5; /* hsl(240, 4.8%, 95.9%) */
+    --secondary-foreground: #1a1a1a; /* hsl(240, 5.9%, 10%) */
+
+    --muted: #f2f2f5; /* hsl(240, 4.8%, 95.9%) */
+    --muted-foreground: #74747b; /* hsl(240, 3.8%, 46.1%) */
+
+    --accent: #f2f2f5; /* hsl(240, 4.8%, 95.9%) */
+    --accent-foreground: #1a1a1a; /* hsl(240, 5.9%, 10%) */
+
+    --destructive: #e63946; /* hsl(0, 84.2%, 60.2%) */
+    --destructive-foreground: #fafafa; /* hsl(0, 0%, 98%) */
+
+    --border: #000000; /* hsl(240, 5.9%, 90%) */
+    --input: #e6e6e6; /* hsl(240, 5.9%, 90%) */
+    --ring: #1c1c1e; /* hsl(240, 10%, 3.9%) */
+
+    --radius: 0.5rem;
+    --shadow: 0 4px 10px hsl(0 0% 0% / 0.1);
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: #1c1c1e; /* hsl(240, 10%, 3.9%) */
+    --foreground: #ffffff; /* hsl(0, 0%, 98%) */
+
+    --card: #1c1c1e; /* hsl(240, 10%, 3.9%) */
+    --card-foreground: #fafafa; /* hsl(0, 0%, 98%) */
+
+    --popover: #1c1c1e; /* hsl(240, 10%, 3.9%) */
+    --popover-foreground: #fafafa; /* hsl(0, 0%, 98%) */
+
+    --primary: #fafafa; /* hsl(0, 0%, 98%) */
+    --primary-foreground: #1a1a1a; /* hsl(240, 5.9%, 10%) */
+
+    --secondary: #2b2b2e; /* hsl(240, 3.7%, 15.9%) */
+    --secondary-foreground: #fafafa; /* hsl(0, 0%, 98%) */
+
+    --muted: #2b2b2e; /* hsl(240, 3.7%, 15.9%) */
+    --muted-foreground: #a3a3b3; /* hsl(240, 5%, 64.9%) */
+
+    --accent: #2b2b2e; /* hsl(240, 3.7%, 15.9%) */
+    --accent-foreground: #fafafa; /* hsl(0, 0%, 98%) */
+
+    --destructive: #7a161b; /* hsl(0, 62.8%, 30.6%) */
+    --destructive-foreground: #fafafa; /* hsl(0, 0%, 98%) */
+
+    --border: #FFFFFF; /* hsl(240, 3.7%, 15.9%) */
+    --input: #2b2b2e; /* hsl(240, 3.7%, 15.9%) */
+    --ring: #d9d9e6; /* hsl(240, 4.9%, 83.9%) */
+    --shadow: 0 4px 10px hsl(0 0% 100% / 0.2);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+    * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Hide scrollbar but allow scrolling */
+html, body {
+  overflow-y: scroll;
+}
+
+/* Hide scrollbar for Chrome, Safari, and Edge */
+::-webkit-scrollbar {
+  width: 0;
+  background: transparent;
+}
+
+p, h1 {
+  @apply cursor-default;
+}
+
+/* Custom white scrollbar */
+.scrollbar-white::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-white::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-white::-webkit-scrollbar-thumb {
+  background: white;
+  border-radius: 4px;
+}
+
+.scrollbar-white::-webkit-scrollbar-thumb:hover {
+  background: #f0f0f0;
+}
+
+
