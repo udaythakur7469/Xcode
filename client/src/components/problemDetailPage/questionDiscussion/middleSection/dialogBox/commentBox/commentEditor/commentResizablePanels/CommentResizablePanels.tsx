@@ -13,9 +13,17 @@ import {
 import CommentMarkdownEditor from "../commentMarkdownEditor/CommentMarkdownEditor";
 import CommentMarkdownPreview from "../commentMarkdownPreview/CommentMarkdownPreview";
 
-type CommentResizablePanelsProps = {};
+type CommentResizablePanelsProps = {
+  content: string;
+  setContent: (value: string) => void;
+  onSelectionChange?: (start: number, end: number) => void;
+};
 
-const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = () => {
+const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
+  content,
+  setContent,
+  onSelectionChange,
+}) => {
   const [horizontalSizes, setHorizontalSizes] = useState([50, 50]);
   const [isLeftMaximized, setIsLeftMaximized] = useState(false);
   const [isRightMaximized, setIsRightMaximized] = useState(false);
@@ -95,7 +103,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = () => {
           defaultSize={50}
           minSize={0}
           maxSize={100}
-          className="border mr-1 relative"
+          className="border mr-1 relative rounded-bl-xl"
         >
           {/* Maximize/Minimize button for left panel - only show when panel is visible */}
           {horizontalSizes[0] > 0 && (
@@ -103,12 +111,12 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = () => {
               <HoverCardTrigger asChild>
                 <button
                   onClick={handleLeftMaximize}
-                  className="absolute top-2 right-2 z-10 p-1 hover:bg-gray-200 rounded transition-colors"
+                  className="absolute top-2 right-2 z-10 p-1 rounded transition-colors"
                 >
                   {isLeftMaximized ? (
-                    <Minimize className="h-4 w-4" />
+                    <Minimize className="h-4 w-4 text-yellow-500" />
                   ) : (
-                    <Maximize className="h-4 w-4" />
+                    <Maximize className="h-4 w-4 text-yellow-500" />
                   )}
                 </button>
               </HoverCardTrigger>
@@ -118,7 +126,11 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = () => {
             </HoverCard>
           )}
           <div className="h-full w-full flex items-center justify-center">
-            <CommentMarkdownEditor />
+            <CommentMarkdownEditor
+              content={content}
+              setContent={setContent}
+              onSelectionChange={onSelectionChange}
+            />
           </div>
         </ResizablePanel>
 
@@ -135,7 +147,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = () => {
           defaultSize={50}
           minSize={0}
           maxSize={100}
-          className="border ml-1 relative"
+          className="border ml-1 relative rounded-br-xl"
         >
           {/* Maximize/Minimize button for right panel - only show when panel is visible */}
           {horizontalSizes[1] > 0 && (
@@ -143,12 +155,12 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = () => {
               <HoverCardTrigger asChild>
                 <button
                   onClick={handleRightMaximize}
-                  className="absolute top-2 right-2 z-10 p-1 hover:bg-gray-200 rounded transition-colors"
+                  className="absolute top-2 right-2 z-10 p-1 rounded transition-colors"
                 >
                   {isRightMaximized ? (
-                    <Minimize className="h-4 w-4" />
+                    <Minimize className="h-4 w-4 text-yellow-500" />
                   ) : (
-                    <Maximize className="h-4 w-4" />
+                    <Maximize className="h-4 w-4 text-yellow-500" />
                   )}
                 </button>
               </HoverCardTrigger>
@@ -158,7 +170,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = () => {
             </HoverCard>
           )}
           <div className="h-full w-full flex items-center justify-center">
-            <CommentMarkdownPreview />
+            <CommentMarkdownPreview markdown={content} />
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
