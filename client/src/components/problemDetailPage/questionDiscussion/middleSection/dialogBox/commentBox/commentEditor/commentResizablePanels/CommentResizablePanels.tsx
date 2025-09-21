@@ -127,7 +127,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
             </HoverCard>
           )}
           <ScrollArea className="h-[458px] w-full">
-            <div className="h-[458px] w-[720px]">
+            <div className="h-[458px] w-full">
               <CommentMarkdownEditor
                 content={content}
                 setContent={setContent}
@@ -173,7 +173,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
             </HoverCard>
           )}
           <ScrollArea className="h-[457px] w-full">
-            <div className="h-[457px] w-[718px]">
+            <div className="h-[457px] w-full">
               <CommentMarkdownPreview markdown={content} />
             </div>
           </ScrollArea>
