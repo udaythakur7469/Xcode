@@ -13,6 +13,7 @@ import {
 import CommentMarkdownEditor from "../commentMarkdownEditor/CommentMarkdownEditor";
 import CommentMarkdownPreview from "../commentMarkdownPreview/CommentMarkdownPreview";
 import { ScrollArea } from "@/components/ui/commentTagsScrollArea";
+import { forwardRef, useImperativeHandle } from "react";
 
 type CommentResizablePanelsProps = {
   content: string;
@@ -20,11 +21,14 @@ type CommentResizablePanelsProps = {
   onSelectionChange?: (start: number, end: number) => void;
 };
 
-const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
-  content,
-  setContent,
-  onSelectionChange,
-}) => {
+export interface CommentResizablePanelsRef {
+  resetLayout: () => void;
+}
+
+const CommentResizablePanels = forwardRef<
+  CommentResizablePanelsRef,
+  CommentResizablePanelsProps
+>(({ content, setContent, onSelectionChange }, ref) => {
   const [horizontalSizes, setHorizontalSizes] = useState([50, 50]);
   const [isLeftMaximized, setIsLeftMaximized] = useState(false);
   const [isRightMaximized, setIsRightMaximized] = useState(false);
@@ -34,6 +38,16 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
   // Refs for imperative control
   const leftPanelRef = useRef<any>(null);
   const rightPanelRef = useRef<any>(null);
+
+  // Expose reset function to parent via ref
+  useImperativeHandle(ref, () => ({
+    resetLayout: () => {
+      setHorizontalSizes([50, 50]);
+      setIsLeftMaximized(false);
+      setIsRightMaximized(false);
+      setShouldMaximizeHorizontal(true);
+    },
+  }));
 
   // Left panel maximize function
   const handleLeftMaximize = () => {
@@ -181,6 +195,8 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
       </ResizablePanelGroup>
     </div>
   );
-};
+});
+
+CommentResizablePanels.displayName = "CommentResizablePanels";
 
 export default CommentResizablePanels;

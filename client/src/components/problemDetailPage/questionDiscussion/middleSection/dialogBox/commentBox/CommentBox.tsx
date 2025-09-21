@@ -1,7 +1,8 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useRef} from "react";
 import CommentTitle from "./commentTitle/CommentTitle";
 import CommentToolbar from "./commentToolbar/CommentToolbar";
 import CommentEditor from "./commentEditor/CommentEditor";
+import { CommentResizablePanelsRef } from "./commentEditor/commentResizablePanels/CommentResizablePanels";
 
 type CommentBoxProps = {};
 
@@ -9,6 +10,9 @@ const CommentBox: React.FC<CommentBoxProps> = () => {
   const [content, setContent] = useState<string>("");
   const [selectionStart, setSelectionStart] = useState(0);
   const [selectionEnd, setSelectionEnd] = useState(0);
+
+  // Ref to access the resizable panels reset function
+  const resizablePanelsRef = useRef<CommentResizablePanelsRef>(null);
 
   // function to insert markdown (toolbar actions)
   const handleInsertText = useCallback(
@@ -39,6 +43,13 @@ const CommentBox: React.FC<CommentBoxProps> = () => {
     [content]
   );
 
+  // Function to reset the layout to 50%-50%
+  const handleResetLayout = useCallback(() => {
+    if (resizablePanelsRef.current) {
+      resizablePanelsRef.current.resetLayout();
+    }
+  }, []);
+
   return (
     <div className="bg-muted h-full w-full rounded-xl border-none flex flex-col">
       {/* Title: smaller height */}
@@ -48,12 +59,16 @@ const CommentBox: React.FC<CommentBoxProps> = () => {
 
       {/* Toolbar: also small */}
       <div className="border-b flex-[0.5] border">
-        <CommentToolbar onInsertText={handleInsertText} />
+        <CommentToolbar
+          onInsertText={handleInsertText}
+          onResetLayout={handleResetLayout}
+        />
       </div>
 
       {/* Resizable panels: take rest of the space */}
       <div className="flex-[7] rounded-b-xl border">
         <CommentEditor
+          ref={resizablePanelsRef}
           content={content}
           setContent={setContent}
           onSelectionChange={(start, end) => {

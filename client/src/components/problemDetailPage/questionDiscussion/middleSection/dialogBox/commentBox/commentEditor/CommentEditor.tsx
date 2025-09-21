@@ -1,5 +1,7 @@
-import React from "react";
-import CommentResizablePanels from "./commentResizablePanels/CommentResizablePanels";
+import React, { forwardRef } from "react";
+import CommentResizablePanels, {
+  CommentResizablePanelsRef,
+} from "./commentResizablePanels/CommentResizablePanels";
 
 type CommentEditorProps = {
   content: string;
@@ -7,19 +9,21 @@ type CommentEditorProps = {
   onSelectionChange?: (start: number, end: number) => void;
 };
 
-const CommentEditor: React.FC<CommentEditorProps> = ({
-  content,
-  setContent,
-  onSelectionChange
-}) => {
-  return (
-    <div className="h-full w-full">
-      <CommentResizablePanels
-        content={content}
-        setContent={setContent}
-        onSelectionChange={onSelectionChange}
-      />
-    </div>
-  );
-};
+const CommentEditor = forwardRef<CommentResizablePanelsRef, CommentEditorProps>(
+  ({ content, setContent, onSelectionChange }, ref) => {
+    return (
+      <div className="h-full w-full">
+        <CommentResizablePanels
+          ref={ref}
+          content={content}
+          setContent={setContent}
+          onSelectionChange={onSelectionChange}
+        />
+      </div>
+    );
+  }
+);
+
+CommentEditor.displayName = "CommentEditor";
+
 export default CommentEditor;
