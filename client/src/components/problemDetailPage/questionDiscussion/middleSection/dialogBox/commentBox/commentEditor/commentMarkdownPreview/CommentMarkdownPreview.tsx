@@ -1,41 +1,106 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import * as marked from "marked";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { createRoot } from "react-dom/client";
 
 interface CommentMarkdownPreviewProps {
   markdown: string;
 }
 
-// Configure marked for better rendering
+// ✅ Syntax highlighting function
+const highlightCode = (code: string, language: string): string => {
+  if (typeof code !== "string") {
+    return String(code || "");
+  }
+
+  // Escape HTML to prevent conflicts
+  let highlighted = code
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+  if (language === "cpp" || language === "c++" || language === "c") {
+    // Keywords
+    highlighted = highlighted.replace(
+      /\b(class|public|private|protected|virtual|static|const|inline|template|typename|namespace|using|typedef|struct|enum)\b/g,
+      '<span style="color:#60a5fa; font-weight:600;">$1</span>'
+    );
+
+    // Types
+    highlighted = highlighted.replace(
+      /\b(int|char|float|double|bool|void|string|vector|map|set|unordered_map|unordered_set|auto|size_t)\b/g,
+      '<span style="color:#10b981; font-weight:600;">$1</span>'
+    );
+
+    // Control flow
+    highlighted = highlighted.replace(
+      /\b(if|else|for|while|do|switch|case|default|break|continue|return|try|catch|throw)\b/g,
+      '<span style="color:#a78bfa; font-weight:600;">$1</span>'
+    );
+
+    // Comments
+    highlighted = highlighted.replace(
+      /(\/\/.*$)/gm,
+      '<span style="color:#6b7280; font-style:italic;">$1</span>'
+    );
+
+    // Numbers
+    highlighted = highlighted.replace(
+      /\b\d+\b/g,
+      '<span style="color:#fbbf24;">$&</span>'
+    );
+  }
+
+  if (language === "javascript" || language === "js") {
+    // Keywords
+    highlighted = highlighted.replace(
+      /\b(const|let|var|function|class|if|else|for|while|return|import|export|default|async|await)\b/g,
+      '<span style="color:#60a5fa; font-weight:600;">$1</span>'
+    );
+
+    // Comments
+    highlighted = highlighted.replace(
+      /(\/\/.*$)/gm,
+      '<span style="color:#6b7280; font-style:italic;">$1</span>'
+    );
+
+    // Numbers
+    highlighted = highlighted.replace(
+      /\b\d+\b/g,
+      '<span style="color:#fbbf24;">$&</span>'
+    );
+  }
+
+  return highlighted;
+};
+
+// ✅ Configure marked renderer
 const configureMarked = () => {
   marked.use({
     renderer: {
-      // Custom code block renderer with syntax highlighting
       code(token: any) {
         const code = token.text || "";
         const lang = token.lang || "text";
 
-        const codeId = `code-${Math.random().toString(36).substr(2, 9)}`;
+        let highlighted;
+        try {
+          highlighted = highlightCode(code, lang);
+        } catch (error) {
+          console.warn("Error highlighting code:", error);
+          highlighted = String(code);
+        }
 
-        return `
-          <div class="code-block-container my-4 rounded-lg overflow-hidden border">
-            <div class="bg-muted px-4 py-2 text-xs text-muted-foreground border-b flex justify-between items-center">
-              <span>${lang}</span>
-              <button class="hover:text-foreground transition-colors" onclick="navigator.clipboard.writeText(\`${code.replace(
-                /`/g,
-                "\\`"
-              )}\`)">Copy</button>
-            </div>
-            <div id="${codeId}" data-code="${encodeURIComponent(
-          code
-        )}" data-lang="${lang}"></div>
+        return `<div class="code-block-container my-4 rounded-lg overflow-hidden border">
+          <div class="bg-muted px-4 py-2 text-xs text-muted-foreground border-b flex justify-between items-center">
+            <span>${lang}</span>
+            <button class="hover:text-foreground transition-colors" onclick="navigator.clipboard.writeText(\`${String(
+              code || ""
+            ).replace(/`/g, "\\`")}\`)">Copy</button>
           </div>
-        `;
+          <div class="bg-muted/30 p-4 overflow-x-auto text-foreground text-sm font-mono" style="white-space: pre; line-height: 1.4;">${highlighted}</div>
+        </div>`;
       },
 
-      // Custom inline code renderer
       codespan(token: any) {
         const text = token.text || "";
         return `<code class="bg-muted px-2 py-1 rounded text-sm font-mono">${String(
@@ -43,7 +108,6 @@ const configureMarked = () => {
         )}</code>`;
       },
 
-      // Custom heading renderer
       heading(token: any) {
         const text = token.text || "";
         const level = token.depth || 1;
@@ -61,7 +125,6 @@ const configureMarked = () => {
         )}</h${level}>`;
       },
 
-      // Custom list renderer
       list(token: any) {
         const ordered = token.ordered || false;
         const tag = ordered ? "ol" : "ul";
@@ -69,7 +132,6 @@ const configureMarked = () => {
           ? "list-decimal list-inside"
           : "list-disc list-inside";
 
-        // Let marked handle the list items naturally
         let body = "";
         if (token.items && Array.isArray(token.items)) {
           body = token.items
@@ -80,7 +142,7 @@ const configureMarked = () => {
             .join("");
         }
 
-        return `<${tag} class="${className} my-4 space-y-2">${body}</${tag}>`;
+        return `<${tag} class="${className} ">${body}</${tag}>`;
       },
 
       listitem(token: any) {
@@ -88,7 +150,6 @@ const configureMarked = () => {
         return `<li class="text-foreground">${String(text)}</li>`;
       },
 
-      // Custom blockquote renderer
       blockquote(token: any) {
         const quote = this.parser.parse(token.tokens || []);
         return `<blockquote class="border-l-4 border-primary pl-4 my-4 italic text-muted-foreground">${String(
@@ -96,7 +157,6 @@ const configureMarked = () => {
         )}</blockquote>`;
       },
 
-      // Custom link renderer
       link(token: any) {
         const href = token.href || "#";
         const title = token.title || "";
@@ -108,7 +168,6 @@ const configureMarked = () => {
         )}</a>`;
       },
 
-      // Custom image renderer
       image(token: any) {
         const href = token.href || "";
         const title = token.title || "";
@@ -125,58 +184,29 @@ const configureMarked = () => {
   });
 };
 
+// ✅ Main component
 const CommentMarkdownPreview: React.FC<CommentMarkdownPreviewProps> = ({
   markdown,
 }) => {
-  const [htmlContent, setHtmlContent] = useState("");
-
   useEffect(() => {
     configureMarked();
   }, []);
 
-  useEffect(() => {
-    const getPreviewHTML = () => {
-      try {
-        const html = marked.parse(markdown);
-        setHtmlContent(html);
-      } catch (error) {
-        console.error("Markdown parsing error:", error);
-        setHtmlContent('<p class="text-red-400">Error parsing markdown</p>');
-      }
-    };
-
-    getPreviewHTML();
-  }, [markdown]);
-
-  useEffect(() => {
-    const codeBlocks = document.querySelectorAll('[id^="code-"]');
-    codeBlocks.forEach((block) => {
-      const code = decodeURIComponent(block.getAttribute("data-code") || "");
-      const lang = block.getAttribute("data-lang") || "text";
-
-      const root = createRoot(block);
-      root.render(
-        <SyntaxHighlighter
-          language={lang}
-          style={oneDark}
-          customStyle={{
-            margin: 0,
-            padding: "1rem",
-            background: "transparent",
-            fontSize: "0.875rem",
-          }}
-        >
-          {code}
-        </SyntaxHighlighter>
-      );
-    });
-  }, [htmlContent]);
+  const getPreviewHTML = () => {
+    try {
+      const html = marked.parse(markdown);
+      return { __html: html }; // ✅ Fixed: Use __html instead of html
+    } catch (error) {
+      console.error("Markdown parsing error:", error);
+      return { __html: '<p class="text-red-400">Error parsing markdown</p>' }; // ✅ Fixed: Use __html
+    }
+  };
 
   return (
     <div className="h-full w-full bg-background text-foreground p-2 overflow-y-auto text-lg">
       <div
-        className="prose prose-invert max-w-none leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: htmlContent }}
+        className="prose prose-invert max-w-none leading-relaxed prose-pre:p-0 prose-pre:m-0"
+        dangerouslySetInnerHTML={getPreviewHTML()}
       />
     </div>
   );
