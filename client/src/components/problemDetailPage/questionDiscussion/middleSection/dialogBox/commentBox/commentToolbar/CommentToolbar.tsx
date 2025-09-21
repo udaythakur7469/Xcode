@@ -13,6 +13,11 @@ import {
   CodeXml,
   FolderCode,
 } from "lucide-react";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 type CommentToolbarProps = {
   onInsertText: (before: string, after?: string) => void;
@@ -22,7 +27,6 @@ const CommentToolbar: React.FC<CommentToolbarProps> = ({ onInsertText }) => {
   const buttonClasses =
     "flex items-center justify-center rounded-lg p-1 border";
 
-  // Debug function to check what's being passed
   const handleInsert = (before: string, after: string = "") => {
     console.log("Inserting:", { before, after });
     onInsertText(before, after);
@@ -30,105 +34,191 @@ const CommentToolbar: React.FC<CommentToolbarProps> = ({ onInsertText }) => {
 
   return (
     <div className="flex flex-row items-center gap-2 ml-5 p-2">
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("**", "**")}
-        title="Bold"
-      >
-        <Bold />
-      </button>
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("*", "*")}
-        title="Italic"
-      >
-        <Italic />
-      </button>
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("# ", "")}
-        title="H1"
-      >
-        <Heading1 />
-      </button>
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("## ", "")}
-        title="H2"
-      >
-        <Heading2 />
-      </button>
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("### ", "")}
-        title="Heading 3"
-      >
-        <Heading3 />
-      </button>
+      {/* Bold */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("**", "**")}
+          >
+            <Bold />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Bold
+        </HoverCardContent>
+      </HoverCard>
+
+      {/* Italic */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("*", "*")}
+          >
+            <Italic />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Italic
+        </HoverCardContent>
+      </HoverCard>
+
+      {/* Heading 1 */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("# ", "")}
+          >
+            <Heading1 />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Heading 1
+        </HoverCardContent>
+      </HoverCard>
+
+      {/* Heading 2 */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("## ", "")}
+          >
+            <Heading2 />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Heading 2
+        </HoverCardContent>
+      </HoverCard>
+
+      {/* Heading 3 */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("### ", "")}
+          >
+            <Heading3 />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Heading 3
+        </HoverCardContent>
+      </HoverCard>
 
       {/* Separator */}
-      <div className="w-px h-6 bg-border mx-1"></div>
+      <div className="w-0.5 h-8 bg-border mx-1" />
 
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("* ", "")}
-        title="Bullet List"
-      >
-        <List />
-      </button>
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("1. ", "")}
-        title="Numbered List"
-      >
-        <ListOrdered />
-      </button>
+      {/* Bullet List */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("* ", "")}
+          >
+            <List />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Bullet List
+        </HoverCardContent>
+      </HoverCard>
+
+      {/* Numbered List */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("1. ", "")}
+          >
+            <ListOrdered />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Numbered List
+        </HoverCardContent>
+      </HoverCard>
 
       {/* Separator */}
-      <div className="w-px h-6 bg-border mx-1"></div>
+      <div className="w-[3px] h-8 bg-border mx-1" />
 
-      {/* Code */}
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("`", "`")}
-        title="Inline Code"
-      >
-        <CodeXml />
-      </button>
+      {/* Inline Code */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("`", "`")}
+          >
+            <CodeXml />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Inline Code
+        </HoverCardContent>
+      </HoverCard>
 
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("```\n", "\n```")}
-        title="Code Block"
-      >
-        <FolderCode />
-      </button>
+      {/* Code Block */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("```\n", "\n```")}
+          >
+            <FolderCode />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Code Block
+        </HoverCardContent>
+      </HoverCard>
 
       {/* Quote */}
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("> ", "")}
-        title="Quote"
-      >
-        <Quote />
-      </button>
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("> ", "")}
+          >
+            <Quote />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Quote
+        </HoverCardContent>
+      </HoverCard>
 
-      {/* Links and Images */}
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("[", "](url)")}
-        title="Link"
-      >
-        <Link />
-      </button>
+      {/* Link */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("[", "](url)")}
+          >
+            <Link />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Link
+        </HoverCardContent>
+      </HoverCard>
 
-      <button
-        className={buttonClasses}
-        onClick={() => handleInsert("![alt](", ")")}
-        title="Image"
-      >
-        <Image />
-      </button>
+      {/* Image */}
+      <HoverCard>
+        <HoverCardTrigger asChild>
+          <button
+            className={buttonClasses}
+            onClick={() => handleInsert("![alt](", ")")}
+          >
+            <Image />
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent side="top" className="p-1">
+          Image
+        </HoverCardContent>
+      </HoverCard>
     </div>
   );
 };
