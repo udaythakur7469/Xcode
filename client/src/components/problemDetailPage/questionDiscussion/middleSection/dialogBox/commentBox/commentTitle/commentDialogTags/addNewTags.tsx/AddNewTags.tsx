@@ -11,7 +11,7 @@ const AddNewTags: React.FC<AddNewTagsProps> = ({ onAddTag }) => {
   return (
     <div className="relative">
       <button
-        className="w-auto rounded-3xl bg-primary-foreground px-3 py-1 mr-5 
+        className="w-auto rounded-3xl bg-primary-foreground px-3 py-2 mr-5 
                    border border-input text-sm flex flex-row items-center 
                    cursor-pointer select-none focus:outline-none focus:ring-1 
                    focus:ring-ring"
