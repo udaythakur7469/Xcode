@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
-import CommentTags from "./CommentTags";
-import { ScrollArea } from "@/components/ui/commentTagsScrollArea";
+import PostTags from "./PostTags";
+import { ScrollArea } from "@/components/ui/postTagsScrollArea";
 
 type NewlyAddedTagsProps = {
   selectedTags: string[];
@@ -70,7 +70,7 @@ const NewlyAddedTags: React.FC<NewlyAddedTagsProps> = ({
         >
           <div className="flex flex-row items-center flex-wrap gap-2">
             {selectedTags.map((tag, index) => (
-              <CommentTags
+              <PostTags
                 key={index}
                 tag={tag}
                 onRemove={() => onRemoveTag(tag)}

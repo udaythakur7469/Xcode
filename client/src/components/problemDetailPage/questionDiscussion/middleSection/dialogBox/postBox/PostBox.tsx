@@ -1,18 +1,18 @@
-import React, { useCallback, useState, useRef} from "react";
-import CommentTitle from "./commentTitle/CommentTitle";
-import CommentToolbar from "./commentToolbar/CommentToolbar";
-import CommentEditor from "./commentEditor/CommentEditor";
-import { CommentResizablePanelsRef } from "./commentEditor/commentResizablePanels/CommentResizablePanels";
+import React, { useCallback, useState, useRef } from "react";
+import { PostResizablePanelsPropsRef } from "./postEditor/postResizablePanels/PostResizablePanels";
+import PostTitle from "./postTitle/PostTitle";
+import PostToolbar from "./postToolbar/PostToolbar";
+import PostEditor from "./postEditor/PostEditor";
 
-type CommentBoxProps = {};
+type PostBoxProps = {};
 
-const CommentBox: React.FC<CommentBoxProps> = () => {
+const PostBox: React.FC<PostBoxProps> = () => {
   const [content, setContent] = useState<string>("");
   const [selectionStart, setSelectionStart] = useState(0);
   const [selectionEnd, setSelectionEnd] = useState(0);
 
   // Ref to access the resizable panels reset function
-  const resizablePanelsRef = useRef<CommentResizablePanelsRef>(null);
+  const resizablePanelsRef = useRef<PostResizablePanelsPropsRef>(null);
 
   // function to insert markdown (toolbar actions)
   const handleInsertText = useCallback(
@@ -54,12 +54,12 @@ const CommentBox: React.FC<CommentBoxProps> = () => {
     <div className="bg-muted h-full w-full rounded-xl border-none flex flex-col">
       {/* Title: smaller height */}
       <div className="border-b rounded-t-xl flex-[2.5] border">
-        <CommentTitle />
+        <PostTitle />
       </div>
 
       {/* Toolbar: also small */}
       <div className="border-b flex-[0.5] border">
-        <CommentToolbar
+        <PostToolbar
           onInsertText={handleInsertText}
           onResetLayout={handleResetLayout}
         />
@@ -67,7 +67,7 @@ const CommentBox: React.FC<CommentBoxProps> = () => {
 
       {/* Resizable panels: take rest of the space */}
       <div className="flex-[7] rounded-b-xl border">
-        <CommentEditor
+        <PostEditor
           ref={resizablePanelsRef}
           content={content}
           setContent={setContent}
@@ -81,4 +81,4 @@ const CommentBox: React.FC<CommentBoxProps> = () => {
   );
 };
 
-export default CommentBox;
+export default PostBox;

@@ -21,12 +21,12 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 
-type CommentToolbarProps = {
+type PostToolbarProps = {
   onInsertText: (before: string, after?: string) => void;
   onResetLayout?: () => void;
 };
 
-const CommentToolbar: React.FC<CommentToolbarProps> = ({
+const PostToolbar: React.FC<PostToolbarProps> = ({
   onInsertText,
   onResetLayout,
 }) => {
@@ -256,4 +256,4 @@ const CommentToolbar: React.FC<CommentToolbarProps> = ({
   );
 };
 
-export default CommentToolbar;
+export default PostToolbar;

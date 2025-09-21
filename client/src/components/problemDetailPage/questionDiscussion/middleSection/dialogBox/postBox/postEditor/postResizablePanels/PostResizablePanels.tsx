@@ -10,24 +10,24 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import CommentMarkdownEditor from "../commentMarkdownEditor/CommentMarkdownEditor";
-import CommentMarkdownPreview from "../commentMarkdownPreview/CommentMarkdownPreview";
-import { ScrollArea } from "@/components/ui/commentTagsScrollArea";
+import PostMarkdownEditor from "../postMarkdownEditor/PostMarkdownEditor";
+import PostMarkdownPreview from "../postMarkdownPreview/PostMarkdownPreview";
+import { ScrollArea } from "@/components/ui/postTagsScrollArea";
 import { forwardRef, useImperativeHandle } from "react";
 
-type CommentResizablePanelsProps = {
+type PostResizablePanelsProps = {
   content: string;
   setContent: (value: string) => void;
   onSelectionChange?: (start: number, end: number) => void;
 };
 
-export interface CommentResizablePanelsRef {
+export interface PostResizablePanelsPropsRef {
   resetLayout: () => void;
 }
 
-const CommentResizablePanels = forwardRef<
-  CommentResizablePanelsRef,
-  CommentResizablePanelsProps
+const PostResizablePanels = forwardRef<
+  PostResizablePanelsPropsRef,
+  PostResizablePanelsProps
 >(({ content, setContent, onSelectionChange }, ref) => {
   const [horizontalSizes, setHorizontalSizes] = useState([50, 50]);
   const [isLeftMaximized, setIsLeftMaximized] = useState(false);
@@ -126,7 +126,7 @@ const CommentResizablePanels = forwardRef<
               <HoverCardTrigger asChild>
                 <button
                   onClick={handleLeftMaximize}
-                  className="absolute top-1 right-2 z-10 p-1 rounded transition-colors"
+                  className="absolute top-0 right-0 z-10 p-1 rounded transition-colors"
                 >
                   {isLeftMaximized ? (
                     <Minimize className="h-4 w-4 text-yellow-500" />
@@ -142,7 +142,7 @@ const CommentResizablePanels = forwardRef<
           )}
           <ScrollArea className="h-[458px] w-full">
             <div className="h-[458px] w-full">
-              <CommentMarkdownEditor
+              <PostMarkdownEditor
                 content={content}
                 setContent={setContent}
                 onSelectionChange={onSelectionChange}
@@ -172,7 +172,7 @@ const CommentResizablePanels = forwardRef<
               <HoverCardTrigger asChild>
                 <button
                   onClick={handleRightMaximize}
-                  className="absolute top-1 right-2 z-10 p-1 rounded transition-colors"
+                  className="absolute top-0 right-0 z-10 p-1 rounded transition-colors"
                 >
                   {isRightMaximized ? (
                     <Minimize className="h-4 w-4 text-yellow-500" />
@@ -188,7 +188,7 @@ const CommentResizablePanels = forwardRef<
           )}
           <ScrollArea className="h-[457px] w-full">
             <div className="h-[457px] w-full">
-              <CommentMarkdownPreview markdown={content} />
+              <PostMarkdownPreview markdown={content} />
             </div>
           </ScrollArea>
         </ResizablePanel>
@@ -197,6 +197,6 @@ const CommentResizablePanels = forwardRef<
   );
 });
 
-CommentResizablePanels.displayName = "CommentResizablePanels";
+PostResizablePanels.displayName = "PostResizablePanels";
 
-export default CommentResizablePanels;
+export default PostResizablePanels;

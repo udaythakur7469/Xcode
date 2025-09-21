@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import * as marked from "marked";
 
-interface CommentMarkdownPreviewProps {
+interface PostMarkdownPreviewProps {
   markdown: string;
 }
 
@@ -16,9 +16,17 @@ const configureMarked = () => {
         return `<div class="code-block-container my-4 rounded-lg overflow-hidden border">
           <div class="bg-muted px-4 py-2 text-xs text-muted-foreground border-b flex justify-between items-center">
             <span>${lang}</span>
-            <button class="hover:text-foreground transition-colors" onclick="navigator.clipboard.writeText(\`${String(
+            <button class="hover:text-foreground transition-colors copy-btn" onclick="copyCodeToClipboard(this, \`${String(
               code || ""
-            ).replace(/`/g, "\\`")}\`)">Copy</button>
+            ).replace(/`/g, "\\`")}\`)">
+              <svg class="copy-icon w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+              </svg>
+              <svg class="check-icon w-4 h-4 hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 6 9 17l-5-5"/>
+              </svg>
+            </button>
           </div>
           <div class="bg-muted/30 p-4 overflow-x-auto text-foreground text-sm font-mono" style="white-space: pre; line-height: 1.4;">${String(
             code
@@ -110,11 +118,33 @@ const configureMarked = () => {
 };
 
 // ✅ Main component
-const CommentMarkdownPreview: React.FC<CommentMarkdownPreviewProps> = ({
+const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
   markdown,
 }) => {
   useEffect(() => {
     configureMarked();
+
+    // Add global copy function
+    (window as any).copyCodeToClipboard = async (
+      button: HTMLButtonElement,
+      text: string
+    ) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        const copyIcon = button.querySelector(".copy-icon");
+        const checkIcon = button.querySelector(".check-icon");
+
+        copyIcon?.classList.add("hidden");
+        checkIcon?.classList.remove("hidden");
+
+        setTimeout(() => {
+          copyIcon?.classList.remove("hidden");
+          checkIcon?.classList.add("hidden");
+        }, 2000);
+      } catch (err) {
+        console.error("Failed to copy text: ", err);
+      }
+    };
   }, []);
 
   const getPreviewHTML = () => {
@@ -130,11 +160,11 @@ const CommentMarkdownPreview: React.FC<CommentMarkdownPreviewProps> = ({
   return (
     <div className="h-full w-full bg-background text-foreground overflow-auto text-lg">
       <div
-        className="prose prose-invert max-w-none leading-relaxed prose-pre:p-0 prose-pre:m-0 pl-2 pt-0.5"
+        className="prose prose-invert max-w-none leading-relaxed prose-pre:p-0 prose-pre:m-0 pl-3 pr-5 pt-0"
         dangerouslySetInnerHTML={getPreviewHTML()}
       />
     </div>
   );
 };
 
-export default CommentMarkdownPreview;
+export default PostMarkdownPreview;

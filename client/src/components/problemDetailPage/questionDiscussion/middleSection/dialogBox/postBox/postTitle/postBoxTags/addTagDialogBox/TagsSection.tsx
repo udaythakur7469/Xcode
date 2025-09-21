@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { commentTags } from "@/components/problemDetailPage/questionDiscussion/questionDiscussionData/QuestionDiscussionData";
+import { postTags } from "@/components/problemDetailPage/questionDiscussion/questionDiscussionData/QuestionDiscussionData";
 
 type TagsSectionProps = {
   searchTerm: string;
@@ -18,11 +18,11 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   // Filter tags based on search term
   const filteredTags = useMemo(() => {
     if (!searchTerm.trim()) {
-      return commentTags; // Show only top 4 when no search
+      return postTags; // Show only top 4 when no search
     }
 
     // Filter tags that include the search term (case insensitive)
-    const filtered = commentTags.filter((tag) =>
+    const filtered = postTags.filter((tag) =>
       tag.toLowerCase().includes(searchTerm.toLowerCase())
     );
 

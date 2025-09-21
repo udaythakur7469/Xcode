@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Input } from "@/components/ui/input";
 import TagsSection from "./TagsSection";
-import { commentTags } from "@/components/problemDetailPage/questionDiscussion/questionDiscussionData/QuestionDiscussionData";
+import { postTags } from "@/components/problemDetailPage/questionDiscussion/questionDiscussionData/QuestionDiscussionData";
 
 type AddTagDialogBoxProps = {
   onAddTag: (tag: string) => void;
@@ -52,7 +52,7 @@ const AddTagDialogBox: React.FC<AddTagDialogBoxProps> = ({
     ];
 
     if (
-      commentTags.includes(lowerTag) ||
+      postTags.includes(lowerTag) ||
       allowedShortTags.includes(lowerTag) ||
       acronymWhitelist.includes(tag.toUpperCase())
     ) {

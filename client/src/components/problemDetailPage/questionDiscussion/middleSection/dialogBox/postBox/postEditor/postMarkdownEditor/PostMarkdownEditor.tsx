@@ -1,12 +1,12 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 
-interface CommentMarkdownEditorProps {
+interface PostMarkdownEditorProps {
   content: string;
   setContent: (value: string) => void;
   onSelectionChange?: (start: number, end: number) => void;
 }
 
-const CommentMarkdownEditor: React.FC<CommentMarkdownEditorProps> = ({
+const PostMarkdownEditor: React.FC<PostMarkdownEditorProps> = ({
   content,
   setContent,
   onSelectionChange,
@@ -133,4 +133,4 @@ const CommentMarkdownEditor: React.FC<CommentMarkdownEditorProps> = ({
   );
 };
 
-export default CommentMarkdownEditor;
+export default PostMarkdownEditor;

@@ -1,19 +1,19 @@
 import React, { forwardRef } from "react";
-import CommentResizablePanels, {
-  CommentResizablePanelsRef,
-} from "./commentResizablePanels/CommentResizablePanels";
+import PostResizablePanels, {
+  PostResizablePanelsPropsRef,
+} from "./postResizablePanels/PostResizablePanels";
 
-type CommentEditorProps = {
+type PostEditorProps = {
   content: string;
   setContent: (value: string) => void;
   onSelectionChange?: (start: number, end: number) => void;
 };
 
-const CommentEditor = forwardRef<CommentResizablePanelsRef, CommentEditorProps>(
+const PostEditor = forwardRef<PostResizablePanelsPropsRef, PostEditorProps>(
   ({ content, setContent, onSelectionChange }, ref) => {
     return (
       <div className="h-full w-full">
-        <CommentResizablePanels
+        <PostResizablePanels
           ref={ref}
           content={content}
           setContent={setContent}
@@ -24,6 +24,6 @@ const CommentEditor = forwardRef<CommentResizablePanelsRef, CommentEditorProps>(
   }
 );
 
-CommentEditor.displayName = "CommentEditor";
+PostEditor.displayName = "PostEditor";
 
-export default CommentEditor;
+export default PostEditor;

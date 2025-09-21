@@ -2,10 +2,9 @@ import React, { useState } from "react";
 import AddNewTags from "./addNewTags.tsx/AddNewTags";
 import NewlyAddedTags from "./newlyAddedTags/NewlyAddedTags";
 
-type CommentDialogTagsProps = {};
+type PostBoxTagsProps = {};
 
-const CommentDialogTags: React.FC<CommentDialogTagsProps> = () => {
-
+const PostBoxTags: React.FC<PostBoxTagsProps> = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const addTag = (tag: string) => {
@@ -30,4 +29,4 @@ const CommentDialogTags: React.FC<CommentDialogTagsProps> = () => {
     </div>
   );
 };
-export default CommentDialogTags;
+export default PostBoxTags;

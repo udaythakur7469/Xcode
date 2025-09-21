@@ -1,16 +1,16 @@
 import React from "react";
 import { X } from "lucide-react";
 
-type CommentTagsProps = {
+type PostTagsProps = {
   tag: string;
   onRemove: () => void;
 };
 
-const CommentTags: React.FC<CommentTagsProps> = ({ tag, onRemove }) => {
+const PostTags: React.FC<PostTagsProps> = ({ tag, onRemove }) => {
   return (
     <div className="bg-blue-600 hover:bg-blue-700 flex flex-row items-center cursor-default select-none rounded-3xl px-3 py-1 mr-1 transition-colors">
       <X
-        className="h-4 w-4 mr-2 font-bold cursor-default rounded text-white"
+        className="h-4 w-4 mr-2 font-bold cursor-pointer rounded text-white"
         strokeWidth={3}
         onClick={onRemove}
       />
@@ -19,4 +19,4 @@ const CommentTags: React.FC<CommentTagsProps> = ({ tag, onRemove }) => {
   );
 };
 
-export default CommentTags;
+export default PostTags;

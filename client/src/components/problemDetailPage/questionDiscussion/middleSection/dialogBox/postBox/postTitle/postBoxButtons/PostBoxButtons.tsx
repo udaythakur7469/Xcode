@@ -1,9 +1,9 @@
 import { Ban, Send, SquarePen } from "lucide-react";
 import React from "react";
 
-type CommentDialogButtonsProps = {};
+type PostBoxButtonsProps = {};
 
-const CommentDialogButtons: React.FC<CommentDialogButtonsProps> = () => {
+const PostBoxButtons: React.FC<PostBoxButtonsProps> = () => {
   return (
     <div className="h-full w-full flex flex-col justify-center items-center gap-5">
       <div className="flex flex-row justify-center items-center gap-5">
@@ -25,4 +25,4 @@ const CommentDialogButtons: React.FC<CommentDialogButtonsProps> = () => {
     </div>
   );
 };
-export default CommentDialogButtons;
+export default PostBoxButtons;

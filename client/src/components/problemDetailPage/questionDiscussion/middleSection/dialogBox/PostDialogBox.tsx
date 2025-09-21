@@ -1,7 +1,7 @@
 import React from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/postBoxDialogBox";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
-import CommentBox from "./commentBox/CommentBox";
+import PostBox from "./postBox/PostBox";
 
 type PostDialogBoxProps = { isOpen: boolean; onClose: () => void };
 
@@ -18,10 +18,10 @@ const PostDialogBox: React.FC<PostDialogBoxProps> = ({ isOpen, onClose }) => {
         }}
       >
         <VisuallyHidden.Root>
-          <DialogTitle>Comment Editor</DialogTitle>
+          <DialogTitle>Post Editor</DialogTitle>
         </VisuallyHidden.Root>
         <div className="flex flex-wrap border rounded-xl">
-          <CommentBox />
+          <PostBox />
         </div>
       </DialogContent>
     </Dialog>

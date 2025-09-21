@@ -1,30 +1,30 @@
-import { Input } from "@/components/ui/commentTitleInput";
-import { X } from "lucide-react";
 import React, { useState } from "react";
+import { Input } from "@/components/ui/postTitleInput";
+import { X } from "lucide-react";
 
-type CommentDialogTitleProps = {};
+type PostBoxTitleProps = {};
 
-const CommentDialogTitle: React.FC<CommentDialogTitleProps> = () => {
-  const [commentTitle, setCommentTitle] = useState<string>("");
+const PostBoxTitle: React.FC<PostBoxTitleProps> = () => {
+  const [postTitle, setPostTitle] = useState<string>("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCommentTitle(e.target.value);
+    setPostTitle(e.target.value);
     console.log("Title entered:", e.target.value);
   };
 
   const handleClear = () => {
-    setCommentTitle("");
+    setPostTitle("");
   };
 
   return (
     <div className="relative w-full h-full ml-3">
       <Input
         placeholder="Enter the title"
-        value={commentTitle}
+        value={postTitle}
         onChange={handleChange}
         className="text-2xl placeholder:text-2xl"
       />
-      {commentTitle && (
+      {postTitle && (
         <X
           className="absolute right-3 top-1/2 -translate-y-1/2 text-white cursor-pointer"
           onClick={handleClear}
@@ -34,4 +34,4 @@ const CommentDialogTitle: React.FC<CommentDialogTitleProps> = () => {
   );
 };
 
-export default CommentDialogTitle;
+export default PostBoxTitle;

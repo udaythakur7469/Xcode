@@ -21,7 +21,7 @@ export const tags: string[] = [
   "Sorting Approach",
 ];
 
-export const commentTags: string[] = [
+export const postTags: string[] = [
   "array",
   "string",
   "hashmap",
