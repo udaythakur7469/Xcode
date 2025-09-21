@@ -34,7 +34,7 @@ const CommentToolbar: React.FC<CommentToolbarProps> = ({
     "flex items-center justify-center rounded-lg p-1 border";
 
   const handleInsert = (before: string, after: string = "") => {
-    console.log("Inserting:", { before, after });
+    // console.log("Inserting:", { before, after });
     onInsertText(before, after);
   };
 

@@ -128,9 +128,9 @@ const CommentMarkdownPreview: React.FC<CommentMarkdownPreviewProps> = ({
   };
 
   return (
-    <div className="h-full w-full bg-background text-foreground p-2 overflow-auto text-lg">
+    <div className="h-full w-full bg-background text-foreground overflow-auto text-lg">
       <div
-        className="prose prose-invert max-w-none leading-relaxed prose-pre:p-0 prose-pre:m-0 p-3"
+        className="prose prose-invert max-w-none leading-relaxed prose-pre:p-0 prose-pre:m-0 pl-2 pt-0.5"
         dangerouslySetInnerHTML={getPreviewHTML()}
       />
     </div>

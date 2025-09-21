@@ -1,5 +1,6 @@
 import React from "react";
-import { Dialog, DialogContent } from "@/components/ui/postBoxDialogBox";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/postBoxDialogBox";
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import CommentBox from "./commentBox/CommentBox";
 
 type PostDialogBoxProps = { isOpen: boolean; onClose: () => void };
@@ -16,6 +17,9 @@ const PostDialogBox: React.FC<PostDialogBoxProps> = ({ isOpen, onClose }) => {
           maxHeight: "680px",
         }}
       >
+        <VisuallyHidden.Root>
+          <DialogTitle>Comment Editor</DialogTitle>
+        </VisuallyHidden.Root>
         <div className="flex flex-wrap border rounded-xl">
           <CommentBox />
         </div>
