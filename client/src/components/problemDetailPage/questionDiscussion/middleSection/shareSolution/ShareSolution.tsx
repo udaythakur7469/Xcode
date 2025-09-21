@@ -46,8 +46,8 @@ const ShareSolution: React.FC<ShareSolutionProps> = () => {
           <div
             className={
               solutionAvailable
-                ? "cursor-pointer bg-green-600 flex flex-row items-center rounded-xl px-2 text-[#FDFBD4] ml-auto gap-1 select-none h-full py-1"
-                : "cursor-not-allowed select-none hover:opacity-50 bg-green-600 flex flex-row items-center rounded-xl px-2 text-[#FDFBD4] ml-auto gap-1 h-full py-1"
+                ? "cursor-pointer bg-green-600 flex flex-row items-center rounded-xl px-4 text-[#FDFBD4] ml-auto gap-1 select-none h-full py-1"
+                : "cursor-not-allowed select-none hover:opacity-50 bg-green-600 flex flex-row items-center rounded-xl px-4 text-[#FDFBD4] ml-auto gap-1 h-full py-1"
             }
             onClick={() => {
               if (!solutionAvailable) return; // prevent click
