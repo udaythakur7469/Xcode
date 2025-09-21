@@ -103,7 +103,7 @@ const CommentMarkdownEditor: React.FC<CommentMarkdownEditorProps> = ({
   return (
     <div className="flex h-full w-full bg-background">
       {/* Line numbers */}
-      <div className="line-numbers text-muted-foreground p-2 select-none bg-background border-r text-lg font-mono overflow-hidden">
+      <div className="line-numbers text-muted-foreground p-2 select-none bg-background border-r text-lg font-mono overflow-y-auto">
         {lineNumbers.map((n) => (
           <div key={n} className="leading-6 text-right min-w-[3ch]">
             {n}
@@ -121,9 +121,11 @@ const CommentMarkdownEditor: React.FC<CommentMarkdownEditorProps> = ({
         onClick={handleSelection}
         onKeyUp={handleSelection}
         onKeyDown={handleKeyDown}
-        className="flex-1 h-full w-full bg-background text-foreground font-mono p-2 outline-none resize-none text-lg leading-6"
+        className="flex-1 h-full w-full bg-background text-foreground font-mono text-sm p-2 outline-none leading-6 overflow-auto"
         style={{
           tabSize: 2,
+          maxHeight: "calc(100vh - 120px)",
+          maxWidth: "100%",
         }}
         spellCheck={true}
       />

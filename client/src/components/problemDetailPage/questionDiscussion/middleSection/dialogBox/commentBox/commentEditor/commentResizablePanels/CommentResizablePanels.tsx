@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/hover-card";
 import CommentMarkdownEditor from "../commentMarkdownEditor/CommentMarkdownEditor";
 import CommentMarkdownPreview from "../commentMarkdownPreview/CommentMarkdownPreview";
+import { ScrollArea } from "@/components/ui/commentTagsScrollArea";
 
 type CommentResizablePanelsProps = {
   content: string;
@@ -42,7 +43,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
       setIsRightMaximized(false);
     } else {
       // Maximize: left panel takes full width, right panel becomes zero
-      setHorizontalSizes([100, 0]);
+      setHorizontalSizes([95, 5]);
       setIsRightMaximized(false);
     }
     setIsLeftMaximized(!isLeftMaximized);
@@ -57,7 +58,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
       setIsLeftMaximized(false);
     } else {
       // Maximize: right panel takes full width, left panel becomes zero
-      setHorizontalSizes([0, 100]);
+      setHorizontalSizes([5, 95]);
       setIsLeftMaximized(false);
     }
     setIsRightMaximized(!isRightMaximized);
@@ -101,7 +102,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
         <ResizablePanel
           ref={leftPanelRef}
           defaultSize={50}
-          minSize={0}
+          minSize={5}
           maxSize={100}
           className="border mr-1 relative rounded-bl-xl"
         >
@@ -125,13 +126,15 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
               </HoverCardContent>
             </HoverCard>
           )}
-          <div className="h-full w-full flex items-center justify-center">
-            <CommentMarkdownEditor
-              content={content}
-              setContent={setContent}
-              onSelectionChange={onSelectionChange}
-            />
-          </div>
+          <ScrollArea className="h-[458px] w-full">
+            <div className="h-[458px] w-[720px]">
+              <CommentMarkdownEditor
+                content={content}
+                setContent={setContent}
+                onSelectionChange={onSelectionChange}
+              />
+            </div>
+          </ScrollArea>
         </ResizablePanel>
 
         {/* Resizable Handle - only show when both panels are visible */}
@@ -145,7 +148,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
         <ResizablePanel
           ref={rightPanelRef}
           defaultSize={50}
-          minSize={0}
+          minSize={5}
           maxSize={100}
           className="border ml-1 relative rounded-br-xl"
         >
@@ -169,9 +172,11 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
               </HoverCardContent>
             </HoverCard>
           )}
-          <div className="h-full w-full flex items-center justify-center">
-            <CommentMarkdownPreview markdown={content} />
-          </div>
+          <ScrollArea className="h-[457px] w-full">
+            <div className="h-[457px] w-[718px]">
+              <CommentMarkdownPreview markdown={content} />
+            </div>
+          </ScrollArea>
         </ResizablePanel>
       </ResizablePanelGroup>
     </div>

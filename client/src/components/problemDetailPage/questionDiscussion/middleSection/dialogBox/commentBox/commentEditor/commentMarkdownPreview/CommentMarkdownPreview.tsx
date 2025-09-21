@@ -5,75 +5,6 @@ interface CommentMarkdownPreviewProps {
   markdown: string;
 }
 
-// ✅ Syntax highlighting function
-const highlightCode = (code: string, language: string): string => {
-  if (typeof code !== "string") {
-    return String(code || "");
-  }
-
-  // Escape HTML to prevent conflicts
-  let highlighted = code
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-
-  if (language === "cpp" || language === "c++" || language === "c") {
-    // Keywords
-    highlighted = highlighted.replace(
-      /\b(class|public|private|protected|virtual|static|const|inline|template|typename|namespace|using|typedef|struct|enum)\b/g,
-      '<span style="color:#60a5fa; font-weight:600;">$1</span>'
-    );
-
-    // Types
-    highlighted = highlighted.replace(
-      /\b(int|char|float|double|bool|void|string|vector|map|set|unordered_map|unordered_set|auto|size_t)\b/g,
-      '<span style="color:#10b981; font-weight:600;">$1</span>'
-    );
-
-    // Control flow
-    highlighted = highlighted.replace(
-      /\b(if|else|for|while|do|switch|case|default|break|continue|return|try|catch|throw)\b/g,
-      '<span style="color:#a78bfa; font-weight:600;">$1</span>'
-    );
-
-    // Comments
-    highlighted = highlighted.replace(
-      /(\/\/.*$)/gm,
-      '<span style="color:#6b7280; font-style:italic;">$1</span>'
-    );
-
-    // Numbers
-    highlighted = highlighted.replace(
-      /\b\d+\b/g,
-      '<span style="color:#fbbf24;">$&</span>'
-    );
-  }
-
-  if (language === "javascript" || language === "js") {
-    // Keywords
-    highlighted = highlighted.replace(
-      /\b(const|let|var|function|class|if|else|for|while|return|import|export|default|async|await)\b/g,
-      '<span style="color:#60a5fa; font-weight:600;">$1</span>'
-    );
-
-    // Comments
-    highlighted = highlighted.replace(
-      /(\/\/.*$)/gm,
-      '<span style="color:#6b7280; font-style:italic;">$1</span>'
-    );
-
-    // Numbers
-    highlighted = highlighted.replace(
-      /\b\d+\b/g,
-      '<span style="color:#fbbf24;">$&</span>'
-    );
-  }
-
-  return highlighted;
-};
-
 // ✅ Configure marked renderer
 const configureMarked = () => {
   marked.use({
@@ -82,14 +13,6 @@ const configureMarked = () => {
         const code = token.text || "";
         const lang = token.lang || "text";
 
-        let highlighted;
-        try {
-          highlighted = highlightCode(code, lang);
-        } catch (error) {
-          console.warn("Error highlighting code:", error);
-          highlighted = String(code);
-        }
-
         return `<div class="code-block-container my-4 rounded-lg overflow-hidden border">
           <div class="bg-muted px-4 py-2 text-xs text-muted-foreground border-b flex justify-between items-center">
             <span>${lang}</span>
@@ -97,7 +20,9 @@ const configureMarked = () => {
               code || ""
             ).replace(/`/g, "\\`")}\`)">Copy</button>
           </div>
-          <div class="bg-muted/30 p-4 overflow-x-auto text-foreground text-sm font-mono" style="white-space: pre; line-height: 1.4;">${highlighted}</div>
+          <div class="bg-muted/30 p-4 overflow-x-auto text-foreground text-sm font-mono" style="white-space: pre; line-height: 1.4;">${String(
+            code
+          )}</div>
         </div>`;
       },
 
@@ -112,9 +37,9 @@ const configureMarked = () => {
         const text = token.text || "";
         const level = token.depth || 1;
         const sizes = [
+          "text-4xl",
           "text-3xl",
           "text-2xl",
-          "text-xl",
           "text-lg",
           "text-base",
           "text-sm",
@@ -203,7 +128,7 @@ const CommentMarkdownPreview: React.FC<CommentMarkdownPreviewProps> = ({
   };
 
   return (
-    <div className="h-full w-full bg-background text-foreground p-2 overflow-y-auto text-lg">
+    <div className="h-full w-full bg-background text-foreground p-2 overflow-auto text-lg">
       <div
         className="prose prose-invert max-w-none leading-relaxed prose-pre:p-0 prose-pre:m-0"
         dangerouslySetInnerHTML={getPreviewHTML()}
