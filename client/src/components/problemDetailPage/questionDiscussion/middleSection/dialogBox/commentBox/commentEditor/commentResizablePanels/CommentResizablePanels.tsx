@@ -112,7 +112,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
               <HoverCardTrigger asChild>
                 <button
                   onClick={handleLeftMaximize}
-                  className="absolute top-2 right-2 z-10 p-1 rounded transition-colors"
+                  className="absolute top-1 right-2 z-10 p-1 rounded transition-colors"
                 >
                   {isLeftMaximized ? (
                     <Minimize className="h-4 w-4 text-yellow-500" />
@@ -158,7 +158,7 @@ const CommentResizablePanels: React.FC<CommentResizablePanelsProps> = ({
               <HoverCardTrigger asChild>
                 <button
                   onClick={handleRightMaximize}
-                  className="absolute top-2 right-2 z-10 p-1 rounded transition-colors"
+                  className="absolute top-1 right-2 z-10 p-1 rounded transition-colors"
                 >
                   {isRightMaximized ? (
                     <Minimize className="h-4 w-4 text-yellow-500" />
