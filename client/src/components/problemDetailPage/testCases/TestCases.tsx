@@ -54,13 +54,13 @@ const TestCases: React.FC<TestCasesProps> = ({
             <HoverCardTrigger asChild>
               {isMaximized ? (
                 <Minimize
-                  className="cursor-pointer text-yellow-500 hover:text-yellow-600"
+                  className="ml-2 mr-2 cursor-pointer text-yellow-500 hover:text-yellow-600"
                   size={20}
                   onClick={handleMaximizeMinimize}
                 />
               ) : (
                 <Maximize
-                  className="cursor-pointer text-yellow-500 hover:text-yellow-600"
+                  className="ml-2 mr-2 cursor-pointer text-yellow-500 hover:text-yellow-600"
                   size={20}
                   onClick={handleMaximizeMinimize}
                 />
