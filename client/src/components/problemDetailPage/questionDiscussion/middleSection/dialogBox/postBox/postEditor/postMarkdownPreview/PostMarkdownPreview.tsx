@@ -111,9 +111,25 @@ const configureMarked = () => {
           title
         )}" class="max-w-full h-auto my-4 rounded border">`;
       },
+
+      // Add paragraph renderer to preserve spacing
+      paragraph(token: any) {
+        const text = token.text || "";
+        return `<p class="mb-4">${String(text)}</p>`;
+      },
     },
     gfm: true,
     breaks: true,
+  });
+};
+
+// ✅ Preprocess markdown to preserve blank lines
+const preprocessMarkdown = (markdown: string): string => {
+  // Replace consecutive blank lines with paragraph breaks containing non-breaking space
+  return markdown.replace(/\n\n+/g, (match) => {
+    const lineCount = match.split("\n").length - 1;
+    // For each blank line beyond the first, add a paragraph with &nbsp;
+    return "\n\n" + "&nbsp;\n\n".repeat(Math.max(0, lineCount - 1));
   });
 };
 
@@ -149,11 +165,13 @@ const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
 
   const getPreviewHTML = () => {
     try {
-      const html = marked.parse(markdown);
-      return { __html: html }; // ✅ Fixed: Use __html instead of html
+      // Preprocess markdown to preserve blank lines
+      const processedMarkdown = preprocessMarkdown(markdown);
+      const html = marked.parse(processedMarkdown);
+      return { __html: html };
     } catch (error) {
       console.error("Markdown parsing error:", error);
-      return { __html: '<p class="text-red-400">Error parsing markdown</p>' }; // ✅ Fixed: Use __html
+      return { __html: '<p class="text-red-400">Error parsing markdown</p>' };
     }
   };
 
