@@ -121,11 +121,14 @@ const PostMarkdownEditor: React.FC<PostMarkdownEditorProps> = ({
         onClick={handleSelection}
         onKeyUp={handleSelection}
         onKeyDown={handleKeyDown}
-        className="flex-1 h-full w-full bg-background text-foreground font-mono text-lg p-2 outline-none leading-6 overflow-auto"
+        className="flex-1 h-full w-full bg-background text-foreground font-mono text-lg pl-3 pr-2 pt-2 outline-none leading-6 resize-none overflow-auto"
         style={{
           tabSize: 2,
           maxHeight: "calc(100vh - 120px)",
           maxWidth: "100%",
+          wordWrap: "break-word",
+          overflowWrap: "break-word",
+          whiteSpace: "pre-wrap",
         }}
         spellCheck={true}
       />

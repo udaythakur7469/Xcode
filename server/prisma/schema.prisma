@@ -47,6 +47,8 @@ model User {
 
   Feedbacks Feedback[]
 
+  Posts Post[]
+
   // Relations:
   // - One-to-many relation with solved problems.
   solvedProblems SolvedProblems[]
@@ -56,6 +58,8 @@ model User {
 
   // - One-to-many relation with problem reactions
   problemReactions UserProblemReactions[]
+
+  postReactions PostReaction[]
 
   comments Comment[]
 
@@ -162,13 +166,17 @@ model Problem {
   // - One-to-many relation with user reactions
   userReactions UserProblemReactions[]
 
-  comment Comment[]
+  postReactions PostReaction[]
+
+  Posts Post[]
 
   // - One-to-one relation with problem statistics (optional).
   problemStats ProblemStats?
 
   // Timestamp for problem creation.
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Comment   Comment[]
 }
 
 // =========================================================
@@ -455,17 +463,18 @@ model Comment {
   id        Int               @id @default(autoincrement())
   content   String
   authorId  Int
-  author    User              @relation(fields: [authorId], references: [id])
-  problemId Int?
-  problem   Problem?          @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  author    User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  postId    Int
+  post      Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
   parentId  Int?
   parent    Comment?          @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[]         @relation("CommentToComment")
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
   votes     CommentReaction[]
+  Problem   Problem?          @relation(fields: [problemId], references: [id])
+  problemId Int?
 
-  @@index([problemId])
   @@index([parentId])
 }
 
@@ -480,4 +489,44 @@ model CommentReaction {
   updatedAt DateTime     @updatedAt
 
   @@unique([userId, commentId])
+}
+
+model Post {
+  id            Int            @id @default(autoincrement())
+  title         String
+  authorId      Int
+  author        User           @relation(fields: [authorId], references: [id])
+  problemId     Int
+  problem       Problem        @relation(fields: [problemId], references: [id])
+  tags          PostTags[]
+  comments      Comment[]
+  postReactions PostReaction[]
+  content       String
+  template      String
+  isDraftPost   Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model PostTags {
+  id        Int      @id @default(autoincrement())
+  name      String
+  PostId    Int
+  Post      Post     @relation(fields: [PostId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PostReaction {
+  type      ReactionType
+  userId    Int
+  user      User         @relation(fields: [userId], references: [id])
+  postId    Int
+  post      Post         @relation(fields: [postId], references: [id])
+  Problem   Problem?     @relation(fields: [problemId], references: [id])
+  problemId Int?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@id([userId, postId])
 }

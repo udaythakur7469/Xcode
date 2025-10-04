@@ -1,7 +1,5 @@
-import React, { forwardRef } from "react";
-import PostResizablePanels, {
-  PostResizablePanelsPropsRef,
-} from "./postResizablePanels/PostResizablePanels";
+import React from "react";
+import PostEditorPanels from "./postEditorPanels/PostEditorPanels";
 
 type PostEditorProps = {
   content: string;
@@ -9,20 +7,21 @@ type PostEditorProps = {
   onSelectionChange?: (start: number, end: number) => void;
 };
 
-const PostEditor = forwardRef<PostResizablePanelsPropsRef, PostEditorProps>(
-  ({ content, setContent, onSelectionChange }, ref) => {
-    return (
-      <div className="h-full w-full">
-        <PostResizablePanels
-          ref={ref}
-          content={content}
-          setContent={setContent}
-          onSelectionChange={onSelectionChange}
-        />
-      </div>
-    );
-  }
-);
+const PostEditor: React.FC<PostEditorProps> = ({
+  content,
+  setContent,
+  onSelectionChange,
+}) => {
+  return (
+    <div className="h-full w-full">
+      <PostEditorPanels
+        content={content}
+        setContent={setContent}
+        onSelectionChange={onSelectionChange}
+      />
+    </div>
+  );
+};
 
 PostEditor.displayName = "PostEditor";
 

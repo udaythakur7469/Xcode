@@ -1,5 +1,4 @@
-import React, { useCallback, useState, useRef } from "react";
-import { PostResizablePanelsPropsRef } from "./postEditor/postResizablePanels/PostResizablePanels";
+import React, { useCallback, useState } from "react";
 import PostTitle from "./postTitle/PostTitle";
 import PostToolbar from "./postToolbar/PostToolbar";
 import PostEditor from "./postEditor/PostEditor";
@@ -10,9 +9,6 @@ const PostBox: React.FC<PostBoxProps> = () => {
   const [content, setContent] = useState<string>("");
   const [selectionStart, setSelectionStart] = useState(0);
   const [selectionEnd, setSelectionEnd] = useState(0);
-
-  // Ref to access the resizable panels reset function
-  const resizablePanelsRef = useRef<PostResizablePanelsPropsRef>(null);
 
   // function to insert markdown (toolbar actions)
   const handleInsertText = useCallback(
@@ -43,15 +39,8 @@ const PostBox: React.FC<PostBoxProps> = () => {
     [content]
   );
 
-  // Function to reset the layout to 50%-50%
-  const handleResetLayout = useCallback(() => {
-    if (resizablePanelsRef.current) {
-      resizablePanelsRef.current.resetLayout();
-    }
-  }, []);
-
   return (
-    <div className="bg-muted h-full w-full rounded-xl border-none flex flex-col">
+    <div className="bg-muted h-full w-full rounded-xl border-none flex flex-col overflow-hidden">
       {/* Title: smaller height */}
       <div className="border-b rounded-t-xl flex-[2.5] border">
         <PostTitle />
@@ -61,14 +50,12 @@ const PostBox: React.FC<PostBoxProps> = () => {
       <div className="border-b flex-[0.5] border">
         <PostToolbar
           onInsertText={handleInsertText}
-          onResetLayout={handleResetLayout}
         />
       </div>
 
       {/* Resizable panels: take rest of the space */}
       <div className="flex-[7] rounded-b-xl border">
         <PostEditor
-          ref={resizablePanelsRef}
           content={content}
           setContent={setContent}
           onSelectionChange={(start, end) => {

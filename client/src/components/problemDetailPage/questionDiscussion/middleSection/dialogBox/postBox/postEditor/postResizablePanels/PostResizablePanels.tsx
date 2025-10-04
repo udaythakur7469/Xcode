@@ -118,7 +118,7 @@ const PostResizablePanels = forwardRef<
           defaultSize={50}
           minSize={5}
           maxSize={100}
-          className="border mr-1 relative rounded-bl-xl"
+          className="border mr-1 relative rounded-bl-xl overflow-hidden"
         >
           {/* Maximize/Minimize button for left panel - only show when panel is visible */}
           {horizontalSizes[0] > 0 && (
@@ -129,9 +129,9 @@ const PostResizablePanels = forwardRef<
                   className="absolute top-0 right-0 z-10 p-1 rounded transition-colors"
                 >
                   {isLeftMaximized ? (
-                    <Minimize className="h-4 w-4 text-yellow-500" />
+                    <Minimize className="h-4 w-4 text-yellow-500 z-40" />
                   ) : (
-                    <Maximize className="h-4 w-4 text-yellow-500" />
+                    <Maximize className="h-4 w-4 text-yellow-500 z-40" />
                   )}
                 </button>
               </HoverCardTrigger>
@@ -164,7 +164,7 @@ const PostResizablePanels = forwardRef<
           defaultSize={50}
           minSize={5}
           maxSize={100}
-          className="border ml-1 relative rounded-br-xl"
+          className="border ml-1 relative rounded-br-xl overflow-hidden"
         >
           {/* Maximize/Minimize button for right panel - only show when panel is visible */}
           {horizontalSizes[1] > 0 && (
@@ -175,9 +175,9 @@ const PostResizablePanels = forwardRef<
                   className="absolute top-0 right-0 z-10 p-1 rounded transition-colors"
                 >
                   {isRightMaximized ? (
-                    <Minimize className="h-4 w-4 text-yellow-500" />
+                    <Minimize className="h-4 w-4 text-yellow-500 z-40" />
                   ) : (
-                    <Maximize className="h-4 w-4 text-yellow-500" />
+                    <Maximize className="h-4 w-4 text-yellow-500 z-40" />
                   )}
                 </button>
               </HoverCardTrigger>

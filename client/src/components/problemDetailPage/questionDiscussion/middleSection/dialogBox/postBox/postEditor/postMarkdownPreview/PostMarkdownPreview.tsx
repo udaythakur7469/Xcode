@@ -13,25 +13,25 @@ const configureMarked = () => {
         const code = token.text || "";
         const lang = token.lang || "text";
 
-        return `<div class="code-block-container my-4 rounded-lg overflow-hidden border">
-          <div class="bg-muted px-4 py-2 text-xs text-muted-foreground border-b flex justify-between items-center">
-            <span>${lang}</span>
-            <button class="hover:text-foreground transition-colors copy-btn" onclick="copyCodeToClipboard(this, \`${String(
-              code || ""
-            ).replace(/`/g, "\\`")}\`)">
-              <svg class="copy-icon w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
-                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
-              </svg>
-              <svg class="check-icon w-4 h-4 hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 6 9 17l-5-5"/>
-              </svg>
-            </button>
-          </div>
-          <div class="bg-muted/30 p-4 overflow-x-auto text-foreground text-sm font-mono" style="white-space: pre; line-height: 1.4;">${String(
-            code
-          )}</div>
-        </div>`;
+        return `<div class="code-block-container my-4 rounded-lg border" style="width: 700px; max-width: 100%; overflow: hidden;">
+    <div class="bg-muted px-4 py-2 text-xs text-muted-foreground border-b flex justify-between items-center">
+      <span>${lang}</span>
+      <button class="hover:text-foreground transition-colors copy-btn" onclick="copyCodeToClipboard(this, \`${String(
+        code || ""
+      ).replace(/`/g, "\\`")}\`)">
+        <svg class="copy-icon w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+        </svg>
+        <svg class="check-icon w-4 h-4 hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 6 9 17l-5-5"/>
+        </svg>
+      </button>
+    </div>
+    <div class="bg-muted/30 p-4 text-foreground text-sm font-mono" style="white-space: pre-wrap; line-height: 1.4; word-break: break-all; overflow-wrap: anywhere; width: 100%;">${String(
+      code
+    )}</div>
+  </div>`;
       },
 
       codespan(token: any) {
@@ -160,7 +160,12 @@ const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
   return (
     <div className="h-full w-full bg-background text-foreground overflow-auto text-lg">
       <div
-        className="prose prose-invert max-w-none leading-relaxed prose-pre:p-0 prose-pre:m-0 pl-3 pr-5 pt-0"
+        className="prose prose-invert max-w-none prose-pre:p-0 prose-pre:m-0 leading-6 pl-3 pr-2 pt-2 break-words text-lg font-mono"
+        style={{
+          wordWrap: "break-word",
+          overflowWrap: "break-word",
+          maxWidth: "100%",
+        }}
         dangerouslySetInnerHTML={getPreviewHTML()}
       />
     </div>
