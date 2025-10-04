@@ -13,6 +13,7 @@ import {
   CodeXml,
   FolderCode,
   Lightbulb,
+  History,
 } from "lucide-react";
 import {
   HoverCard,
@@ -22,9 +23,10 @@ import {
 
 type PostToolbarProps = {
   onInsertText: (before: string, after?: string) => void;
+  onReset?: (() => void) | null;
 };
 
-const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText }) => {
+const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
   const buttonClasses =
     "flex items-center justify-center rounded-lg p-1 border";
 
@@ -226,6 +228,20 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText }) => {
 
       {/* Right side - Reset Layout button */}
       <div className="flex items-center gap-2">
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <button
+              className={buttonClasses}
+              onClick={() => onReset?.()}
+              disabled={!onReset}
+            >
+              <History />
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent side="left" className="p-1">
+            Reset post
+          </HoverCardContent>
+        </HoverCard>
         <HoverCard>
           <HoverCardTrigger asChild>
             <button className={buttonClasses}>

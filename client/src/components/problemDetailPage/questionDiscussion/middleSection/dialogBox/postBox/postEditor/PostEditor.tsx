@@ -5,12 +5,14 @@ type PostEditorProps = {
   content: string;
   setContent: (value: string) => void;
   onSelectionChange?: (start: number, end: number) => void;
+  onResetReady?: () => void;
 };
 
 const PostEditor: React.FC<PostEditorProps> = ({
   content,
   setContent,
   onSelectionChange,
+  onResetReady,
 }) => {
   return (
     <div className="h-full w-full">
@@ -18,6 +20,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
         content={content}
         setContent={setContent}
         onSelectionChange={onSelectionChange}
+        onResetReady={onResetReady}
       />
     </div>
   );

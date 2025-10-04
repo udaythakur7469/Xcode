@@ -10,15 +10,18 @@ type PostEditorPanelsProps = {
   content: string;
   setContent: (value: string) => void;
   onSelectionChange?: (start: number, end: number) => void;
+  onResetReady?: () => void;
 };
 
 const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   content,
   setContent,
   onSelectionChange,
+  onResetReady,
 }) => {
   const [problemTitle, setProblemTitle] = useState<string | null>(null);
   const hasLoadedInitialContent = useRef(false);
+  const originalTemplateRef = useRef<string>("");
 
   const {
     getPostBaseTemplate,
@@ -55,9 +58,22 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
       content === ""
     ) {
       setContent(postBaseTemplate);
+      originalTemplateRef.current = postBaseTemplate;
       hasLoadedInitialContent.current = true;
     }
   }, [postBaseTemplate, content, setContent]);
+
+  const handleReset = () => {
+    if (originalTemplateRef.current) {
+      setContent(originalTemplateRef.current);
+    }
+  };
+
+  useEffect(() => {
+    if (onResetReady && originalTemplateRef.current) {
+      onResetReady(() => handleReset);
+    }
+  }, [onResetReady, originalTemplateRef.current]);
 
   // Loading state
   if (isPostBaseTemplateLoading && content === "") {
@@ -87,6 +103,7 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
               content={content}
               setContent={setContent}
               onSelectionChange={onSelectionChange}
+              onReset={handleReset}
             />
           </div>
         </ScrollArea>

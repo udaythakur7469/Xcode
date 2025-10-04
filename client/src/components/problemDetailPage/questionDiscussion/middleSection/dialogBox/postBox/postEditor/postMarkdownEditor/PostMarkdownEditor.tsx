@@ -4,6 +4,7 @@ interface PostMarkdownEditorProps {
   content: string;
   setContent: (value: string) => void;
   onSelectionChange?: (start: number, end: number) => void;
+  onReset?: () => void;
 }
 
 const PostMarkdownEditor: React.FC<PostMarkdownEditorProps> = ({

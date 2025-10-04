@@ -9,6 +9,8 @@ const PostBox: React.FC<PostBoxProps> = () => {
   const [content, setContent] = useState<string>("");
   const [selectionStart, setSelectionStart] = useState(0);
   const [selectionEnd, setSelectionEnd] = useState(0);
+  const [resetHandler, setResetHandler] = useState<(() => void) | null>(null);
+
 
   // function to insert markdown (toolbar actions)
   const handleInsertText = useCallback(
@@ -48,9 +50,7 @@ const PostBox: React.FC<PostBoxProps> = () => {
 
       {/* Toolbar: also small */}
       <div className="border-b flex-[0.5] border">
-        <PostToolbar
-          onInsertText={handleInsertText}
-        />
+        <PostToolbar onInsertText={handleInsertText} onReset={resetHandler} />
       </div>
 
       {/* Resizable panels: take rest of the space */}
@@ -62,6 +62,7 @@ const PostBox: React.FC<PostBoxProps> = () => {
             setSelectionStart(start);
             setSelectionEnd(end);
           }}
+          onResetReady={setResetHandler}
         />
       </div>
     </div>
