@@ -1,19 +1,79 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import PostMarkdownEditor from "../postMarkdownEditor/PostMarkdownEditor";
 import PostMarkdownPreview from "../postMarkdownPreview/PostMarkdownPreview";
 import { ScrollArea } from "@/components/ui/postTagsScrollArea";
+import { usePostStore } from "@/features/postStore";
+import { useSearchParams } from "next/navigation";
+import { MoonLoader } from "react-spinners";
 
-type PostEditorLayoutProps = {
+type PostEditorPanelsProps = {
   content: string;
   setContent: (value: string) => void;
   onSelectionChange?: (start: number, end: number) => void;
 };
 
-const PostEditorLayout: React.FC<PostEditorLayoutProps> = ({
+const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   content,
   setContent,
   onSelectionChange,
 }) => {
+  const [problemTitle, setProblemTitle] = useState<string | null>(null);
+
+  const {
+    getPostBaseTemplate,
+    isPostBaseTemplateLoading,
+    postBaseTemplateError,
+    postBaseTemplate,
+  } = usePostStore();
+
+  const searchParams = useSearchParams();
+
+  // Effect to get problem title from URL params
+  useEffect(() => {
+    const title = searchParams.get("title");
+    setProblemTitle(title);
+  }, [searchParams]);
+
+  // Effect to fetch template when problemTitle changes
+  useEffect(() => {
+    const fetchTemplate = async () => {
+      if (!problemTitle) return;
+
+      try {
+        await getPostBaseTemplate(problemTitle);
+      } catch (error) {
+        console.error("Error fetching post template:", error);
+      }
+    };
+
+    fetchTemplate();
+  }, [problemTitle, getPostBaseTemplate]);
+
+  // Effect to set content when template is available
+  useEffect(() => {
+    if (postBaseTemplate && content === "") {
+      setContent(postBaseTemplate);
+    }
+  }, [postBaseTemplate, content, setContent]);
+
+  // Loading state
+  if (isPostBaseTemplateLoading && content === "") {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <MoonLoader color="#ffffff" size={100} />
+      </div>
+    );
+  }
+
+  // Error state
+  if (postBaseTemplateError && content === "") {
+    return (
+      <div className="h-full flex items-center justify-center text-red-500 text-lg">
+        {postBaseTemplateError}
+      </div>
+    );
+  }
+
   return (
     <div className="h-full w-full flex">
       {/* Left Panel (Editor) - Fixed 50% */}
@@ -44,4 +104,4 @@ const PostEditorLayout: React.FC<PostEditorLayoutProps> = ({
   );
 };
 
-export default PostEditorLayout;
+export default PostEditorPanels;

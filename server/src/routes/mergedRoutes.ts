@@ -4,6 +4,7 @@ import userRoutes from "./userRoutes.js";
 import problemRoutes from "./problemRoutes.js";
 import submissionRoutes from "./submissionRoutes.js";
 import interviewRoutes from "./interviewRoutes.js";
+import postRoutes from "./postRoutes.js";
 
 const router = express.Router();
 
@@ -12,5 +13,6 @@ router.use("/user", userRoutes);
 router.use("/problem", problemRoutes);
 router.use("/submission", submissionRoutes);
 router.use("/interview", interviewRoutes);
+router.use("/post", postRoutes);
 
 export default router;
