@@ -112,10 +112,9 @@ const configureMarked = () => {
         )}" class="max-w-full h-auto my-4 rounded border">`;
       },
 
-      // Add paragraph renderer to preserve spacing
       paragraph(token: any) {
         const text = token.text || "";
-        return `<p class="mb-4">${String(text)}</p>`;
+        return `<p class="my-2">${String(text)}</p>`;
       },
     },
     gfm: true,
@@ -123,14 +122,38 @@ const configureMarked = () => {
   });
 };
 
-// ✅ Preprocess markdown to preserve blank lines
+// ✅ Preprocess markdown to preserve blank lines and force line breaks
 const preprocessMarkdown = (markdown: string): string => {
-  // Replace consecutive blank lines with paragraph breaks containing non-breaking space
-  return markdown.replace(/\n\n+/g, (match) => {
-    const lineCount = match.split("\n").length - 1;
-    // For each blank line beyond the first, add a paragraph with &nbsp;
-    return "\n\n" + "&nbsp;\n\n".repeat(Math.max(0, lineCount - 1));
-  });
+  // Track if we're inside a code block
+  let inCodeBlock = false;
+  const lines = markdown.split("\n");
+  const result: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Check if this line starts/ends a code block
+    if (line.trim().startsWith("```")) {
+      inCodeBlock = !inCodeBlock;
+      result.push(line);
+      continue;
+    }
+
+    // If we're inside a code block, don't add <br> tags
+    if (inCodeBlock) {
+      result.push(line);
+      continue;
+    }
+
+    // Outside code blocks, process normally
+    if (line.trim() === "") {
+      result.push("&nbsp;<br>");
+    } else {
+      result.push(line + "<br>");
+    }
+  }
+
+  return result.join("\n");
 };
 
 // ✅ Main component
