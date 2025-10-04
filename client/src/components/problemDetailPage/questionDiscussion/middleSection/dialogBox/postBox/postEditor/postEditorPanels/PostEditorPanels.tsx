@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import PostMarkdownEditor from "../postMarkdownEditor/PostMarkdownEditor";
 import PostMarkdownPreview from "../postMarkdownPreview/PostMarkdownPreview";
 import { ScrollArea } from "@/components/ui/postTagsScrollArea";
@@ -18,6 +18,7 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   onSelectionChange,
 }) => {
   const [problemTitle, setProblemTitle] = useState<string | null>(null);
+  const hasLoadedInitialContent = useRef(false);
 
   const {
     getPostBaseTemplate,
@@ -28,31 +29,33 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
 
   const searchParams = useSearchParams();
 
-  // Effect to get problem title from URL params
+  // Effect to get problem title and load template once
   useEffect(() => {
     const title = searchParams.get("title");
     setProblemTitle(title);
-  }, [searchParams]);
 
-  // Effect to fetch template when problemTitle changes
-  useEffect(() => {
-    const fetchTemplate = async () => {
-      if (!problemTitle) return;
+    const loadTemplate = async () => {
+      if (!title || hasLoadedInitialContent.current) return;
 
       try {
-        await getPostBaseTemplate(problemTitle);
+        await getPostBaseTemplate(title);
       } catch (error) {
         console.error("Error fetching post template:", error);
       }
     };
 
-    fetchTemplate();
-  }, [problemTitle, getPostBaseTemplate]);
+    loadTemplate();
+  }, [searchParams, getPostBaseTemplate]);
 
-  // Effect to set content when template is available
+  // Effect to set initial content once
   useEffect(() => {
-    if (postBaseTemplate && content === "") {
+    if (
+      postBaseTemplate &&
+      !hasLoadedInitialContent.current &&
+      content === ""
+    ) {
       setContent(postBaseTemplate);
+      hasLoadedInitialContent.current = true;
     }
   }, [postBaseTemplate, content, setContent]);
 
