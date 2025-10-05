@@ -3,9 +3,9 @@ import PostBoxTitle from "./postBoxTitle/PostBoxTitle";
 import PostBoxTags from "./postBoxTags/PostBoxTags";
 import PostBoxButtons from "./postBoxButtons/PostBoxButtons";
 
-type PostTitleProps = {};
+type PostTitleProps = { onClose: () => void };
 
-const PostTitle: React.FC<PostTitleProps> = () => {
+const PostTitle: React.FC<PostTitleProps> = ({ onClose }) => {
   return (
     <div className="h-full w-full rounded-t-xl flex flex-row">
       <div className="h-full w-full rounded-tl-xl flex-[8] flex flex-col">
@@ -17,7 +17,7 @@ const PostTitle: React.FC<PostTitleProps> = () => {
         </div>
       </div>
       <div className="rounded-tr-xl flex-[2]">
-        <PostBoxButtons />
+        <PostBoxButtons onClose={onClose} />
       </div>
     </div>
   );

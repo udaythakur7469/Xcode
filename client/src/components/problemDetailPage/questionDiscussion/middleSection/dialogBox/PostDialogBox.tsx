@@ -21,7 +21,7 @@ const PostDialogBox: React.FC<PostDialogBoxProps> = ({ isOpen, onClose }) => {
           <DialogTitle>Post Editor</DialogTitle>
         </VisuallyHidden.Root>
         <div className="flex flex-wrap border rounded-xl">
-          <PostBox />
+          <PostBox onClose={onClose} />
         </div>
       </DialogContent>
     </Dialog>

@@ -3,14 +3,13 @@ import PostTitle from "./postTitle/PostTitle";
 import PostToolbar from "./postToolbar/PostToolbar";
 import PostEditor from "./postEditor/PostEditor";
 
-type PostBoxProps = {};
+type PostBoxProps = { onClose: () => void };
 
-const PostBox: React.FC<PostBoxProps> = () => {
+const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
   const [content, setContent] = useState<string>("");
   const [selectionStart, setSelectionStart] = useState(0);
   const [selectionEnd, setSelectionEnd] = useState(0);
   const [resetHandler, setResetHandler] = useState<(() => void) | null>(null);
-
 
   // function to insert markdown (toolbar actions)
   const handleInsertText = useCallback(
@@ -45,7 +44,7 @@ const PostBox: React.FC<PostBoxProps> = () => {
     <div className="bg-muted h-full w-full rounded-xl border-none flex flex-col overflow-hidden">
       {/* Title: smaller height */}
       <div className="border-b rounded-t-xl flex-[2.5] border">
-        <PostTitle />
+        <PostTitle onClose={onClose} />
       </div>
 
       {/* Toolbar: also small */}

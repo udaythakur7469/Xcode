@@ -1,13 +1,21 @@
 import { Ban, Send, SquarePen } from "lucide-react";
 import React from "react";
 
-type PostBoxButtonsProps = {};
+type PostBoxButtonsProps = { onClose: () => void };
 
-const PostBoxButtons: React.FC<PostBoxButtonsProps> = () => {
+const PostBoxButtons: React.FC<PostBoxButtonsProps> = ({ onClose }) => {
+
+  const handleCancel = () => {
+    onClose();
+  };
+
   return (
     <div className="h-full w-full flex flex-col justify-center items-center gap-5">
       <div className="flex flex-row justify-center items-center gap-5">
-        <div className="h-auto w-auto bg-red-500 px-3 py-2 cursor-pointer select-none rounded-2xl flex flex-row items-center">
+        <div
+          className="h-auto w-auto bg-red-500 px-3 py-2 cursor-pointer select-none rounded-2xl flex flex-row items-center"
+          onClick={handleCancel}
+        >
           <Ban />
           <div className="ml-3">Cancel</div>
         </div>
