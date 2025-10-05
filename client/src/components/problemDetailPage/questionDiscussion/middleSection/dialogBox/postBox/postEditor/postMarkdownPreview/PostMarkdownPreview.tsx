@@ -201,7 +201,7 @@ const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
   return (
     <div className="h-full w-full bg-background text-foreground overflow-auto text-lg">
       <div
-        className="prose prose-invert max-w-none prose-pre:p-0 prose-pre:m-0 leading-6 pl-3 pr-2 pt-2 break-words text-lg font-mono"
+        className="prose prose-invert max-w-none prose-pre:p-0 prose-pre:m-0 leading-6 pl-3 pr-2 pt-0 break-words text-lg font-mono"
         style={{
           wordWrap: "break-word",
           overflowWrap: "break-word",
