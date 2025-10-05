@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect } from "react";
 import * as marked from "marked";
 
@@ -42,7 +43,7 @@ const configureMarked = () => {
       },
 
       heading(token: any) {
-        const text = token.text || "";
+        const text = this.parser.parseInline(token.tokens || []);
         const level = token.depth || 1;
         const sizes = [
           "text-4xl",
@@ -69,8 +70,9 @@ const configureMarked = () => {
         if (token.items && Array.isArray(token.items)) {
           body = token.items
             .map((item: any) => {
-              const itemText = item.text || "";
-              return `<li class="text-foreground">${String(itemText)}</li>`;
+              // Parse item tokens to support inline markdown inside list items
+              const itemHtml = this.parser.parseInline(item.tokens || []);
+              return `<li class="text-foreground">${String(itemHtml)}</li>`;
             })
             .join("");
         }
@@ -79,7 +81,7 @@ const configureMarked = () => {
       },
 
       listitem(token: any) {
-        const text = token.text || "";
+        const text = this.parser.parseInline(token.tokens || []);
         return `<li class="text-foreground">${String(text)}</li>`;
       },
 
@@ -93,7 +95,7 @@ const configureMarked = () => {
       link(token: any) {
         const href = token.href || "#";
         const title = token.title || "";
-        const text = token.text || "";
+        const text = this.parser.parseInline(token.tokens || []);
         return `<a href="${String(href)}" title="${String(
           title
         )}" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:text-primary/80">${String(
@@ -113,7 +115,7 @@ const configureMarked = () => {
       },
 
       paragraph(token: any) {
-        const text = token.text || "";
+        const text = this.parser.parseInline(token.tokens || []);
         return `<p class="my-2">${String(text)}</p>`;
       },
     },
@@ -122,35 +124,44 @@ const configureMarked = () => {
   });
 };
 
-// ✅ Preprocess markdown to preserve blank lines and force line breaks
+// ✅ Preprocess markdown to preserve extra blank lines (with a bit more space)
 const preprocessMarkdown = (markdown: string): string => {
-  // Track if we're inside a code block
   let inCodeBlock = false;
+  let consecutiveBlankLines = 0;
   const lines = markdown.split("\n");
   const result: string[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Check if this line starts/ends a code block
+    // Toggle code block state on fenced lines
     if (line.trim().startsWith("```")) {
       inCodeBlock = !inCodeBlock;
+      consecutiveBlankLines = 0;
       result.push(line);
       continue;
     }
 
-    // If we're inside a code block, don't add <br> tags
     if (inCodeBlock) {
       result.push(line);
       continue;
     }
 
-    // Outside code blocks, process normally
     if (line.trim() === "") {
-      result.push("&nbsp;<br>");
-    } else {
-      result.push(line + "<br>");
+      consecutiveBlankLines += 1;
+      // Keep the first blank line as real blank (paragraph break)
+      if (consecutiveBlankLines === 1) {
+        result.push("");
+      } else {
+        // For each extra blank line, inject a small spacer
+        result.push('<div class="md-extra-gap" style="height: 1rem;"></div>');
+      }
+      continue;
     }
+
+    // Non-empty line resets the counter
+    consecutiveBlankLines = 0;
+    result.push(line);
   }
 
   return result.join("\n");
@@ -188,7 +199,7 @@ const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
 
   const getPreviewHTML = () => {
     try {
-      // Preprocess markdown to preserve blank lines
+      // Preprocess markdown to preserve extra blank lines
       const processedMarkdown = preprocessMarkdown(markdown);
       const html = marked.parse(processedMarkdown);
       return { __html: html };
