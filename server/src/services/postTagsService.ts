@@ -69,7 +69,7 @@ export const validateTagUsingAI = async (tag) => {
     console.log("Tag validation:", validation.trim());
     return validation.trim();
   } catch (error) {
-    logger.error("error in validating tag using AI");
+    logger.error("error in validating tag using AI", error);
     throw createHttpError.BadRequest("error in validating tag using AI");
   }
 };

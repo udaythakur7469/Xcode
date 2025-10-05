@@ -167,17 +167,38 @@ export const checkCommentTagsUsingAI = async (req, res, next) => {
     }
 
     if (action === "add") {
-      await addTagToCloudinary(tag);
+      // First validate the tag
+      const validationResponse = await validateTagUsingAI(tag);
+      const cleanedResponse = validationResponse?.trim().toUpperCase();
 
-      return res.status(200).json({
-        success: true,
-        message: "tag added successfully",
-        data: {
-          tag: tag,
-          valid: true,
-          added: true,
-        },
-      });
+      if (cleanedResponse?.startsWith("VALID")) {
+        // ✅ Tag is valid - proceed to add
+        await addTagToCloudinary(tag);
+
+        return res.status(200).json({
+          success: true,
+          message: "Tag added successfully",
+          data: {
+            tag: tag,
+            valid: true,
+            added: true,
+          },
+        });
+      } else {
+        // ❌ Tag is invalid - don't add
+        const reasonMatch = validationResponse.match(/INVALID:\s*(.*)/i);
+        const reason = reasonMatch ? reasonMatch[1].trim() : "Invalid tag";
+
+        return res.status(200).json({
+          success: false,
+          message: `Cannot add tag: ${reason}`,
+          data: {
+            tag,
+            valid: false,
+            added: false,
+          },
+        });
+      }
     }
   } catch (error) {
     next(error);
