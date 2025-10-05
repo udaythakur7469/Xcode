@@ -153,8 +153,9 @@ const preprocessMarkdown = (markdown: string): string => {
       if (consecutiveBlankLines === 1) {
         result.push("");
       } else {
-        // For each extra blank line, inject a small spacer
-        result.push('<div class="md-extra-gap" style="height: 1rem;"></div>');
+        // For each extra blank line, insert a non-breaking space line.
+        // This creates visual spacing without triggering HTML block parsing in marked.
+        result.push("&nbsp;");
       }
       continue;
     }
