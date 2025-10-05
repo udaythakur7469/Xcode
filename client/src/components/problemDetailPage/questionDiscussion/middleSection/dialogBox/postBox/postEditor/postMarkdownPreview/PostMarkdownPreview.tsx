@@ -148,6 +148,12 @@ const preprocessMarkdown = (markdown: string): string => {
     }
 
     if (line.trim() === "") {
+      // Special-case: a single blank line at the very start of the document
+      if (i === 0) {
+        result.push("&nbsp;");
+        consecutiveBlankLines = 1;
+        continue;
+      }
       consecutiveBlankLines += 1;
       // Keep the first blank line as real blank (paragraph break)
       if (consecutiveBlankLines === 1) {
