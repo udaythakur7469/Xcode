@@ -2,6 +2,7 @@ import express from "express";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import {
   checkCommentTagsUsingAI,
+  createPost,
   fetchTagsFromCloudinary,
   getMarkdownEditorBasePostFormat,
   uploadTagsToCloudinary,
@@ -16,5 +17,6 @@ router
 router.route("/upload").post(uploadTagsToCloudinary);
 router.route("/fetch").get(fetchTagsFromCloudinary);
 router.route("/validateTag").post(checkCommentTagsUsingAI);
+router.route("/createPost").post(authMiddleware, createPost);
 
 export default router;

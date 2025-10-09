@@ -24,6 +24,32 @@ interface TagsList {
   };
 }
 
+interface CreatePost {
+  success: boolean;
+  message: string;
+  data: CreatePostData;
+}
+
+interface CreatePostData {
+  id: string;
+  title: string;
+  authorId: string;
+  problemId: string;
+  content: string;
+  isDraftPost: boolean;
+  tags?: CreatePostTags[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface CreatePostTags {
+  id: string;
+  name: string;
+  PostId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface PostData {
   postBaseTemplate: string | null;
   isPostBaseTemplateLoading: boolean;
@@ -34,10 +60,20 @@ interface PostData {
   TagValidation: TagValidation | null;
   isTagGettingValidated: boolean;
   tagValidationError: any | null;
+  createPost: CreatePost | null;
+  isCreatingPost: boolean;
+  createPostError: any | null;
 
   getPostBaseTemplate: (title: string) => Promise<void>;
   fetchPostTags: () => Promise<void>;
   validateTag: (tag: string, action: string) => Promise<TagValidation>;
+  createNewPost: (
+    title: string,
+    problemTitle: string,
+    postTags: string[],
+    content: string,
+    isDraftPost: boolean
+  ) => Promise<void>;
 }
 
 export const usePostStore = create<PostData>()((set, get) => ({
@@ -50,6 +86,9 @@ export const usePostStore = create<PostData>()((set, get) => ({
   TagValidation: null,
   isTagGettingValidated: false,
   tagValidationError: null,
+  createPost: null,
+  isCreatingPost: false,
+  createPostError: null,
 
   getPostBaseTemplate: async (title) => {
     set({ isPostBaseTemplateLoading: true, postBaseTemplateError: null });
@@ -100,6 +139,26 @@ export const usePostStore = create<PostData>()((set, get) => ({
     } catch (error: any) {
       const errMsg = error?.response?.data?.message || "Error checking the tag";
       set({ isTagGettingValidated: false, tagValidationError: errMsg });
+
+      throw error;
+    }
+  },
+  createNewPost: async (title, problemTitle, tags, content, isDraftPost) => {
+    set({ isCreatingPost: true, createPostError: null });
+
+    try {
+      const response = await axios.post(`${API_URL}/post/createPost`, {
+        title,
+        problemTitle,
+        tags: tags || [],
+        content,
+        isDraftPost,
+      });
+
+      set({ createPost: response.data, isCreatingPost: false });
+    } catch (error: any) {
+      const errMsg = error?.response?.data?.message || "Error creating post";
+      set({ createPostError: errMsg, isCreatingPost: false });
 
       throw error;
     }

@@ -9,6 +9,7 @@ import {
   addTagToCloudinary,
   validateTagUsingAI,
 } from "../services/postTagsService.js";
+import { boolean } from "zod";
 
 // Load environment variables
 dotenv.config();
@@ -242,6 +243,65 @@ export const getMarkdownEditorBasePostFormat = async (req, res, next) => {
     res.status(200).json({
       message: "base post format generated successfully",
       data: formattedPost,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const createPost = async (req, res, next) => {
+  const { title, tags, content, isDraftPost, problemTitle } = req.body;
+
+  const userId = req.user.id || req.user.userId;
+
+  if (!userId) {
+    throw createHttpError.Unauthorized("User not authenticated");
+  }
+
+  if (!title || !content || !problemTitle || typeof isDraftPost !== "boolean") {
+    throw createHttpError.BadRequest(
+      "missing required fields in createPost controller"
+    );
+  }
+
+  try {
+    const problem = await prisma.problem.findFirst({
+      where: {
+        title: problemTitle,
+      },
+      select: { id: true },
+    });
+
+    if (!problem) {
+      throw createHttpError.BadRequest("problem not found");
+    }
+
+    const postData: any = {
+      authorId: userId,
+      problemId: problem.id,
+      title: title,
+      content: content,
+      isDraftPost: isDraftPost,
+    };
+
+    // Only create tags if they exist and are not empty
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      postData.tags = {
+        create: tags.map((tagName) => ({ name: tagName })),
+      };
+    }
+
+    const newPost = await prisma.post.create({
+      data: postData,
+      include: {
+        tags: true,
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Post created successfully",
+      data: newPost,
     });
   } catch (error) {
     next(error);
