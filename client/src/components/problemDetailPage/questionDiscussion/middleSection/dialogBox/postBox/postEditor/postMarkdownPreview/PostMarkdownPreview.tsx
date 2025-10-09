@@ -1,6 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect } from "react";
 import * as marked from "marked";
+import hljs from "highlight.js";
+import "highlight.js/styles/github-dark.min.css";
+
+// Minimal HTML escaper for fallback paths
+const escapeHtml = (raw: string): string =>
+  raw
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 
 interface PostMarkdownPreviewProps {
   markdown: string;
@@ -13,6 +24,17 @@ const configureMarked = () => {
       code(token: any) {
         const code = token.text || "";
         const lang = token.lang || "text";
+
+        let highlighted = "";
+        try {
+          if (lang && hljs.getLanguage(lang)) {
+            highlighted = hljs.highlight(code, { language: lang }).value;
+          } else {
+            highlighted = hljs.highlightAuto(code).value;
+          }
+        } catch {
+          highlighted = escapeHtml(code);
+        }
 
         return `<div class="code-block-container my-4 rounded-lg border" style="width: 700px; max-width: 100%; overflow: hidden;">
     <div class="bg-muted px-4 py-2 text-xs text-muted-foreground border-b flex justify-between items-center">
@@ -29,17 +51,22 @@ const configureMarked = () => {
         </svg>
       </button>
     </div>
-    <div class="bg-muted/30 p-4 text-foreground text-sm font-mono" style="white-space: pre-wrap; line-height: 1.4; word-break: break-all; overflow-wrap: anywhere; width: 100%;">${String(
-      code
-    )}</div>
+    <pre class="p-0 text-foreground text-sm"><code class="hljs ${
+      lang ? `language-${lang}` : ""
+    }" style="white-space: pre-wrap; line-height: 1.4; word-break: break-all; overflow-wrap: anywhere; width: 100%;">${highlighted}</code></pre>
   </div>`;
       },
 
       codespan(token: any) {
         const text = token.text || "";
-        return `<code class="bg-muted px-2 py-1 rounded text-sm font-mono">${String(
-          text
-        )}</code>`;
+        let highlighted = "";
+        try {
+          // Inline code usually lacks language hints; use auto highlighting
+          highlighted = hljs.highlightAuto(text).value;
+        } catch {
+          highlighted = escapeHtml(text);
+        }
+        return `<code class="hljs px-2 py-1 rounded text-sm font-mono">${highlighted}</code>`;
       },
 
       heading(token: any) {
@@ -224,6 +251,13 @@ const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
           wordWrap: "break-word",
           overflowWrap: "break-word",
           maxWidth: "100%",
+          // Ensure theme backgrounds never bleed through
+          // (Highlight.js themes sometimes set a background on .hljs)
+          // We keep it transparent here across the preview container
+          // and override common selectors via inline style scope
+          // without needing global CSS.
+          // @ts-expect-error: inline CSS custom property for potential theme overrides
+          "--hljs-bg": "transparent",
         }}
         dangerouslySetInnerHTML={getPreviewHTML()}
       />
