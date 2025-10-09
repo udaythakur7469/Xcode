@@ -16,12 +16,7 @@ const AddTagDialogBox: React.FC<AddTagDialogBoxProps> = ({
   const [error, setError] = useState("");
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  const {
-    TagValidation,
-    isTagGettingValidated,
-    tagValidationError,
-    validateTag,
-  } = usePostStore();
+  const { validateTag } = usePostStore();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;

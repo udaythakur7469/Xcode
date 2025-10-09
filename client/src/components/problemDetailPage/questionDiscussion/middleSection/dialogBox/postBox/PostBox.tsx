@@ -42,17 +42,17 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
 
   return (
     <div className="bg-muted h-full w-full rounded-xl border-none flex flex-col overflow-hidden">
-      {/* Title: smaller height */}
+      {/* Title*/}
       <div className="border-b rounded-t-xl flex-[2.5] border">
         <PostTitle onClose={onClose} />
       </div>
 
-      {/* Toolbar: also small */}
+      {/* Toolbar*/}
       <div className="border-b flex-[0.5] border">
         <PostToolbar onInsertText={handleInsertText} onReset={resetHandler} />
       </div>
 
-      {/* Resizable panels: take rest of the space */}
+      {/* Resizable panels takes rest of the space */}
       <div className="flex-[7] rounded-b-xl border">
         <PostEditor
           content={content}

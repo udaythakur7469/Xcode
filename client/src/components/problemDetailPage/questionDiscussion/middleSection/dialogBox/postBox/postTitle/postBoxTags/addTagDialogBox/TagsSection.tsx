@@ -148,13 +148,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
     };
 
     checkAndValidateTag();
-  }, [
-    searchTerm,
-    filteredTags.length,
-    hasLoaded,
-    validateTag,
-    postTags,
-  ]);
+  }, [searchTerm, filteredTags.length, hasLoaded, validateTag, postTags]);
 
   // Clear validation results and refs when search term becomes empty
   useEffect(() => {

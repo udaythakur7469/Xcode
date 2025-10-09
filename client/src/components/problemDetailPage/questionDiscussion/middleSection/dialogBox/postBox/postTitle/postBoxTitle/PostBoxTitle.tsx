@@ -22,7 +22,7 @@ const PostBoxTitle: React.FC<PostBoxTitleProps> = () => {
         placeholder="Enter the title"
         value={postTitle}
         onChange={handleChange}
-        className="text-2xl placeholder:text-2xl"
+        className="text-2xl placeholder:text-2xl pr-10"
       />
       {postTitle && (
         <X
