@@ -225,8 +225,8 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         >
           <div className="flex h-full items-center justify-center">
             <QuestionTabs
-              showSubmissionTab={showResultsTab}
-              onCloseSubmissionTab={handleCloseSubmissionTab}
+              showResultsTab={showResultsTab}
+              onCloseResultsTab={handleCloseSubmissionTab}
               onMaximize={handleLeftMaximize}
               isMaximized={isLeftMaximized}
             />

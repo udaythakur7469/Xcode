@@ -18,35 +18,35 @@ import {
 import QuestionData from "../questionDescription/question/QuestionData";
 import QuestionEditorial from "../questionEditorial/editorial/QuestionEditorial";
 import SubmissionTabs from "../questionSubmissions/submissionTabs/SubmissionTabs";
-import QuestionCodeSubmission from "../questionCodeSubmission/QuestionCodeSubmission";
 import { AnimatePresence, motion } from "framer-motion";
 import DiscussionSection from "../questionDiscussion/DiscussionSection";
+import QuestionCodeResults from "../questionCodeResults/QuestionCodeResults";
 
 type QuestionTabsProps = {
-  showSubmissionTab?: boolean;
-  onCloseSubmissionTab?: () => void;
+  showResultsTab?: boolean;
+  onCloseResultsTab?: () => void;
   onMaximize?: () => void;
   isMaximized?: boolean;
 };
 
 const QuestionTabs: React.FC<QuestionTabsProps> = ({
-  showSubmissionTab = false,
-  onCloseSubmissionTab,
+  showResultsTab = false,
+  onCloseResultsTab,
   onMaximize,
   isMaximized = false,
 }) => {
   const [activeTab, setActiveTab] = useState("description");
 
   useEffect(() => {
-    if (showSubmissionTab) {
+    if (showResultsTab) {
       setActiveTab("results");
     }
-  }, [showSubmissionTab]);
+  }, [showResultsTab]);
 
   const onResultsClose = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the tab change
-    if (onCloseSubmissionTab) {
-      onCloseSubmissionTab(); // Call parent to hide the tab
+    if (onCloseResultsTab) {
+      onCloseResultsTab(); // Call parent to hide the tab
     }
     setActiveTab("description"); // Switch to description tab
   };
@@ -80,7 +80,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
             <p className="text-md">Editorial</p>
           </TabsTrigger>
           <AnimatePresence>
-            {showSubmissionTab && (
+            {showResultsTab && (
               <motion.div
                 initial={{ scale: 0.8, opacity: 0, y: 20 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -151,7 +151,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
             <QuestionEditorial />
           </TabsContent>
           <TabsContent value="results">
-            <QuestionCodeSubmission />
+            <QuestionCodeResults />
           </TabsContent>
           <TabsContent value="discussion">
             <DiscussionSection />
