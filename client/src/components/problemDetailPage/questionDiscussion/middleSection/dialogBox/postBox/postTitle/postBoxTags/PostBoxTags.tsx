@@ -2,11 +2,12 @@ import React, { useState } from "react";
 import AddNewTags from "./addNewTags.tsx/AddNewTags";
 import NewlyAddedTags from "./newlyAddedTags/NewlyAddedTags";
 
-type PostBoxTagsProps = {};
+type PostBoxTagsProps = { selectedTags: string[]; setSelectedTags: () => void };
 
-const PostBoxTags: React.FC<PostBoxTagsProps> = () => {
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
+const PostBoxTags: React.FC<PostBoxTagsProps> = ({
+  selectedTags,
+  setSelectedTags,
+}) => {
   const addTag = (tag: string) => {
     // Add tag only if it's not already selected
     if (!selectedTags.includes(tag)) {

@@ -2,11 +2,12 @@ import React, { useState } from "react";
 import { Input } from "@/components/ui/postTitleInput";
 import { X } from "lucide-react";
 
-type PostBoxTitleProps = {};
+type PostBoxTitleProps = { postTitle: string; setPostTitle: () => void };
 
-const PostBoxTitle: React.FC<PostBoxTitleProps> = () => {
-  const [postTitle, setPostTitle] = useState<string>("");
-
+const PostBoxTitle: React.FC<PostBoxTitleProps> = ({
+  postTitle,
+  setPostTitle,
+}) => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPostTitle(e.target.value);
     console.log("Title entered:", e.target.value);
