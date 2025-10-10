@@ -192,8 +192,8 @@ const TagsSection: React.FC<TagsSectionProps> = ({
 
   if (tagFetchingError) {
     return (
-      <div className="h-full w-full flex justify-center items-center text-blue-500">
-        {tagFetchingError}
+      <div className="h-full w-full flex justify-center items-center text-red-500">
+        Something went wrong!
       </div>
     );
   }

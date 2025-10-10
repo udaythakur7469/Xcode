@@ -11,6 +11,8 @@ type PostEditorPanelsProps = {
   setContent: (value: string) => void;
   onSelectionChange?: (start: number, end: number) => void;
   onResetReady?: () => void;
+  setOriginalTemplate?: (template: string) => void;
+  hasChanges?: boolean;
 };
 
 const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
@@ -18,6 +20,8 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   setContent,
   onSelectionChange,
   onResetReady,
+  setOriginalTemplate,
+  hasChanges,
 }) => {
   const [problemTitle, setProblemTitle] = useState<string | null>(null);
   const hasLoadedInitialContent = useRef(false);
@@ -59,13 +63,22 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
     ) {
       setContent(postBaseTemplate);
       originalTemplateRef.current = postBaseTemplate;
+      // Send original template to parent
+      if (setOriginalTemplate) {
+        setOriginalTemplate(postBaseTemplate);
+      }
       hasLoadedInitialContent.current = true;
     }
-  }, [postBaseTemplate, content, setContent]);
+  }, [postBaseTemplate, content, setContent, setOriginalTemplate]);
 
   const handleReset = () => {
-    if (originalTemplateRef.current) {
-      setContent(originalTemplateRef.current);
+    if (postBaseTemplate) {
+      setContent(postBaseTemplate);
+      // Notify parent about reset
+      if (setOriginalTemplate) {
+        setOriginalTemplate(postBaseTemplate);
+      }
+      console.log("🔄 Content reset to original template");
     }
   };
 

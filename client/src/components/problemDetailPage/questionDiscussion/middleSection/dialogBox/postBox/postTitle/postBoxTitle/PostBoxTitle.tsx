@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
 import { Input } from "@/components/ui/postTitleInput";
 import { X } from "lucide-react";
 
-type PostBoxTitleProps = { postTitle: string; setPostTitle: () => void };
+type PostBoxTitleProps = {
+  postTitle: string;
+  setPostTitle: React.Dispatch<React.SetStateAction<string>>;
+};
 
 const PostBoxTitle: React.FC<PostBoxTitleProps> = ({
   postTitle,

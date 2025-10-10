@@ -6,9 +6,11 @@ import PostBoxButtons from "./postBoxButtons/PostBoxButtons";
 type PostTitleProps = {
   onClose: () => void;
   postTitle: string;
-  setPostTitle: () => void;
+  setPostTitle: React.Dispatch<React.SetStateAction<string>>;
   selectedTags: string[];
-  setSelectedTags: () => void;
+  setSelectedTags: React.Dispatch<React.SetStateAction<string[]>>;
+  handleCreateNewPost: () => void;
+  handleCreateDraftPost: () => void;
 };
 
 const PostTitle: React.FC<PostTitleProps> = ({
@@ -17,6 +19,8 @@ const PostTitle: React.FC<PostTitleProps> = ({
   setPostTitle,
   selectedTags,
   setSelectedTags,
+  handleCreateNewPost,
+  handleCreateDraftPost,
 }) => {
   return (
     <div className="h-full w-full rounded-t-xl flex flex-row">
@@ -32,7 +36,11 @@ const PostTitle: React.FC<PostTitleProps> = ({
         </div>
       </div>
       <div className="rounded-tr-xl flex-[2]">
-        <PostBoxButtons onClose={onClose} />
+        <PostBoxButtons
+          onClose={onClose}
+          handleCreateNewPost={handleCreateNewPost}
+          handleCreateDraftPost={handleCreateDraftPost}
+        />
       </div>
     </div>
   );

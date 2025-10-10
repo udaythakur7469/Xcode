@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import AddNewTags from "./addNewTags.tsx/AddNewTags";
 import NewlyAddedTags from "./newlyAddedTags/NewlyAddedTags";
 import { useToast } from "@/hooks/use-toast";
 
-type PostBoxTagsProps = { selectedTags: string[]; setSelectedTags: () => void };
+type PostBoxTagsProps = {
+  selectedTags: string[];
+  setSelectedTags: React.Dispatch<React.SetStateAction<string[]>>;
+};
 
 const PostBoxTags: React.FC<PostBoxTagsProps> = ({
   selectedTags,

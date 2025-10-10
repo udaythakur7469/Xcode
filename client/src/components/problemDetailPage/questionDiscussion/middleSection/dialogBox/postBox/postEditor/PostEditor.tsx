@@ -6,6 +6,8 @@ type PostEditorProps = {
   setContent: (value: string) => void;
   onSelectionChange?: (start: number, end: number) => void;
   onResetReady?: () => void;
+  setOriginalTemplate?: (template: string) => void;
+  hasChanges?: boolean;
 };
 
 const PostEditor: React.FC<PostEditorProps> = ({
@@ -13,6 +15,8 @@ const PostEditor: React.FC<PostEditorProps> = ({
   setContent,
   onSelectionChange,
   onResetReady,
+  setOriginalTemplate,
+  hasChanges,
 }) => {
   return (
     <div className="h-full w-full">
@@ -21,6 +25,8 @@ const PostEditor: React.FC<PostEditorProps> = ({
         setContent={setContent}
         onSelectionChange={onSelectionChange}
         onResetReady={onResetReady}
+        setOriginalTemplate={setOriginalTemplate}
+        hasChanges={hasChanges}
       />
     </div>
   );
