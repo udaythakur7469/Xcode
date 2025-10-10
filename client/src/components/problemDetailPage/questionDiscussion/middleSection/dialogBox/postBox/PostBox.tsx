@@ -6,14 +6,12 @@ import PostEditor from "./postEditor/PostEditor";
 type PostBoxProps = { onClose: () => void };
 
 const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
-  {/*post content states*/}
+  //post content states
   const [content, setContent] = useState<string>("");
   const [postTitle, setPostTitle] = useState<string>("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  
-  console.log("title", postTitle);
 
-  {/* other states*/}
+  //other states
   const [selectionStart, setSelectionStart] = useState(0);
   const [selectionEnd, setSelectionEnd] = useState(0);
   const [resetHandler, setResetHandler] = useState<(() => void) | null>(null);
