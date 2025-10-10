@@ -11,7 +11,6 @@ const ShareSolution: React.FC<ShareSolutionProps> = () => {
 
   const handleSubmitSolution = () => {
     setIsPostDialogBoxOpen(true);
-    console.log("clicked");
   };
 
   const testCasesPassed = 5;
