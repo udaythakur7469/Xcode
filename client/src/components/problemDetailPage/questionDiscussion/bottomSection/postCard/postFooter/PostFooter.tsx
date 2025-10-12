@@ -1,5 +1,5 @@
-import { Heart, HeartOff, MessagesSquare } from "lucide-react";
 import React, { useState, useEffect } from "react";
+import { Heart, HeartOff, MessagesSquare } from "lucide-react";
 import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
 
@@ -40,7 +40,7 @@ const PostFooter: React.FC<PostFooterProps> = ({
   useEffect(() => {
     const intervalId = setInterval(() => {
       refreshPostReactions(postId).catch(console.error);
-    }, 10000); // Refresh every 10 seconds
+    }, 600000); // Refresh every 10 minutes
 
     return () => clearInterval(intervalId);
   }, [postId, refreshPostReactions]);
@@ -58,22 +58,26 @@ const PostFooter: React.FC<PostFooterProps> = ({
     }
   };
 
+  // Check if currently showing spinner for this specific button
+  const isLikeLoading = isReactingToPost && clickedAction === "like";
+  const isDislikeLoading = isReactingToPost && clickedAction === "dislike";
+
   return (
     <div className="flex flex-row items-center pb-1 mt-2 gap-x-3">
       {/* Like button */}
       <div
         onClick={() => handleReaction("like")}
         className={`gap-x-2 flex flex-row items-center px-2 py-0.5 bg-background rounded cursor-pointer transition-colors ${
-          displayUserReaction === "like" ? "bg-background" : "bg-background"
-        } ${isReactingToPost ? "cursor-not-allowed" : "bg-background"}`}
+          isReactingToPost ? "opacity-70 cursor-not-allowed" : ""
+        }`}
         style={{ pointerEvents: isReactingToPost ? "none" : "auto" }}
       >
-        {isReactingToPost && clickedAction === "like" ? (
+        {isLikeLoading ? (
           <MoonLoader size={14} color="#22c55e" />
         ) : (
           <Heart
             size={16}
-            className={`${
+            className={`transition-all ${
               displayUserReaction === "like"
                 ? "text-green-500 fill-green-500"
                 : "text-green-500"
@@ -87,16 +91,16 @@ const PostFooter: React.FC<PostFooterProps> = ({
       <div
         onClick={() => handleReaction("dislike")}
         className={`gap-x-2 flex flex-row items-center px-2 py-0.5 bg-background rounded cursor-pointer transition-colors ${
-          displayUserReaction === "dislike" ? "bg-background" : "bg-background"
-        } ${isReactingToPost ? "cursor-not-allowed" : "bg-background"}`}
+          isReactingToPost ? "opacity-70 cursor-not-allowed" : ""
+        }`}
         style={{ pointerEvents: isReactingToPost ? "none" : "auto" }}
       >
-        {isReactingToPost && clickedAction === "dislike" ? (
+        {isDislikeLoading ? (
           <MoonLoader size={14} color="#ef4444" />
         ) : (
           <HeartOff
             size={16}
-            className={`${
+            className={`transition-all ${
               displayUserReaction === "dislike"
                 ? "text-red-500 fill-red-500"
                 : "text-red-500"
@@ -107,7 +111,7 @@ const PostFooter: React.FC<PostFooterProps> = ({
       </div>
 
       {/* Comments */}
-      <div className="gap-x-2 flex flex-row items-center px-2 py-0.5 bg-background text-gray-300 rounded">
+      <div className="gap-x-2 flex flex-row items-center px-2 py-0.5 bg-background text-gray-300 rounded cursor-pointer transition-colors">
         <MessagesSquare size={16} className="text-blue-500" />
         {comments}
       </div>

@@ -18,15 +18,18 @@ export const getLatestSubmissionByUserId = async (userId, problemId) => {
       select: { id: true, code: true, language: true },
     });
 
+    // Return default empty values if no submission found
     if (!submission) {
-      throw createHttpError.NotFound(
-        "no submitted code found for the userId and problemId"
-      );
+      return {
+        id: 0,
+        code: "",
+        language: "",
+      };
     }
 
     return submission;
   } catch (error) {
-    logger.error("error in getLatestSubmissionByUserId service");
+    logger.error("error in getLatestSubmissionByUserId service", error);
     throw createHttpError.BadRequest("Internal server error");
   }
 };

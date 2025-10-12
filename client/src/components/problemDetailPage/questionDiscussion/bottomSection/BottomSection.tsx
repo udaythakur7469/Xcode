@@ -1,6 +1,5 @@
 "use client";
 
-import { ScrollArea } from "@/components/ui/questionDiscussionScrollArea";
 import React, { useEffect, useRef, useState } from "react";
 import PostCard from "./postCard/PostCard";
 import {
@@ -12,6 +11,12 @@ import { useSearchParams } from "next/navigation";
 import { MoonLoader } from "react-spinners";
 import { List } from "lucide-react";
 import DraftPostDropdown from "./postCard/postCardDropdown/DraftPostDropdown";
+import { ScrollArea } from "@/components/ui/questionDiscussionScrollArea";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
 
 type BottomSectionProps = {};
 
@@ -103,17 +108,25 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   return (
     <div className="relative">
       {draftPostsExist ? (
-        <button
-          ref={buttonRef}
-          onClick={handleFloatingButtonClick}
-          className="absolute top-0 right-2 w-8 h-8 bg-indigo-500 text-white rounded-lg flex items-center justify-center z-10"
-          aria-label="Add new post"
-        >
-          <List className="text-lg font-semibold" />
-        </button>
+        <HoverCard>
+          <HoverCardTrigger asChild>
+            <button
+              ref={buttonRef}
+              onClick={handleFloatingButtonClick}
+              className="absolute top-0 right-2 w-8 h-8 bg-indigo-500 text-white rounded-lg flex items-center justify-center z-10"
+              aria-label="Add new post"
+            >
+              <List className="text-lg font-semibold" />
+            </button>
+          </HoverCardTrigger>
+          <HoverCardContent side="right" className="px-1">See draft posts</HoverCardContent>
+        </HoverCard>
       ) : null}
       {showDraftPostsDropdown && (
-        <div ref={dropdownRef} className="absolute top-8 right-2 z-30 p-2 bg-background rounded-xl">
+        <div
+          ref={dropdownRef}
+          className="absolute top-8 right-2 z-30 p-2 bg-background rounded-xl"
+        >
           <DraftPostDropdown
             draftPosts={draftPosts}
             isGettingDraftPosts={isGettingDraftPosts}

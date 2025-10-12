@@ -9,7 +9,6 @@ import {
   addTagToCloudinary,
   validateTagUsingAI,
 } from "../services/postTagsService.js";
-import { boolean } from "zod";
 
 // Load environment variables
 dotenv.config();
@@ -331,6 +330,7 @@ export const getPosts = async (req, res, next) => {
 
     const postData = await prisma.post.findMany({
       where: { problemId: problem.id, isDraftPost: false },
+      orderBy: { createdAt: "desc" },
       select: {
         id: true,
         title: true,
