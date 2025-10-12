@@ -7,12 +7,15 @@ import { MoonLoader } from "react-spinners";
 import { CircleX, CircleCheckBig } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import UnsavedChangesDialog from "./postTitle/unsavedChangesDialog/UnsavedChangesDialog";
+import { useToast } from "@/hooks/use-toast";
 
 type PostBoxProps = { onClose: () => void };
 
 const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
   const searchParams = useSearchParams(); // Get search params
   const problemTitle = searchParams.get("title") as string; // Get the title query parameter
+
+  const { toast } = useToast();
 
   //post content states
   const [content, setContent] = useState<string>("");
@@ -117,6 +120,15 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
   };
 
   const handleCreateNewPost = async () => {
+    if (!postTitle) {
+      toast({
+        title: "Title missing!",
+        description: "Please add a title to the post",
+        duration: 2000,
+      });
+      return;
+    }
+
     try {
       await createNewPost(
         postTitle,
@@ -134,6 +146,14 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
   };
 
   const handleCreateDraftPost = async () => {
+    if (!postTitle) {
+      toast({
+        title: "Title missing!",
+        description: "Please add a title to the post",
+        duration: 2000,
+      });
+      return;
+    }
     try {
       await createNewPost(postTitle, problemTitle, selectedTags, content, true);
       setSuccessMessage("Successfully saved as draft!");
