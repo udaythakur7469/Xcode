@@ -20,7 +20,7 @@ const TopSection: React.FC<TopSectionProps> = () => {
 
 
   return (
-    <div className="relative w-full ">
+    <div className="relative w-full">
       {/* Search Icon */}
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white" />
 

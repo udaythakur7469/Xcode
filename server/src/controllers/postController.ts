@@ -307,3 +307,346 @@ export const createPost = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getPosts = async (req, res, next) => {
+  const { problemTitle } = req.query;
+
+  if (!problemTitle) {
+    throw createHttpError.BadRequest("Please provide problem title");
+  }
+
+  const userId = req.user?.id || req.user?.userId;
+
+  try {
+    const problem = await prisma.problem.findFirst({
+      where: { title: problemTitle },
+      select: { id: true },
+    });
+
+    if (!problem) {
+      throw createHttpError.BadRequest(
+        "Unable to find problem for the requested problemTitle"
+      );
+    }
+
+    const postData = await prisma.post.findMany({
+      where: { problemId: problem.id, isDraftPost: false },
+      select: {
+        id: true,
+        title: true,
+        tags: {
+          select: {
+            name: true,
+          },
+        },
+        author: {
+          select: {
+            name: true,
+            picture: true,
+          },
+        },
+        postReactions: {
+          select: {
+            type: true,
+            userId: true,
+          },
+        },
+        _count: {
+          select: {
+            comments: true,
+          },
+        },
+      },
+    });
+
+    // Transform data to count likes and dislikes, and include user's reaction
+    const transformedData = postData.map((post) => {
+      const likes = post.postReactions.filter(
+        (reaction) => reaction.type === "like"
+      ).length;
+      const dislikes = post.postReactions.filter(
+        (reaction) => reaction.type === "dislike"
+      ).length;
+
+      // Find user's reaction if authenticated
+      let userReaction = null;
+      if (userId) {
+        const userReactionData = post.postReactions.find(
+          (reaction) => reaction.userId === userId
+        );
+        if (userReactionData) {
+          userReaction = userReactionData.type;
+        }
+      }
+
+      return {
+        id: post.id,
+        title: post.title,
+        tags: post.tags,
+        author: post.author,
+        likes: likes,
+        dislikes: dislikes,
+        comments: post._count.comments,
+        userReaction: userReaction,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Posts fetched successfully",
+      data: transformedData,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDraftPosts = async (req, res, next) => {
+  const { problemTitle } = req.query;
+  const userId = req.user?.id || req.user?.userId;
+
+  if (!userId) {
+    throw createHttpError.Unauthorized("User not authenticated");
+  }
+
+  if (!problemTitle) {
+    throw createHttpError.BadRequest("Please provide problem title");
+  }
+
+  try {
+    const problem = await prisma.problem.findFirst({
+      where: { title: problemTitle },
+      select: { id: true },
+    });
+
+    if (!problem) {
+      throw createHttpError.BadRequest(
+        "Unable to find problem for the requested problemTitle"
+      );
+    }
+
+    const postData = await prisma.post.findMany({
+      where: { problemId: problem.id, authorId: userId, isDraftPost: true },
+      select: {
+        id: true,
+        title: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Draft posts fetched successfully",
+      data: postData,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Post Reaction Controller
+export const postReaction = async (req, res, next) => {
+  const { postId } = req.query; // Get the postId from the query parameters
+  const { action } = req.body; // 'like' or 'dislike'
+
+  // Extract user ID from the JWT payload
+  const userId = req.user.id || req.user.userId;
+
+  // Validate inputs
+  if (!postId || typeof postId !== "string") {
+    return res
+      .status(400)
+      .json({ message: "Post ID is required as a query parameter" });
+  }
+
+  if (!action || (action !== "like" && action !== "dislike")) {
+    return res
+      .status(400)
+      .json({ message: "Action must be either 'like' or 'dislike'" });
+  }
+
+  if (!userId) {
+    return res
+      .status(401)
+      .json({ message: "User ID not found in token payload" });
+  }
+
+  try {
+    // Find the post by ID
+    const post = await prisma.post.findUnique({
+      where: { id: parseInt(postId) },
+      select: { id: true },
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Calculate current likes and dislikes directly from PostReaction
+    const [currentLikes, currentDislikes] = await prisma.$transaction([
+      prisma.postReaction.count({
+        where: {
+          postId: post.id,
+          type: "like",
+        },
+      }),
+      prisma.postReaction.count({
+        where: {
+          postId: post.id,
+          type: "dislike",
+        },
+      }),
+    ]);
+
+    // Check if the user has already reacted to this post
+    const existingReaction = await prisma.postReaction.findUnique({
+      where: {
+        userId_postId: {
+          userId: userId,
+          postId: post.id,
+        },
+      },
+    });
+
+    // Handle different scenarios based on existing reaction and new action
+    if (!existingReaction) {
+      // Case 1: No previous reaction, add new reaction
+      await prisma.postReaction.create({
+        data: {
+          userId: userId,
+          postId: post.id,
+          type: action === "like" ? "like" : "dislike",
+        },
+      });
+
+      return res.status(200).json({
+        message: `${action === "like" ? "Like" : "Dislike"} added successfully`,
+        likes: action === "like" ? currentLikes + 1 : currentLikes,
+        dislikes: action === "dislike" ? currentDislikes + 1 : currentDislikes,
+      });
+    } else if (
+      existingReaction.type === (action === "like" ? "like" : "dislike")
+    ) {
+      // Case 2: User clicked the same reaction again, remove it
+      await prisma.postReaction.delete({
+        where: {
+          userId_postId: {
+            userId: userId,
+            postId: post.id,
+          },
+        },
+      });
+
+      return res.status(200).json({
+        message: `${
+          action === "like" ? "Like" : "Dislike"
+        } removed successfully`,
+        likes: action === "like" ? currentLikes - 1 : currentLikes,
+        dislikes: action === "dislike" ? currentDislikes - 1 : currentDislikes,
+      });
+    } else {
+      // Case 3: User had opposite reaction before, switch reaction
+      await prisma.postReaction.update({
+        where: {
+          userId_postId: {
+            userId: userId,
+            postId: post.id,
+          },
+        },
+        data: {
+          type: action === "like" ? "like" : "dislike",
+        },
+      });
+
+      const newLikes =
+        existingReaction.type === "like" ? currentLikes - 1 : currentLikes + 1;
+
+      const newDislikes =
+        existingReaction.type === "dislike"
+          ? currentDislikes - 1
+          : currentDislikes + 1;
+
+      return res.status(200).json({
+        message: `Changed from ${existingReaction.type} to ${action}`,
+        likes: newLikes,
+        dislikes: newDislikes,
+      });
+    }
+  } catch (error) {
+    console.error("Post reaction error:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error processing reaction" });
+  }
+};
+
+export const getPostReactions = async (req, res, next) => {
+  const { postId } = req.query;
+
+  // Extract user ID from the JWT payload
+  const userId = req.user?.id || req.user?.userId;
+
+  if (!postId || typeof postId !== "string") {
+    return res
+      .status(400)
+      .json({ message: "Post ID is required as a query parameter" });
+  }
+
+  try {
+    // Find the post by ID
+    const post = await prisma.post.findUnique({
+      where: { id: parseInt(postId) },
+      select: { id: true },
+    });
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Get current likes and dislikes counts
+    const [likes, dislikes] = await prisma.$transaction([
+      prisma.postReaction.count({
+        where: {
+          postId: post.id,
+          type: "like",
+        },
+      }),
+      prisma.postReaction.count({
+        where: {
+          postId: post.id,
+          type: "dislike",
+        },
+      }),
+    ]);
+
+    // Get user's current reaction if authenticated
+    let userReaction = null;
+    if (userId) {
+      const reaction = await prisma.postReaction.findUnique({
+        where: {
+          userId_postId: {
+            userId: userId,
+            postId: post.id,
+          },
+        },
+        select: {
+          type: true,
+        },
+      });
+
+      if (reaction) {
+        userReaction = reaction.type;
+      }
+    }
+
+    return res.status(200).json({
+      likes,
+      dislikes,
+      userReaction,
+    });
+  } catch (error) {
+    console.error("Error fetching post reactions:", error);
+    return res.status(500).json({
+      message: "Server error while fetching reactions",
+    });
+  }
+};

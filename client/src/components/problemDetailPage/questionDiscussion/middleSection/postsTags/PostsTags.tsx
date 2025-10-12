@@ -76,7 +76,7 @@ const PostsTags: React.FC<PostsTagsProps> = () => {
           scrollbarColor: "#cbd5e1 transparent",
         }}
       >
-        <div className="flex flex-row gap-2 min-w-max h-full items-center pb-2">
+        <div className="flex flex-row gap-2 min-w-max h-full items-center pb-1">
           {/* Show all tags if visibleTags is 0 (still calculating), otherwise show calculated amount */}
           {(visibleTags > 0 ? tags.slice(0, visibleTags) : tags).map(
             (name, index) => (

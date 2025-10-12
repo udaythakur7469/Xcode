@@ -8,7 +8,7 @@ const Tags: React.FC<TagsProps> = ({ title }, ref) => {
   return (
     <div
       ref={ref}
-      className="w-auto flex justify-center items-center rounded-xl border px-2 py-1 cursor-default bg-muted whitespace-nowrap"
+      className="w-auto flex justify-center items-center rounded-xl border px-2 py-1 cursor-pointer bg-muted whitespace-nowrap"
     >
       {title}
     </div>

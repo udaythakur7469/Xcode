@@ -29,6 +29,8 @@ type QuestionTabsProps = {
   isMaximized?: boolean;
 };
 
+const SESSION_KEY = "lastOpenedTab";
+
 const QuestionTabs: React.FC<QuestionTabsProps> = ({
   showResultsTab = false,
   onCloseResultsTab,
@@ -42,6 +44,21 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
       setActiveTab("results");
     }
   }, [showResultsTab]);
+
+  useEffect(() => {
+    const savedTab = sessionStorage.getItem("lastOpenedTab");
+    if (savedTab && savedTab !== "results") {
+      setActiveTab(savedTab);
+    } else {
+      setActiveTab("description");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab && activeTab !== "results") {
+      sessionStorage.setItem("lastOpenedTab", activeTab);
+    }
+  }, [activeTab]);
 
   const onResultsClose = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the tab change
