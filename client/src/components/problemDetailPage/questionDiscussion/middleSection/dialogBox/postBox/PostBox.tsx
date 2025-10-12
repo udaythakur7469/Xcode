@@ -6,6 +6,7 @@ import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
 import { CircleX, CircleCheckBig } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import UnsavedChangesDialog from "./postTitle/unsavedChangesDialog/UnsavedChangesDialog";
 
 type PostBoxProps = { onClose: () => void };
 
@@ -30,6 +31,7 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
   const [showError, setShowError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
 
   const setOriginalTemplateContent = (template: string) => {
     setOriginalTemplate(template);
@@ -100,6 +102,20 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
     setShowError(false);
   };
 
+  // Add these functions for cancel handling
+  const handleCancelWithCheck = () => {
+    if (hasChanges) {
+      setShowCancelDialog(true); // Show warning dialog
+    } else {
+      onClose(); // Close directly if no changes
+    }
+  };
+
+  const handleConfirmCancel = () => {
+    setShowCancelDialog(false); // Close warning dialog
+    onClose(); // Close post box
+  };
+
   const handleCreateNewPost = async () => {
     try {
       await createNewPost(
@@ -164,10 +180,16 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
           </div>
         </div>
       )}
+      {/* Unsaved Changes Dialog */}
+      <UnsavedChangesDialog
+        isOpen={showCancelDialog}
+        onClose={() => setShowCancelDialog(false)}
+        onConfirmCancel={handleConfirmCancel}
+      />
       {/* Title*/}
       <div className="border-b rounded-t-xl flex-[2.5] border">
         <PostTitle
-          onClose={onClose}
+          onClose={handleCancelWithCheck}
           postTitle={postTitle}
           setPostTitle={setPostTitle}
           selectedTags={selectedTags}
