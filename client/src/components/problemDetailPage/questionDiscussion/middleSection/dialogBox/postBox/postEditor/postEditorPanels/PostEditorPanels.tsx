@@ -45,7 +45,7 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
       if (!title || hasLoadedInitialContent.current) return;
 
       try {
-        await getPostBaseTemplate(title);
+        await getPostBaseTemplate(title, null);
       } catch (error) {
         console.error("Error fetching post template:", error);
       }

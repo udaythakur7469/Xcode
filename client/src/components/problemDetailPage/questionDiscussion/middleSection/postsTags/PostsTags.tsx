@@ -3,24 +3,84 @@
 import React, { useEffect, useRef, useState } from "react";
 import Tags from "./Tags";
 import { tags } from "../../questionDiscussionData/QuestionDiscussionData";
+import { usePostStore } from "@/features/postStore";
+import { useSearchParams } from "next/navigation";
 
 type PostsTagsProps = {};
 
 const PostsTags: React.FC<PostsTagsProps> = () => {
+  const searchParams = useSearchParams();
+  const problemTitle = searchParams.get("title") as string;
+
+  const [hasFetched, setHasFetched] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const measureTagRef = useRef<HTMLDivElement>(null);
+
+  const {
+    searchPosts,
+    searchResults,
+    getCombinedTags,
+    combinedTags,
+    isFetchingCombinedTags,
+  } = usePostStore();
 
   // State for UI calculations
   const [visibleTags, setVisibleTags] = useState(0);
   const [tagWidth, setTagWidth] = useState(0);
+  const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
 
   // Constants
   const gap = 8; // gap-2 = 8px
   const padding = 16; // Account for container padding
 
+  useEffect(() => {
+    if (problemTitle && !isFetchingCombinedTags && !hasFetched) {
+      getCombinedTags(problemTitle);
+      setHasFetched(true);
+    }
+  }, [problemTitle, getCombinedTags, isFetchingCombinedTags, hasFetched]);
+
+  const handleTagClick = (tagName: string) => {
+    setActiveTags((prev) => {
+      const newActiveTags = new Set(prev);
+
+      if (newActiveTags.has(tagName)) {
+        // Remove tag if already active
+        newActiveTags.delete(tagName);
+      } else {
+        // Add tag if not active
+        newActiveTags.add(tagName);
+      }
+
+      // Trigger search with active tags
+      if (newActiveTags.size > 0) {
+        const searchQuery = Array.from(newActiveTags).join(" ");
+        searchPosts(searchQuery);
+      } else {
+        // Clear search if no tags are active
+        usePostStore.setState({ searchResults: null });
+      }
+
+      return newActiveTags;
+    });
+  };
+
+  const handleDeselectAll = () => {
+    setActiveTags(new Set());
+    usePostStore.setState({ searchResults: null });
+  };
+
+  // Reset active tag when search results are cleared
+  useEffect(() => {
+    if (!searchResults) {
+      setActiveTags(new Set());
+    }
+  }, [searchResults]);
+
   // Only set up measurements AFTER tags array is available
   useEffect(() => {
-    if (tags.length === 0) return;
+    if (!combinedTags || combinedTags.length === 0) return;
 
     // Measure tag width once data is available
     if (measureTagRef.current?.clientWidth) {
@@ -31,8 +91,10 @@ const PostsTags: React.FC<PostsTagsProps> = () => {
       if (!containerRef.current || tagWidth === 0) return;
       const containerWidth = containerRef.current.clientWidth;
       const availableWidth = containerWidth - padding;
+      const hasActiveTags = activeTags.size > 0;
+      const totalTags = tags.length + (hasActiveTags ? 1 : 0);
       const maxTags = Math.floor((availableWidth + gap) / (tagWidth + gap));
-      setVisibleTags(Math.max(0, Math.min(maxTags, tags.length)));
+      setVisibleTags(Math.max(0, Math.min(maxTags, totalTags)));
     };
 
     // Debounce function
@@ -53,18 +115,27 @@ const PostsTags: React.FC<PostsTagsProps> = () => {
     }
 
     return () => resizeObserver.disconnect();
-  }, [tagWidth, tags.length]);
+  }, [tagWidth, tags.length, activeTags.size]);
 
   // Show loading message if no tags
-  if (tags.length === 0) {
+  if (!combinedTags || combinedTags.length === 0) {
     return <div className="py-2">No tags available</div>;
   }
+
+  const displayTags =
+    activeTags.size > 0 ? ["Deselect All", ...combinedTags] : combinedTags;
 
   return (
     <>
       {/* Hidden tag for measurement */}
       <div className="absolute opacity-0 pointer-events-none">
-        <Tags ref={measureTagRef} title={tags[0]} />
+        <Tags
+          ref={measureTagRef}
+          title={tags[0]}
+          onTagClick={handleTagClick}
+          isActive={activeTags.has(tags[0])}
+          isDeselectAll={false}
+        />
       </div>
 
       {/* Native horizontal scrolling container */}
@@ -78,11 +149,20 @@ const PostsTags: React.FC<PostsTagsProps> = () => {
       >
         <div className="flex flex-row gap-2 min-w-max h-full items-center pb-1">
           {/* Show all tags if visibleTags is 0 (still calculating), otherwise show calculated amount */}
-          {(visibleTags > 0 ? tags.slice(0, visibleTags) : tags).map(
-            (name, index) => (
-              <Tags key={index} title={name} />
-            )
-          )}
+          {(visibleTags > 0
+            ? displayTags.slice(0, visibleTags)
+            : displayTags
+          ).map((name, index) => (
+            <Tags
+              key={index}
+              title={name}
+              onTagClick={
+                name === "Deselect All" ? handleDeselectAll : handleTagClick
+              }
+              isActive={name !== "Deselect All" && activeTags.has(name)}
+              isDeselectAll={name === "Deselect All"}
+            />
+          ))}
         </div>
 
         {/* Custom webkit scrollbar styling*/}

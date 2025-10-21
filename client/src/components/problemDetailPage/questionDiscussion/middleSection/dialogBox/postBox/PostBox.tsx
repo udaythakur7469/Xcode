@@ -6,16 +6,14 @@ import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
 import { CircleX, CircleCheckBig } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import UnsavedChangesDialog from "./postTitle/unsavedChangesDialog/UnsavedChangesDialog";
-import { useToast } from "@/hooks/use-toast";
+import UnsavedChangesDialog from "./postTitle/dialogBoxes/UnsavedChangesDialog";
+import MissingTitleDialog from "./postTitle/dialogBoxes/MissingTitleDialog";
 
 type PostBoxProps = { onClose: () => void };
 
 const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
   const searchParams = useSearchParams(); // Get search params
   const problemTitle = searchParams.get("title") as string; // Get the title query parameter
-
-  const { toast } = useToast();
 
   //post content states
   const [content, setContent] = useState<string>("");
@@ -35,6 +33,8 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [showMissingTitleDialog, setShowMissingTitleDialog] =
+    useState<boolean>(false);
 
   const setOriginalTemplateContent = (template: string) => {
     setOriginalTemplate(template);
@@ -121,11 +121,7 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
 
   const handleCreateNewPost = async () => {
     if (!postTitle) {
-      toast({
-        title: "Title missing!",
-        description: "Please add a title to the post",
-        duration: 2000,
-      });
+      setShowMissingTitleDialog(true);
       return;
     }
 
@@ -147,11 +143,7 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
 
   const handleCreateDraftPost = async () => {
     if (!postTitle) {
-      toast({
-        title: "Title missing!",
-        description: "Please add a title to the post",
-        duration: 2000,
-      });
+      setShowMissingTitleDialog(true);
       return;
     }
     try {
@@ -205,6 +197,11 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
         isOpen={showCancelDialog}
         onClose={() => setShowCancelDialog(false)}
         onConfirmCancel={handleConfirmCancel}
+      />
+      {/* Missing title Dialog */}
+      <MissingTitleDialog
+        isOpen={showMissingTitleDialog}
+        onClose={() => setShowMissingTitleDialog(false)}
       />
       {/* Title*/}
       <div className="border-b rounded-t-xl flex-[2.5] border">

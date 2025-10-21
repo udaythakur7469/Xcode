@@ -5,7 +5,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/helperDialogs";
 import { Button } from "@/components/ui/button";
 
 interface UnsavedChangesDialogProps {

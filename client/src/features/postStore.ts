@@ -66,6 +66,22 @@ export interface PostCardData {
   userReaction?: "like" | "dislike" | null;
 }
 
+export interface SearchPostData {
+  id: string;
+  title: string;
+  tags: {
+    name: string;
+  }[];
+  author: {
+    name: string;
+    picture: string;
+  };
+  likes: number;
+  dislikes: number;
+  comments: number;
+  userReaction?: "like" | "dislike" | null;
+}
+
 export interface DraftPostData {
   id: string;
   title: string;
@@ -90,10 +106,16 @@ interface PostData {
   DraftPosts: DraftPostData[] | null;
   isGettingDraftPosts: boolean;
   DraftPostError: any | null;
+  searchResults: SearchPostData[] | null;
+  isSearchingPosts: boolean;
+  searchPostsError: any | null;
+  combinedTags: string[] | null;
+  isFetchingCombinedTags: boolean;
+  combinedTagsError: any | null;
   isReactingToPost: boolean;
   postReactionError: any | null;
 
-  getPostBaseTemplate: (title: string) => Promise<void>;
+  getPostBaseTemplate: (title: string, id: string | null) => Promise<void>;
   fetchPostTags: () => Promise<void>;
   validateTag: (tag: string, action: string) => Promise<TagValidation>;
   createNewPost: (
@@ -105,6 +127,8 @@ interface PostData {
   ) => Promise<void>;
   getPostCards: (problemTitle: string) => Promise<void>;
   getDraftPosts: (problemTitle: string) => Promise<void>;
+  searchPosts: (query: string) => Promise<void>;
+  getCombinedTags: (problemTitle: string) => Promise<void>;
   reactToPost: (postId: string, action: "like" | "dislike") => Promise<void>;
   refreshPostReactions: (postId: string) => Promise<void>;
 }
@@ -128,14 +152,20 @@ export const usePostStore = create<PostData>()((set, get) => ({
   DraftPosts: null,
   isGettingDraftPosts: false,
   DraftPostError: null,
+  searchResults: null,
+  isSearchingPosts: false,
+  searchPostsError: null,
+  combinedTags: null,
+  isFetchingCombinedTags: false,
+  combinedTagsError: null,
   isReactingToPost: false,
   postReactionError: null,
 
-  getPostBaseTemplate: async (title) => {
+  getPostBaseTemplate: async (title, id) => {
     set({ isPostBaseTemplateLoading: true, postBaseTemplateError: null });
     try {
       const response = await axios.get(`${API_URL}/post/getBasePostTemplate`, {
-        params: { title },
+        params: { title, id },
       });
 
       set({
@@ -242,6 +272,45 @@ export const usePostStore = create<PostData>()((set, get) => ({
         error?.response?.data?.message || "Error fetching draft posts data";
       set({ DraftPostError: errMsg, isGettingDraftPosts: false });
 
+      throw error;
+    }
+  },
+
+  searchPosts: async (query) => {
+    set({ isSearchingPosts: true, searchPostsError: null });
+
+    try {
+      const response = await axios.get(`${API_URL}/post/searchPosts`, {
+        params: { query },
+      });
+
+      set({
+        searchResults: response.data.data,
+        isSearchingPosts: false,
+      });
+    } catch (error: any) {
+      const errMsg = error?.response?.data?.message || "Error searching posts";
+      set({ searchPostsError: errMsg, isSearchingPosts: false });
+      throw error;
+    }
+  },
+
+  getCombinedTags: async (problemTitle) => {
+    set({ isFetchingCombinedTags: true, combinedTagsError: null });
+
+    try {
+      const response = await axios.get(`${API_URL}/post/getPostTags`, {
+        params: { problemTitle },
+      });
+
+      set({
+        combinedTags: response.data.data,
+        isFetchingCombinedTags: false,
+      });
+    } catch (error: any) {
+      const errMsg =
+        error?.response?.data?.message || "Error fetching combined tags";
+      set({ combinedTagsError: errMsg, isFetchingCombinedTags: false });
       throw error;
     }
   },

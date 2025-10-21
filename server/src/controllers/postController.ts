@@ -206,13 +206,43 @@ export const checkCommentTagsUsingAI = async (req, res, next) => {
 };
 
 export const getMarkdownEditorBasePostFormat = async (req, res, next) => {
-  const { title } = req.query;
+  const { title, id } = req.query;
 
   try {
-    const userId = req.user.id || req.user.userId;
+    const userId = req.user?.id || req.user?.userId;
 
     if (!userId) {
-      throw createHttpError.Unauthorized("User not authenticated");
+      const baseTemplate = getPostTemplate(
+        "Add you code here",
+        "Add language name here"
+      );
+      return res.status(200).json({
+        message: "base post format generated successfully",
+        data: baseTemplate,
+      });
+    }
+
+    // If draft post ID is provided, fetch the draft post content
+    if (id) {
+      const draftPost = await prisma.post.findFirst({
+        where: {
+          id: parseInt(id),
+          isDraftPost: true,
+        },
+        select: {
+          content: true,
+        },
+      });
+
+      if (!draftPost) {
+        throw createHttpError.NotFound("Draft post not found");
+      }
+
+      // Return the draft content directly (as it already contains the full formatted markdown)
+      return res.status(200).json({
+        message: "draft post content fetched successfully",
+        data: draftPost.content,
+      });
     }
 
     const problem = await prisma.problem.findFirst({
@@ -401,6 +431,102 @@ export const getPosts = async (req, res, next) => {
   }
 };
 
+export const searchPosts = async (req, res, next) => {
+  const { query } = req.query;
+
+  if (!query) {
+    throw createHttpError.BadRequest("Search query is required");
+  }
+
+  const userId = req.user?.id || req.user?.userId;
+
+  try {
+    const postData = await prisma.post.findMany({
+      where: {
+        OR: [
+          { title: { contains: query as string, mode: "insensitive" } },
+          {
+            tags: {
+              some: {
+                name: { contains: query as string, mode: "insensitive" },
+              },
+            },
+          },
+        ],
+        isDraftPost: false, // Only search published posts
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        tags: {
+          select: {
+            name: true,
+          },
+        },
+        author: {
+          select: {
+            name: true,
+            picture: true,
+          },
+        },
+        postReactions: {
+          select: {
+            type: true,
+            userId: true,
+          },
+        },
+        _count: {
+          select: {
+            comments: true,
+          },
+        },
+      },
+    });
+
+    // Transform data to count likes and dislikes, and include user's reaction
+    const transformedData = postData.map((post) => {
+      const likes = post.postReactions.filter(
+        (reaction) => reaction.type === "like"
+      ).length;
+      const dislikes = post.postReactions.filter(
+        (reaction) => reaction.type === "dislike"
+      ).length;
+
+      // Find user's reaction if authenticated
+      let userReaction = null;
+      if (userId) {
+        const userReactionData = post.postReactions.find(
+          (reaction) => reaction.userId === userId
+        );
+        if (userReactionData) {
+          userReaction = userReactionData.type;
+        }
+      }
+
+      return {
+        id: post.id,
+        title: post.title,
+        tags: post.tags,
+        author: post.author,
+        likes: likes,
+        dislikes: dislikes,
+        comments: post._count.comments,
+        userReaction: userReaction,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Posts searched successfully",
+      data: transformedData,
+    });
+  } catch (error) {
+    logger.error("Error searching posts", error);
+    next(error);
+  }
+};
+
 export const getDraftPosts = async (req, res, next) => {
   const { problemTitle } = req.query;
   const userId = req.user?.id || req.user?.userId;
@@ -437,6 +563,65 @@ export const getDraftPosts = async (req, res, next) => {
       success: true,
       message: "Draft posts fetched successfully",
       data: postData,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getCombinedTags = async (req, res, next) => {
+  const { problemTitle } = req.query;
+
+  if (!problemTitle) {
+    throw createHttpError.BadRequest("Please provide problem title");
+  }
+
+  try {
+    // Find the problem first
+    const problem = await prisma.problem.findFirst({
+      where: { title: problemTitle },
+      select: {
+        id: true,
+        tags: true,
+      },
+    });
+
+    if (!problem) {
+      throw createHttpError.BadRequest(
+        "Unable to find problem for the requested problemTitle"
+      );
+    }
+
+    // Get all posts for this problem and their tags
+    const posts = await prisma.post.findMany({
+      where: {
+        problemId: problem.id,
+        isDraftPost: false,
+      },
+      select: {
+        tags: {
+          select: {
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Combine and deduplicate all tags
+    const allTagsSet = new Set(problem.tags || []);
+
+    posts.forEach((post) => {
+      post.tags.forEach((tag) => {
+        allTagsSet.add(tag.name);
+      });
+    });
+
+    const combinedTags = Array.from(allTagsSet);
+
+    res.status(200).json({
+      success: true,
+      message: "Combined tags fetched successfully",
+      data: combinedTags,
     });
   } catch (error) {
     next(error);

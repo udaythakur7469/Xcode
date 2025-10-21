@@ -27,8 +27,12 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   const {
     getPostCards,
     getPostCardData,
-    isGettingPostCardData,
     postCardError,
+    searchResults,
+    isSearchingPosts,
+    searchPostsError,
+    isGettingPostCardData,
+    isFetchingCombinedTags,
   } = usePostStore();
 
   const { getDraftPosts, DraftPosts, isGettingDraftPosts, DraftPostError } =
@@ -39,16 +43,31 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   const [showDraftPostsDropdown, setShowDraftPostsDropdown] =
     useState<boolean>(false);
   const [draftPostsExist, setDraftPostsExist] = useState<boolean>(false);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (problemTitle) {
+    // Only make API calls if we're not already loading and have problemTitle
+    if (
+      problemTitle &&
+      !isGettingPostCardData &&
+      !isFetchingCombinedTags &&
+      !hasFetched
+    ) {
       getPostCards(problemTitle);
       getDraftPosts(problemTitle);
+      setHasFetched(true);
     }
-  }, [problemTitle, getPostCards, getDraftPosts]);
+  }, [
+    problemTitle,
+    getPostCards,
+    getDraftPosts,
+    isGettingPostCardData,
+    isFetchingCombinedTags,
+    hasFetched,
+  ]);
 
   useEffect(() => {
     if (getPostCardData) {
@@ -64,6 +83,9 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
       setDraftPostsExist(true);
     }
   }, [getPostCardData, DraftPosts]);
+
+  // Use search results if available, otherwise use regular posts
+  const displayPosts = searchResults ? searchResults : posts;
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -89,7 +111,7 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
     console.log("draft post button clicked!");
   };
 
-  if (isGettingPostCardData) {
+  if (isSearchingPosts) {
     return (
       <div className="flex justify-center items-center h-full w-full">
         <MoonLoader size={150} color="#ffffff" />
@@ -97,10 +119,10 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
     );
   }
 
-  if (postCardError) {
+  if (postCardError || searchPostsError) {
     return (
       <div className="flex justify-center items-center h-full w-full text-red-500 text-xl">
-        {postCardError}
+        {postCardError || searchPostsError}
       </div>
     );
   }
@@ -119,7 +141,9 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
               <List className="text-lg font-semibold" />
             </button>
           </HoverCardTrigger>
-          <HoverCardContent side="right" className="px-1">See draft posts</HoverCardContent>
+          <HoverCardContent side="right" className="px-1">
+            See draft posts
+          </HoverCardContent>
         </HoverCard>
       ) : null}
       {showDraftPostsDropdown && (
@@ -137,11 +161,15 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
 
       <ScrollArea className="h-[435px] w-full mt-3">
         <div className="space-y-3 mr-2 pb-2">
-          {posts.length > 0 ? (
-            posts.map((post, index) => <PostCard key={index} data={post} />)
+          {displayPosts.length > 0 ? (
+            displayPosts.map((post, index) => (
+              <PostCard key={index} data={post} />
+            ))
           ) : (
-            <div className="flex justify-center items-center h-full w-full text-white">
-              No posts found
+            <div className="flex justify-center items-center h-[400px] w-full text-white">
+              {searchResults && searchResults.length === 0
+                ? "No posts found for your search"
+                : "No posts found"}
             </div>
           )}
         </div>
