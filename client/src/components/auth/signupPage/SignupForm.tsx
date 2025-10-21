@@ -110,7 +110,19 @@ export const SignupForm = ({
 
         {/* Submit Button */}
         <Button type="submit" className="w-full">
-          {isLoading ? <PropagateLoader /> : error ? error : "Sign Up"}
+          {isLoading ? (
+            <PropagateLoader
+              style={{
+                display: "flex",
+                alignItems: "center",
+                height: "100%",
+              }}
+            />
+          ) : error ? (
+            error
+          ) : (
+            "Sign Up"
+          )}
         </Button>
       </form>
     </Form>
