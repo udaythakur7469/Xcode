@@ -122,18 +122,18 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
             )}
           </AnimatePresence>
           <TabsTrigger
-            value="discussion"
-            className="hover:bg-gray-100 hover:text-black flex-1 text-center"
-          >
-            <Flame size={18} className="mr-1 text-orange-500" />
-            <p className="text-md">Discussion</p>
-          </TabsTrigger>
-          <TabsTrigger
             value="submissions"
             className="hover:bg-gray-100 hover:text-black flex-1 text-center"
           >
             <GalleryVerticalEnd size={18} className="mr-1 text-green-500" />
             <p className="text-md">Submissions</p>
+          </TabsTrigger>
+          <TabsTrigger
+            value="discussion"
+            className="hover:bg-gray-100 hover:text-black flex-1 text-center"
+          >
+            <Flame size={18} className="mr-1 text-orange-500" />
+            <p className="text-md">Discussion</p>
           </TabsTrigger>
           {/* Toggle between Maximize and Minimize icons */}
           {isMaximized ? (
@@ -170,11 +170,11 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
           <TabsContent value="results">
             <QuestionCodeResults />
           </TabsContent>
-          <TabsContent value="discussion">
-            <DiscussionSection />
-          </TabsContent>
           <TabsContent value="submissions">
             <SubmissionTabs />
+          </TabsContent>
+          <TabsContent value="discussion">
+            <DiscussionSection />
           </TabsContent>
         </div>
       </Tabs>
