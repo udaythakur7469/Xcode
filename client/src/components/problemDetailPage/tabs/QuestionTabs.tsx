@@ -145,7 +145,9 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
                   onClick={handleMaximizeMinimize}
                 />
               </HoverCardTrigger>
-              <HoverCardContent className="mr-5 p-1">Minimize</HoverCardContent>
+              <HoverCardContent className="mr-5 p-1" side="right">
+                Minimize
+              </HoverCardContent>
             </HoverCard>
           ) : (
             <HoverCard>
@@ -156,7 +158,9 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
                   onClick={handleMaximizeMinimize}
                 />
               </HoverCardTrigger>
-              <HoverCardContent className="mr-5 p-1">Maximize</HoverCardContent>
+              <HoverCardContent className="mr-5 p-1" side="right">
+                Maximize
+              </HoverCardContent>
             </HoverCard>
           )}
         </TabsList>

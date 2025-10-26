@@ -9,9 +9,9 @@ import { useSearchParams } from "next/navigation";
 import UnsavedChangesDialog from "./postTitle/dialogBoxes/UnsavedChangesDialog";
 import MissingTitleDialog from "./postTitle/dialogBoxes/MissingTitleDialog";
 
-type PostBoxProps = { onClose: () => void };
+type PostBoxProps = { onClose: () => void; draftId?: string | null };
 
-const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
+const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
   const searchParams = useSearchParams(); // Get search params
   const problemTitle = searchParams.get("title") as string; // Get the title query parameter
 
@@ -22,8 +22,17 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
   const [originalTemplate, setOriginalTemplate] = useState<string>("");
   const [hasChanges, setHasChanges] = useState(false);
 
-  const { createNewPost, createPost, isCreatingPost, createPostError } =
-    usePostStore();
+  const {
+    createNewPost,
+    getDraftPostData,
+    updateDraftPost,
+    createPost,
+    isCreatingPost,
+    createPostError,
+    isGettingDraftPostDetails,
+    isUpdatingDraftPost,
+    updateDraftPostError,
+  } = usePostStore();
 
   //other states
   const [selectionStart, setSelectionStart] = useState(0);
@@ -35,6 +44,27 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showMissingTitleDialog, setShowMissingTitleDialog] =
     useState<boolean>(false);
+  const [isDraftMode, setIsDraftMode] = useState<boolean>(false);
+
+  // Load draft data if draftId is provided
+  useEffect(() => {
+    const loadDraftData = async () => {
+      if (draftId) {
+        setIsDraftMode(true);
+        try {
+          const draftData = await getDraftPostData(draftId);
+          setPostTitle(draftData.title);
+          setSelectedTags(draftData.tags);
+          setContent(draftData.content);
+          setOriginalTemplate(draftData.content);
+        } catch (error) {
+          console.error("Failed to load draft data:", error);
+        }
+      }
+    };
+
+    loadDraftData();
+  }, [draftId, getDraftPostData]);
 
   const setOriginalTemplateContent = (template: string) => {
     setOriginalTemplate(template);
@@ -66,7 +96,7 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
       const timer = setTimeout(() => {
         setShowSuccess(false);
         onClose();
-      }, 2000); // 2 seconds
+      }, 1000); // 1 second
 
       return () => clearTimeout(timer);
     }
@@ -125,20 +155,27 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
       return;
     }
 
-    try {
-      await createNewPost(
-        postTitle,
-        problemTitle,
-        selectedTags,
-        content,
-        false
-      );
-      setSuccessMessage("Post created successfully!");
-      setShowSuccess(true);
-      console.log("created new post content", createPost);
-    } catch (error) {
-      console.error("Failed to create new post:", error);
-    }
+     try {
+       if (isDraftMode && draftId) {
+         // Update draft and publish it
+         await updateDraftPost(draftId, postTitle, selectedTags, content, true);
+         setSuccessMessage("Post published successfully!");
+       } else {
+         // Create new post
+         await createNewPost(
+           postTitle,
+           problemTitle,
+           selectedTags,
+           content,
+           false
+         );
+         setSuccessMessage("Post created successfully!");
+       }
+       setShowSuccess(true);
+     } catch (error) {
+       console.error("Failed to create/publish post:", error);
+       setShowError(true);
+     }
   };
 
   const handleCreateDraftPost = async () => {
@@ -147,24 +184,43 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
       return;
     }
     try {
-      await createNewPost(postTitle, problemTitle, selectedTags, content, true);
-      setSuccessMessage("Successfully saved as draft!");
+      if (isDraftMode && draftId) {
+        // Update existing draft
+        await updateDraftPost(draftId, postTitle, selectedTags, content, false);
+        setSuccessMessage("Draft updated successfully!");
+      } else {
+        // Create new draft
+        await createNewPost(
+          postTitle,
+          problemTitle,
+          selectedTags,
+          content,
+          true
+        );
+        setSuccessMessage("Successfully saved as draft!");
+      }
       setShowSuccess(true);
-      console.log("created draft post content", createPost);
     } catch (error) {
-      console.error("Failed to create draft post:", error);
+      console.error("Failed to create/update draft:", error);
+      setShowError(true);
     }
   };
+
+  const isLoading =
+    isCreatingPost || isGettingDraftPostDetails || isUpdatingDraftPost;
+  const currentError = createPostError || updateDraftPostError;
+
+
   return (
     <div className="bg-muted h-full w-full rounded-xl border-none flex flex-col overflow-hidden">
       {/* Loader Overlay */}
-      {isCreatingPost && (
+      {isLoading && (
         <div className="absolute inset-0 backdrop-blur-md pointer-events-none select-none z-50 flex justify-center items-center">
           <MoonLoader color="#ffffff" size={150} />
         </div>
       )}
       {/* Success Overlay - Shows after loader disappears for 2 seconds */}
-      {showSuccess && !isCreatingPost && (
+      {showSuccess && !isLoading && (
         <div className="absolute inset-0 backdrop-blur-md pointer-events-none select-none z-50 flex justify-center items-center">
           <div className="relative rounded-lg p-8 max-w-md">
             <CircleCheckBig
@@ -178,7 +234,7 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
         </div>
       )}
       {/* Error overlay*/}
-      {showError && createPostError && (
+      {showError && currentError && (
         <div className="absolute inset-0 backdrop-blur-sm pointer-events-auto select-none z-50 flex justify-center items-center">
           <div className="relative rounded-lg p-8 max-w-md">
             <CircleX
@@ -187,7 +243,7 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
               onClick={handleDismissError}
             />
             <div className="w-full text-4xl font-bold text-red-500 text-center mt-4">
-              {createPostError}
+              {currentError}
             </div>
           </div>
         </div>
@@ -213,6 +269,7 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
           setSelectedTags={setSelectedTags}
           handleCreateNewPost={handleCreateNewPost}
           handleCreateDraftPost={handleCreateDraftPost}
+          isDraftMode={isDraftMode}
         />
       </div>
       {/* Toolbar*/}
@@ -231,6 +288,7 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose }) => {
           onResetReady={setResetHandler}
           setOriginalTemplate={setOriginalTemplateContent}
           hasChanges={hasChanges}
+          isDraftMode={isDraftMode}
         />
       </div>
     </div>

@@ -11,6 +11,7 @@ type PostTitleProps = {
   setSelectedTags: React.Dispatch<React.SetStateAction<string[]>>;
   handleCreateNewPost: () => void;
   handleCreateDraftPost: () => void;
+  isDraftMode?: boolean;
 };
 
 const PostTitle: React.FC<PostTitleProps> = ({
@@ -21,6 +22,7 @@ const PostTitle: React.FC<PostTitleProps> = ({
   setSelectedTags,
   handleCreateNewPost,
   handleCreateDraftPost,
+  isDraftMode = false,
 }) => {
   return (
     <div className="h-full w-full rounded-t-xl flex flex-row">
@@ -40,6 +42,7 @@ const PostTitle: React.FC<PostTitleProps> = ({
           onClose={onClose}
           handleCreateNewPost={handleCreateNewPost}
           handleCreateDraftPost={handleCreateDraftPost}
+          isDraftMode={isDraftMode}
         />
       </div>
     </div>

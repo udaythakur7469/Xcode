@@ -177,7 +177,7 @@ export const checkCommentTagsUsingAI = async (req, res, next) => {
     }
 };
 export const getMarkdownEditorBasePostFormat = async (req, res, next) => {
-    const { title, id } = req.query;
+    const { title } = req.query;
     try {
         const userId = req.user?.id || req.user?.userId;
         if (!userId) {
@@ -185,26 +185,6 @@ export const getMarkdownEditorBasePostFormat = async (req, res, next) => {
             return res.status(200).json({
                 message: "base post format generated successfully",
                 data: baseTemplate,
-            });
-        }
-        // If draft post ID is provided, fetch the draft post content
-        if (id) {
-            const draftPost = await prisma.post.findFirst({
-                where: {
-                    id: parseInt(id),
-                    isDraftPost: true,
-                },
-                select: {
-                    content: true,
-                },
-            });
-            if (!draftPost) {
-                throw createHttpError.NotFound("Draft post not found");
-            }
-            // Return the draft content directly (as it already contains the full formatted markdown)
-            return res.status(200).json({
-                message: "draft post content fetched successfully",
-                data: draftPost.content,
             });
         }
         const problem = await prisma.problem.findFirst({
@@ -224,6 +204,116 @@ export const getMarkdownEditorBasePostFormat = async (req, res, next) => {
         res.status(200).json({
             message: "base post format generated successfully",
             data: formattedPost,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+export const getDraftPostById = async (req, res, next) => {
+    const { id } = req.query;
+    const userId = req.user?.id || req.user?.userId;
+    if (!userId) {
+        throw createHttpError.Unauthorized("User not authenticated");
+    }
+    if (!id || typeof id !== "string") {
+        throw createHttpError.BadRequest("Draft post ID is required");
+    }
+    try {
+        const draftPost = await prisma.post.findFirst({
+            where: {
+                id: parseInt(id),
+                isDraftPost: true,
+                authorId: userId, // Ensure user owns the draft
+            },
+            select: {
+                id: true,
+                title: true,
+                content: true,
+                tags: {
+                    select: {
+                        name: true,
+                    },
+                },
+            },
+        });
+        if (!draftPost) {
+            throw createHttpError.NotFound("Draft post not found or you don't have permission to access it");
+        }
+        // Transform tags to string array
+        const tags = draftPost.tags.map((tag) => tag.name);
+        res.status(200).json({
+            success: true,
+            message: "Draft post fetched successfully",
+            data: {
+                id: draftPost.id,
+                title: draftPost.title,
+                content: draftPost.content,
+                tags: tags,
+            },
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+export const updateDraftPost = async (req, res, next) => {
+    const { id } = req.query;
+    const { title, tags, content, publish } = req.body; // publish = true means set isDraftPost to false
+    const userId = req.user?.id || req.user?.userId;
+    if (!userId) {
+        throw createHttpError.Unauthorized("User not authenticated");
+    }
+    if (!id || typeof id !== "string") {
+        throw createHttpError.BadRequest("Draft post ID is required");
+    }
+    if (!title || !content || typeof publish !== "boolean") {
+        throw createHttpError.BadRequest("Missing required fields: title, content, or publish flag");
+    }
+    try {
+        // Verify the draft exists and belongs to the user
+        const existingDraft = await prisma.post.findFirst({
+            where: {
+                id: parseInt(id),
+                authorId: userId,
+                isDraftPost: true,
+            },
+        });
+        if (!existingDraft) {
+            throw createHttpError.NotFound("Draft post not found or you don't have permission to update it");
+        }
+        // Delete existing tags for this post
+        await prisma.postTags.deleteMany({
+            where: {
+                PostId: parseInt(id),
+            },
+        });
+        // Update the post with new data
+        const updatedPost = await prisma.post.update({
+            where: {
+                id: parseInt(id),
+            },
+            data: {
+                title: title,
+                content: content,
+                isDraftPost: !publish, // If publish is true, set isDraftPost to false
+                tags: {
+                    create: tags && Array.isArray(tags) && tags.length > 0
+                        ? tags.map((tagName) => ({ name: tagName }))
+                        : [],
+                },
+            },
+            include: {
+                tags: true,
+            },
+        });
+        const message = publish
+            ? "Post published successfully"
+            : "Draft updated successfully";
+        res.status(200).json({
+            success: true,
+            message: message,
+            data: updatedPost,
         });
     }
     catch (error) {
@@ -460,6 +550,9 @@ export const getDraftPosts = async (req, res, next) => {
             select: {
                 id: true,
                 title: true,
+            },
+            orderBy: {
+                updatedAt: "desc", // Most recently updated first
             },
         });
         res.status(200).json({
@@ -701,5 +794,154 @@ export const getPostReactions = async (req, res, next) => {
         return res.status(500).json({
             message: "Server error while fetching reactions",
         });
+    }
+};
+export const manageDraftPost = async (req, res, next) => {
+    const { id, title } = req.body;
+    const { action } = req.query;
+    const userId = req.user?.id || req.user?.userId;
+    if (!userId) {
+        throw createHttpError.Unauthorized("User not authenticated");
+    }
+    if (!id) {
+        throw createHttpError.BadRequest("Please provide draft post id");
+    }
+    if (!action || !["rename", "post", "delete"].includes(action)) {
+        throw createHttpError.BadRequest("Please provide a valid action: rename, post, or delete");
+    }
+    try {
+        // Verify the draft post exists and belongs to the user
+        const draftPost = await prisma.post.findFirst({
+            where: {
+                id: parseInt(id),
+                authorId: userId,
+                isDraftPost: true,
+            },
+        });
+        if (!draftPost) {
+            throw createHttpError.NotFound("Draft post not found or you don't have permission to modify it");
+        }
+        let result;
+        let message;
+        switch (action) {
+            case "rename":
+                if (!title || title.trim() === "") {
+                    throw createHttpError.BadRequest("Please provide a title for renaming");
+                }
+                result = await prisma.post.update({
+                    where: { id: parseInt(id) },
+                    data: { title: title.trim() },
+                    select: {
+                        id: true,
+                        title: true,
+                    },
+                });
+                message = "Draft post renamed successfully";
+                break;
+            case "post":
+                result = await prisma.post.update({
+                    where: { id: parseInt(id) },
+                    data: { isDraftPost: false },
+                    select: {
+                        id: true,
+                        title: true,
+                        isDraftPost: true,
+                    },
+                });
+                message = "Draft post published successfully";
+                break;
+            case "delete":
+                result = await prisma.post.delete({
+                    where: { id: parseInt(id) },
+                    select: {
+                        id: true,
+                        title: true,
+                    },
+                });
+                message = "Draft post deleted successfully";
+                break;
+        }
+        res.status(200).json({
+            success: true,
+            message: message,
+            data: result,
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+};
+export const getPostById = async (req, res, next) => {
+    const { id } = req.query;
+    const userId = req.user?.id || req.user?.userId;
+    if (!id) {
+        throw createHttpError.BadRequest("Please provide post id");
+    }
+    try {
+        const post = await prisma.post.findFirst({
+            where: {
+                id: parseInt(id),
+                isDraftPost: false, // Only fetch non-draft posts
+            },
+            select: {
+                id: true,
+                title: true,
+                content: true,
+                createdAt: true,
+                updatedAt: true,
+                author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        picture: true,
+                    },
+                },
+                tags: {
+                    select: {
+                        id: true,
+                        name: true,
+                    },
+                },
+                postReactions: {
+                    select: {
+                        type: true,
+                        userId: true,
+                    },
+                },
+            },
+        });
+        if (!post) {
+            throw createHttpError.NotFound("Post not found");
+        }
+        // Calculate likes and dislikes
+        const likes = post.postReactions.filter((r) => r.type === "like").length;
+        const dislikes = post.postReactions.filter((r) => r.type === "dislike").length;
+        // Get user's reaction if authenticated
+        let userReaction = null;
+        if (userId) {
+            const reaction = post.postReactions.find((r) => r.userId === userId);
+            userReaction = reaction ? reaction.type.toLowerCase() : null;
+        }
+        // Format the response
+        const responseData = {
+            id: post.id,
+            title: post.title,
+            content: post.content,
+            createdAt: post.createdAt,
+            updatedAt: post.updatedAt,
+            author: post.author,
+            tags: post.tags.map((tag) => tag.name),
+            likes,
+            dislikes,
+            userReaction,
+        };
+        res.status(200).json({
+            success: true,
+            message: "Post fetched successfully",
+            data: responseData,
+        });
+    }
+    catch (error) {
+        next(error);
     }
 };

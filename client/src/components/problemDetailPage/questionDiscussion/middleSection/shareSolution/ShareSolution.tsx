@@ -61,6 +61,7 @@ const ShareSolution: React.FC<ShareSolutionProps> = () => {
       <PostDialogBox
         isOpen={isPostDialogBoxOpen}
         onClose={() => setIsPostDialogBoxOpen(false)}
+        draftId={null}
       />
     </>
   );

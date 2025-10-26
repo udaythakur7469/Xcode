@@ -5,12 +5,14 @@ type PostBoxButtonsProps = {
   onClose: () => void;
   handleCreateNewPost: () => void;
   handleCreateDraftPost: () => void;
+  isDraftMode?: boolean;
 };
 
 const PostBoxButtons: React.FC<PostBoxButtonsProps> = ({
   onClose,
   handleCreateNewPost,
   handleCreateDraftPost,
+  isDraftMode = false,
 }) => {
   const handleCancel = () => {
     onClose();
@@ -26,15 +28,23 @@ const PostBoxButtons: React.FC<PostBoxButtonsProps> = ({
           <Ban />
           <div className="ml-3">Cancel</div>
         </div>
-        <div className="h-auto w-auto bg-green-500 px-3 py-2 cursor-pointer select-none rounded-2xl flex flex-row items-center" onClick={() => handleCreateNewPost()}>
+        <div
+          className="h-auto w-auto bg-green-500 px-3 py-2 cursor-pointer select-none rounded-2xl flex flex-row items-center"
+          onClick={() => handleCreateNewPost()}
+        >
           <Send />
           <div className="ml-3">Post</div>
         </div>
       </div>
       <div>
-        <div className="h-auto w-auto bg-indigo-500 px-3 py-2 cursor-pointer select-none rounded-2xl flex flex-row items-center" onClick={() => handleCreateDraftPost()}>
+        <div
+          className="h-auto w-auto bg-indigo-500 px-3 py-2 cursor-pointer select-none rounded-2xl flex flex-row items-center"
+          onClick={() => handleCreateDraftPost()}
+        >
           <SquarePen />
-          <div className="ml-3">Save as draft</div>
+          <div className="ml-3">
+            {isDraftMode ? "Update Draft" : "Save as Draft"}
+          </div>
         </div>
       </div>
     </div>

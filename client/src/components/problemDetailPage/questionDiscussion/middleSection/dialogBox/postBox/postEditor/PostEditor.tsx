@@ -8,6 +8,7 @@ type PostEditorProps = {
   onResetReady?: () => void;
   setOriginalTemplate?: (template: string) => void;
   hasChanges?: boolean;
+  isDraftMode?: boolean;
 };
 
 const PostEditor: React.FC<PostEditorProps> = ({
@@ -17,6 +18,7 @@ const PostEditor: React.FC<PostEditorProps> = ({
   onResetReady,
   setOriginalTemplate,
   hasChanges,
+  isDraftMode = false,
 }) => {
   return (
     <div className="h-full w-full">
@@ -27,11 +29,10 @@ const PostEditor: React.FC<PostEditorProps> = ({
         onResetReady={onResetReady}
         setOriginalTemplate={setOriginalTemplate}
         hasChanges={hasChanges}
+        isDraftMode={isDraftMode}
       />
     </div>
   );
 };
-
-PostEditor.displayName = "PostEditor";
 
 export default PostEditor;

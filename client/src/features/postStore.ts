@@ -87,6 +87,30 @@ export interface DraftPostData {
   title: string;
 }
 
+export interface DraftPostDetailsData {
+  id: number;
+  title: string;
+  content: string;
+  tags: string[];
+}
+
+export interface FullPostData {
+  id: number;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: number;
+    name: string;
+    picture: string;
+  };
+  tags: string[];
+  likes: number;
+  dislikes: number;
+  userReaction: "like" | "dislike" | null;
+}
+
 interface PostData {
   postBaseTemplate: string | null;
   isPostBaseTemplateLoading: boolean;
@@ -114,8 +138,23 @@ interface PostData {
   combinedTagsError: any | null;
   isReactingToPost: boolean;
   postReactionError: any | null;
+  draftPostDetails: DraftPostDetailsData | null;
+  isGettingDraftPostDetails: boolean;
+  draftPostDetailsError: any | null;
+  isUpdatingDraftPost: boolean;
+  updateDraftPostError: any | null;
+  isManagingDraftPost: boolean;
+  manageDraftPostError: any | null;
+  fullPostData: FullPostData | null;
+  isGettingFullPost: boolean;
+  fullPostError: any | null;
 
-  getPostBaseTemplate: (title: string, id: string | null) => Promise<void>;
+  manageDraftPost: (
+    id: string,
+    action: "rename" | "post" | "delete",
+    title?: string
+  ) => Promise<void>;
+  getPostBaseTemplate: (title: string) => Promise<void>;
   fetchPostTags: () => Promise<void>;
   validateTag: (tag: string, action: string) => Promise<TagValidation>;
   createNewPost: (
@@ -131,6 +170,15 @@ interface PostData {
   getCombinedTags: (problemTitle: string) => Promise<void>;
   reactToPost: (postId: string, action: "like" | "dislike") => Promise<void>;
   refreshPostReactions: (postId: string) => Promise<void>;
+  getDraftPostData: (id: string) => Promise<DraftPostDetailsData>;
+  updateDraftPost: (
+    id: string,
+    title: string,
+    tags: string[],
+    content: string,
+    publish: boolean
+  ) => Promise<any>;
+  getFullPostById: (id: string) => Promise<FullPostData>;
 }
 
 export const usePostStore = create<PostData>()((set, get) => ({
@@ -160,12 +208,22 @@ export const usePostStore = create<PostData>()((set, get) => ({
   combinedTagsError: null,
   isReactingToPost: false,
   postReactionError: null,
+  draftPostDetails: null,
+  isGettingDraftPostDetails: false,
+  draftPostDetailsError: null,
+  isUpdatingDraftPost: false,
+  updateDraftPostError: null,
+  isManagingDraftPost: false,
+  manageDraftPostError: null,
+  fullPostData: null,
+  isGettingFullPost: false,
+  fullPostError: null,
 
-  getPostBaseTemplate: async (title, id) => {
+  getPostBaseTemplate: async (title) => {
     set({ isPostBaseTemplateLoading: true, postBaseTemplateError: null });
     try {
       const response = await axios.get(`${API_URL}/post/getBasePostTemplate`, {
-        params: { title, id },
+        params: { title },
       });
 
       set({
@@ -384,6 +442,159 @@ export const usePostStore = create<PostData>()((set, get) => ({
     } catch (error: any) {
       console.error("Error refreshing post reactions:", error);
       throw new Error("Failed to refresh post reactions");
+    }
+  },
+
+  getDraftPostData: async (id: string) => {
+    set({ isGettingDraftPostDetails: true, draftPostDetailsError: null });
+    try {
+      const response = await axios.get(`${API_URL}/post/getDraftPostById`, {
+        params: { id },
+      });
+
+      const draftData: DraftPostDetailsData = response.data.data;
+
+      set({
+        draftPostDetails: draftData,
+        isGettingDraftPostDetails: false,
+      });
+
+      return draftData;
+    } catch (error: any) {
+      const errMsg =
+        error.response?.data?.message || "Failed to fetch draft post details";
+
+      set({
+        draftPostDetailsError: errMsg,
+        isGettingDraftPostDetails: false,
+      });
+
+      throw error;
+    }
+  },
+
+  updateDraftPost: async (
+    id: string,
+    title: string,
+    tags: string[],
+    content: string,
+    publish: boolean
+  ) => {
+    set({ isUpdatingDraftPost: true, updateDraftPostError: null });
+
+    try {
+      const response = await axios.put(
+        `${API_URL}/post/updateDraftPost`,
+        {
+          title,
+          tags: tags || [],
+          content,
+          publish,
+        },
+        {
+          params: { id },
+        }
+      );
+
+      set({ isUpdatingDraftPost: false });
+
+      // Return the response for success message handling
+      return response.data;
+    } catch (error: any) {
+      const errMsg =
+        error?.response?.data?.message || "Error updating draft post";
+      set({ updateDraftPostError: errMsg, isUpdatingDraftPost: false });
+
+      throw error;
+    }
+  },
+
+  manageDraftPost: async (
+    id: string,
+    action: "rename" | "post" | "delete",
+    title?: string
+  ) => {
+    set({ isManagingDraftPost: true, manageDraftPostError: null });
+
+    try {
+      const requestBody: any = { id };
+
+      // Add title to body only for rename action
+      if (action === "rename") {
+        if (!title || title.trim() === "") {
+          throw new Error("Title is required for rename action");
+        }
+        requestBody.title = title;
+      }
+
+      const response = await axios.put(
+        `${API_URL}/post/manageDraftPost`,
+        requestBody,
+        {
+          params: { action },
+        }
+      );
+
+      // If action is delete or post, remove the draft from the DraftPosts list
+      if (action === "delete" || action === "post") {
+        const currentDrafts = get().DraftPosts;
+        if (currentDrafts) {
+          const updatedDrafts = currentDrafts.filter(
+            (draft) => draft.id !== id
+          );
+          set({ DraftPosts: updatedDrafts });
+        }
+      }
+
+      // If action is rename, update the draft title in the DraftPosts list
+      if (action === "rename" && title) {
+        const currentDrafts = get().DraftPosts;
+        if (currentDrafts) {
+          const updatedDrafts = currentDrafts.map((draft) =>
+            draft.id === id ? { ...draft, title } : draft
+          );
+          set({ DraftPosts: updatedDrafts });
+        }
+      }
+
+      set({ isManagingDraftPost: false });
+
+      return response.data;
+    } catch (error: any) {
+      const errMsg =
+        error?.response?.data?.message || "Error managing draft post";
+      set({ manageDraftPostError: errMsg, isManagingDraftPost: false });
+
+      throw error;
+    }
+  },
+
+  getFullPostById: async (id: string) => {
+    set({ isGettingFullPost: true, fullPostError: null });
+
+    try {
+      const response = await axios.get(`${API_URL}/post/getPostDataById`, {
+        params: { id },
+      });
+
+      const postData: FullPostData = response.data.data;
+
+      set({
+        fullPostData: postData,
+        isGettingFullPost: false,
+      });
+
+      return postData;
+    } catch (error: any) {
+      const errMsg =
+        error.response?.data?.message || "Failed to fetch post details";
+
+      set({
+        fullPostError: errMsg,
+        isGettingFullPost: false,
+      });
+
+      throw error;
     }
   },
 }));

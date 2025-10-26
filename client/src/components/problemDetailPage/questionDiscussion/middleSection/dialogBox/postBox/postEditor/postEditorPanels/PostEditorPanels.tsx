@@ -13,6 +13,7 @@ type PostEditorPanelsProps = {
   onResetReady?: () => void;
   setOriginalTemplate?: (template: string) => void;
   hasChanges?: boolean;
+  isDraftMode?: boolean;
 };
 
 const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
@@ -22,6 +23,7 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   onResetReady,
   setOriginalTemplate,
   hasChanges,
+  isDraftMode = false,
 }) => {
   const [problemTitle, setProblemTitle] = useState<string | null>(null);
   const hasLoadedInitialContent = useRef(false);
@@ -42,24 +44,25 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
     setProblemTitle(title);
 
     const loadTemplate = async () => {
-      if (!title || hasLoadedInitialContent.current) return;
+      if (!title || hasLoadedInitialContent.current || isDraftMode) return;
 
       try {
-        await getPostBaseTemplate(title, null);
+        await getPostBaseTemplate(title);
       } catch (error) {
         console.error("Error fetching post template:", error);
       }
     };
 
     loadTemplate();
-  }, [searchParams, getPostBaseTemplate]);
+  }, [searchParams, getPostBaseTemplate, isDraftMode]);
 
   // Effect to set initial content once
   useEffect(() => {
     if (
       postBaseTemplate &&
       !hasLoadedInitialContent.current &&
-      content === ""
+      content === "" &&
+      !isDraftMode
     ) {
       setContent(postBaseTemplate);
       originalTemplateRef.current = postBaseTemplate;
@@ -69,10 +72,10 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
       }
       hasLoadedInitialContent.current = true;
     }
-  }, [postBaseTemplate, content, setContent, setOriginalTemplate]);
+  }, [postBaseTemplate, content, setContent, setOriginalTemplate, isDraftMode]);
 
   const handleReset = () => {
-    if (postBaseTemplate) {
+    if (postBaseTemplate && !isDraftMode) {
       setContent(postBaseTemplate);
       // Notify parent about reset
       if (setOriginalTemplate) {
@@ -89,7 +92,7 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   }, [onResetReady, originalTemplateRef.current]);
 
   // Loading state
-  if (isPostBaseTemplateLoading && content === "") {
+  if (isPostBaseTemplateLoading && content === "" && !isDraftMode) {
     return (
       <div className="h-full flex items-center justify-center">
         <MoonLoader color="#ffffff" size={100} />
@@ -98,7 +101,7 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   }
 
   // Error state
-  if (postBaseTemplateError && content === "") {
+  if (postBaseTemplateError && content === "" && !isDraftMode) {
     return (
       <div className="h-full flex items-center justify-center text-red-500 text-lg">
         {postBaseTemplateError}

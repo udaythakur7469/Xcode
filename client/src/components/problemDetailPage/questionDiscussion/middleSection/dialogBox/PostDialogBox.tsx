@@ -3,9 +3,17 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/postBoxDialo
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 import PostBox from "./postBox/PostBox";
 
-type PostDialogBoxProps = { isOpen: boolean; onClose: () => void };
+type PostDialogBoxProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  draftId?: string | null;
+};
 
-const PostDialogBox: React.FC<PostDialogBoxProps> = ({ isOpen, onClose }) => {
+const PostDialogBox: React.FC<PostDialogBoxProps> = ({
+  isOpen,
+  onClose,
+  draftId = null,
+}) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
@@ -21,7 +29,7 @@ const PostDialogBox: React.FC<PostDialogBoxProps> = ({ isOpen, onClose }) => {
           <DialogTitle>Post Editor</DialogTitle>
         </VisuallyHidden.Root>
         <div className="flex flex-wrap border rounded-xl">
-          <PostBox onClose={onClose} />
+          <PostBox onClose={onClose} draftId={draftId} />
         </div>
       </DialogContent>
     </Dialog>
