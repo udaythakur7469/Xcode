@@ -1,36 +1,23 @@
-import React, { useEffect, useState } from "react";
-import { X, Plus } from "lucide-react";
+import React, { useEffect } from "react";
+import { X } from "lucide-react";
 import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 type FullPostPanelProps = {
   postId: string | null;
   onClose: () => void;
-  isNested?: boolean;
 };
 
-const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose, isNested = false }) => {
+const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
   const { getFullPostById, fullPostData, isGettingFullPost, fullPostError } =
     usePostStore();
-  const [nestedPostId, setNestedPostId] = useState<string | null>(null);
-  const [isNestedOpen, setIsNestedOpen] = useState(false);
 
   useEffect(() => {
     if (postId) {
       getFullPostById(postId);
     }
   }, [postId, getFullPostById]);
-
-  const handleOpenNestedPanel = () => {
-    setNestedPostId(postId);
-    setIsNestedOpen(true);
-  };
-
-  const handleCloseNestedPanel = () => {
-    setIsNestedOpen(false);
-    setNestedPostId(null);
-  };
 
   return (
     <div className="absolute inset-0 z-[9999] pointer-events-none">
@@ -47,7 +34,7 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose, isNested
       {/* Sliding Panel */}
       <motion.div
         initial={{ x: "100%" }}
-        animate={{ x: isNested ? "calc(-100% - 15px)" : 0 }}
+        animate={{ x: 0 }}
         exit={{ x: "100%" }}
         transition={{
           type: "tween",
@@ -93,31 +80,7 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose, isNested
             </motion.pre>
           )}
         </div>
-
-        {/* Button at bottom right */}
-        {!isNested && (
-          <div className="absolute bottom-4 right-4 pointer-events-auto">
-            <button
-              onClick={handleOpenNestedPanel}
-              className="p-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg shadow-lg transition-colors flex items-center justify-center"
-              aria-label="Open nested panel"
-            >
-              <Plus size={24} />
-            </button>
-          </div>
-        )}
       </motion.div>
-
-      {/* Nested FullPostPanel */}
-      <AnimatePresence mode="wait">
-        {isNestedOpen && nestedPostId && (
-          <FullPostPanel
-            postId={nestedPostId}
-            onClose={handleCloseNestedPanel}
-            isNested={true}
-          />
-        )}
-      </AnimatePresence>
     </div>
   );
 };
