@@ -66,7 +66,10 @@ const PostFooter: React.FC<PostFooterProps> = ({
     <div className="flex flex-row items-center pb-1 mt-2 gap-x-3">
       {/* Like button */}
       <div
-        onClick={() => handleReaction("like")}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleReaction("like");
+        }}
         className={`gap-x-2 flex flex-row items-center px-2 py-0.5 bg-background rounded cursor-pointer transition-colors ${
           isReactingToPost ? "opacity-70 cursor-not-allowed" : ""
         }`}
@@ -89,7 +92,10 @@ const PostFooter: React.FC<PostFooterProps> = ({
 
       {/* Dislike button */}
       <div
-        onClick={() => handleReaction("dislike")}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleReaction("dislike");
+        }}
         className={`gap-x-2 flex flex-row items-center px-2 py-0.5 bg-background rounded cursor-pointer transition-colors ${
           isReactingToPost ? "opacity-70 cursor-not-allowed" : ""
         }`}
