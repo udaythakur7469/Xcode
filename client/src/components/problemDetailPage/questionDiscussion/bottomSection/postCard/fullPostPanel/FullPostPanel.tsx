@@ -1,8 +1,9 @@
 import React, { useEffect } from "react";
-import { X } from "lucide-react";
+import { ArrowLeft, MoveLeft, X } from "lucide-react";
 import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
 import { motion } from "framer-motion";
+import PostData from "./PostData";
 
 type FullPostPanelProps = {
   postId: string | null;
@@ -20,7 +21,7 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
   }, [postId, getFullPostById]);
 
   return (
-    <div className="absolute inset-0 z-[9999] pointer-events-none">
+    <div className="absolute inset-0 z-[1000] pointer-events-none">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -41,22 +42,22 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
           duration: 0.3,
           ease: "easeInOut",
         }}
-        className="absolute right-0 top-0 h-full w-full bg-background shadow-2xl flex flex-col pointer-events-auto"
+        className="absolute right-0 top-0 h-full w-full bg-background shadow-2xl flex flex-col pointer-events-auto overflow-x-hidden"
       >
         {/* Header with close button */}
-        <div className="flex items-center justify-between p-4 border-b shrink-0">
-          <h2 className="text-xl font-semibold">Post Details</h2>
+        <div className="flex items-center justify-start pb-1 border-b shrink-0">
           <button
             onClick={onClose}
-            className="p-2 hover:bg-secondary rounded-lg transition-colors"
+            className="flex flex-row items-center justify-center"
             aria-label="Close"
           >
-            <X size={24} />
+            <ArrowLeft size={18} className="mx-1" />
+            All solutions
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto">
           {isGettingFullPost && (
             <div className="flex justify-center items-center h-full">
               <MoonLoader size={50} color="#ffffff" />
@@ -74,9 +75,9 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.4 }}
-              className="bg-secondary p-4 rounded-lg overflow-auto text-sm"
+              className="h-full w-full flex"
             >
-              {JSON.stringify(fullPostData, null, 2)}
+              <PostData fullPostData={fullPostData} />
             </motion.pre>
           )}
         </div>
