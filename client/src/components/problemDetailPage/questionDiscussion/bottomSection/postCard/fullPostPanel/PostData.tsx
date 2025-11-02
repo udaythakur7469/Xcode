@@ -29,7 +29,7 @@ const PostData: React.FC<PostDataProps> = ({ fullPostData }) => {
 
   return (
     <div className="h-full w-full flex flex-col justify-start p-4 border font-sans overflow-x-hidden">
-      <div className="text-3xl pb-3 font-bold">
+      <div className="text-3xl pb-3 font-bold overflow-x-hidden whitespace-normal break-words">
         {formatTitle(fullPostData.title)}
       </div>
       <div className="flex flex-row items-center">
