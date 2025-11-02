@@ -110,8 +110,18 @@ interface SubmissionStore {
   fetchBaseClassCode: (problemId: number, language: string) => Promise<void>;
   getUserSubmissions: (page: number, problemTitle?: string) => Promise<void>;
   getAllSubmissions: (problemTitle: string, page: number) => Promise<void>;
-  runCode: (language: string, code: string) => Promise<void>;
-  submitCode: (language: string, code: string) => Promise<void>;
+  runCode: (
+    language: string,
+    code: string,
+    problemTitle: string
+  ) => Promise<void>;
+  submitCode: (
+    language: string,
+    code: string,
+    problemTitle: string
+  ) => Promise<void>;
+  clearRunCodeResult: () => void;
+  clearSubmitCodeResult: () => void;
 }
 
 export const useSubmissionStore = create<SubmissionStore>((set) => ({
@@ -218,8 +228,91 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
       set({ error: errMsg, isLoading: false });
     }
   },
-  runCode: async (language: string, code: string) => {
-    set({isRunningCode : true, error})
+  runCode: async (language: string, code: string, problemTitle: string) => {
+    set({ isRunningCode: true, error: null, runCodeResult: null });
+    try {
+      const response = await axios.post(
+        `${API_URL}/submission/runCode`,
+        {
+          language,
+          code,
+        },
+        {
+          params: {
+            title: problemTitle,
+          },
+        }
+      );
+
+      set({
+        runCodeResult: response.data as RunCodeSuccess,
+        isRunningCode: false,
+      });
+    } catch (error: any) {
+      const errorData = error.response?.data as RunCodeError;
+      set({
+        runCodeResult: errorData || {
+          error: "Failed to run code",
+          stderr: null,
+          compile_output: "",
+          errorInfo: [],
+        },
+        isRunningCode: false,
+      });
+    }
   },
-  submitCode: async (language: string, code: string) => {},
+  submitCode: async (language: string, code: string, problemTitle: string) => {
+    set({ isSubmittingCode: true, error: null, submitCodeResult: null });
+    try {
+      const response = await axios.post(
+        `${API_URL}/submission/submitCode`,
+        {
+          language,
+          code,
+        },
+        {
+          params: {
+            title: problemTitle,
+          },
+        }
+      );
+
+      set({
+        submitCodeResult: response.data as SubmitCodeSuccess,
+        isSubmittingCode: false,
+      });
+    } catch (error: any) {
+      const errorData = error.response?.data as SubmitCodeError;
+      set({
+        submitCodeResult: errorData || {
+          message: "Failed to submit code",
+          failedTestCase: {
+            input: "",
+            expectedOutput: "",
+            actualOutput: null,
+            stderr: null,
+            runtime: 0,
+            memory: 0,
+          },
+          code: "",
+          language: "",
+          runtimeInMilliseconds: 0,
+          memoryInMegabytes: 0,
+          testCasesPassed: 0,
+          totalTestCases: 0,
+        },
+        isSubmittingCode: false,
+      });
+    }
+  },
+
+  // Clear run code result
+  clearRunCodeResult: () => {
+    set({ runCodeResult: null });
+  },
+
+  // Clear submit code result
+  clearSubmitCodeResult: () => {
+    set({ submitCodeResult: null });
+  },
 }));
