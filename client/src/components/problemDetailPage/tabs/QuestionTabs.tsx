@@ -20,7 +20,7 @@ import QuestionEditorial from "../questionEditorial/editorial/QuestionEditorial"
 import SubmissionTabs from "../questionSubmissions/submissionTabs/SubmissionTabs";
 import { AnimatePresence, motion } from "framer-motion";
 import DiscussionSection from "../questionDiscussion/DiscussionSection";
-import QuestionCodeResults from "../questionCodeResults/QuestionCodeResults";
+import QuestionCodeResults from "../questionResults/QuestionResults";
 
 type QuestionTabsProps = {
   showResultsTab?: boolean;
@@ -65,7 +65,8 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     if (onCloseResultsTab) {
       onCloseResultsTab(); // Call parent to hide the tab
     }
-    setActiveTab("description"); // Switch to description tab
+    const lastOpenedTab = sessionStorage.getItem(SESSION_KEY) || "description";
+    setActiveTab(lastOpenedTab);
   };
 
   const handleMaximizeMinimize = () => {

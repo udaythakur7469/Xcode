@@ -21,6 +21,7 @@ import { useProblemStore } from "@/features/problemStore";
 import { useSearchParams } from "next/navigation";
 import { useSubmissionStore } from "@/features/submissionStore";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type CodeEditorProps = {
   onCodeSubmit?: () => void;
@@ -45,8 +46,16 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   const [fontSize, setFontSize] = useState<number>(14);
   const [problemId, setProblemId] = useState<number | null>(null);
 
-  const { baseCode, isBaseCodeLoading, baseCodeError, fetchBaseClassCode } =
-    useSubmissionStore();
+  const {
+    baseCode,
+    isBaseCodeLoading,
+    baseCodeError,
+    fetchBaseClassCode,
+    runCode,
+    submitCode,
+    isRunningCode,
+    isSubmittingCode,
+  } = useSubmissionStore();
   const { getProblemByTitle } = useProblemStore();
   const searchParams = useSearchParams();
   const problemTitle = searchParams.get("title");
@@ -113,21 +122,48 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   };
 
-  const handleRunCode = () => {
-    const codes = JSON.stringify(code);
-    console.log("Language:", language);
-    console.log("Running code:", codes);
-    if (onCodeRun) {
-      onCodeRun();
+  const handleRunCode = async () => {
+    if (!problemTitle) {
+      toast.error("Problem title not found");
+      return;
+    }
+
+    if (!code.trim()) {
+      toast.error("Please write some code first");
+      return;
+    }
+
+    try {
+      if (onCodeRun) {
+        onCodeRun();
+      }
+      await runCode(language, code, problemTitle);
+      toast.success("Code executed");
+    } catch (error) {
+      toast.error("Failed to run code");
     }
   };
 
-  const handleSubmitCode = () => {
-    const codes = JSON.stringify(code);
-    console.log("Language:", language);
-    console.log("Submitting code:", codes);
-    if (onCodeSubmit) {
-      onCodeSubmit();
+  const handleSubmitCode = async () => {
+    if (!problemTitle) {
+      toast.error("Problem title not found");
+      return;
+    }
+
+    if (!code.trim()) {
+      toast.error("Please write some code first");
+      return;
+    }
+
+    try {
+      if (onCodeSubmit) {
+        onCodeSubmit();
+      }
+      await submitCode(language, code, problemTitle);
+
+      toast.success("Code submitted");
+    } catch (error) {
+      toast.error("Failed to submit code");
     }
   };
 
@@ -248,11 +284,19 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 
       {/* Footer with Run Code Button */}
       <div className="h-[50px] bg-secondary rounded-md flex items-center justify-end px-4 gap-x-5">
-        <Button className="bg-blue-600 text-white" onClick={handleRunCode}>
-          Run Code
+        <Button
+          className="bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleRunCode}
+          disabled={isRunningCode || isSubmittingCode}
+        >
+          {isRunningCode ? "Running..." : "Run Code"}
         </Button>
-        <Button className="bg-green-600 text-white" onClick={handleSubmitCode}>
-          Submit Code
+        <Button
+          className="bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={handleSubmitCode}
+          disabled={isRunningCode || isSubmittingCode}
+        >
+          {isSubmittingCode ? "Submitting..." : "Submit Code"}
         </Button>
       </div>
     </div>
