@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/themes/themeProvider";
 import { Toaster } from "@/components/ui/toaster";
+import ClientFABWrapper from "@/components/helperComponents/ClientFABWrapper";
 
 export const metadata: Metadata = {
   title: "codex",
@@ -29,6 +30,7 @@ export default function RootLayout({
         >
           {children}
           <Toaster />
+          <ClientFABWrapper />
         </ThemeProvider>
       </body>
     </html>

@@ -28,7 +28,7 @@ import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
 import Timer from "./Timer";
 import LayoutDropdown from "./LayoutDropdown";
-import FloatingDialog from "@/components/problemsPage/helperComponents/FloatingDialog";
+import FloatingDialog from "@/components/helperComponents/FloatingDialog";
 import {
   HoverCard,
   HoverCardContent,
