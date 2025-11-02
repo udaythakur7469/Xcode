@@ -7,7 +7,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/accountAvatar";
-import PostMarkdownPreview from "../../../middleSection/dialogBox/postBox/postEditor/postMarkdownPreview/PostMarkdownPreview";
+import PostDataContent from "./PostDataContent";
 
 type PostDataProps = { fullPostData: FullPostData };
 
@@ -65,8 +65,8 @@ const PostData: React.FC<PostDataProps> = ({ fullPostData }) => {
           </div>
         ))}
       </div>
-      <div className="mt-4 flex-1 overflow-x-hidden">
-        <PostMarkdownPreview markdown={fullPostData.content} />
+      <div className="mt-4 flex-1 overflow-x-hidden whitespace-normal break-words">
+        <PostDataContent markdown={fullPostData.content} />
       </div>
     </div>
   );
