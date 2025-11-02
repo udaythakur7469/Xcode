@@ -7,7 +7,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { EditorialScrollArea } from "@/components/ui/editorialCodeScrollArea";
 import { Button } from "@/components/ui/button";
 import { Clipboard, Check } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 type CodeDialogProps = {
   isOpen: boolean;
@@ -20,7 +20,6 @@ const CodeDialog: React.FC<CodeDialogProps> = ({
   onClose,
   submission,
 }) => {
-  const { toast } = useToast();
   const [isCopied, setIsCopied] = useState(false);
 
   if (!submission) {
@@ -40,11 +39,7 @@ const CodeDialog: React.FC<CodeDialogProps> = ({
         .writeText(submission.code)
         .then(() => {
           setIsCopied(true);
-          toast({
-            title: "Copied!",
-            description: "Code copied to clipboard",
-            duration: 2000,
-          });
+          toast.success("Code copied to clipboard");
 
           // Reset the copied state after 2 seconds
           setTimeout(() => {
@@ -52,11 +47,7 @@ const CodeDialog: React.FC<CodeDialogProps> = ({
           }, 2000);
         })
         .catch((err) => {
-          toast({
-            title: "Failed to copy",
-            description: "Could not copy code to clipboard",
-            variant: "destructive",
-          });
+          toast.error("Could not copy code to clipboard");
           console.error("Failed to copy: ", err);
         });
     }

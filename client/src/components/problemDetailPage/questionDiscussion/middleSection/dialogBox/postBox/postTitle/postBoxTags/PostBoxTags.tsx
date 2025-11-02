@@ -1,7 +1,7 @@
 import React from "react";
 import AddNewTags from "./addNewTags.tsx/AddNewTags";
 import NewlyAddedTags from "./newlyAddedTags/NewlyAddedTags";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 type PostBoxTagsProps = {
   selectedTags: string[];
@@ -12,18 +12,12 @@ const PostBoxTags: React.FC<PostBoxTagsProps> = ({
   selectedTags,
   setSelectedTags,
 }) => {
-  const { toast } = useToast();
-
   const addTag = (tag: string) => {
     // Add tag only if it's not already selected
     if (!selectedTags.includes(tag)) {
       setSelectedTags((prev) => [...prev, tag]);
     } else {
-      toast({
-        title: "Tag already added!",
-        description: "You’ve already added this tag.",
-        duration: 2000,
-      });
+      toast.error("Tag already added!");
     }
   };
 
