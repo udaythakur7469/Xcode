@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Heart, HeartOff, MessagesSquare } from "lucide-react";
 import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
+import { formatCount } from "@/services/countService";
 
 type PostFooterProps = {
   postId: string;
@@ -87,7 +88,7 @@ const PostFooter: React.FC<PostFooterProps> = ({
             }`}
           />
         )}
-        <span className="text-gray-300">{displayLikes}</span>
+        <span className="text-gray-300">{formatCount(displayLikes)}</span>
       </div>
 
       {/* Dislike button */}
@@ -113,13 +114,13 @@ const PostFooter: React.FC<PostFooterProps> = ({
             }`}
           />
         )}
-        <span className="text-gray-300">{displayDislikes}</span>
+        <span className="text-gray-300">{formatCount(displayDislikes)}</span>
       </div>
 
       {/* Comments */}
       <div className="gap-x-2 flex flex-row items-center px-2 py-0.5 bg-background text-gray-300 rounded cursor-pointer transition-colors">
         <MessagesSquare size={16} className="text-blue-500" />
-        {comments}
+        {formatCount(comments)}
       </div>
     </div>
   );

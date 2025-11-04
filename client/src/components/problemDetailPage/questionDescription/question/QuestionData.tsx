@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import HintsDialog from "../dialogBoxes/HintsDialog";
 import StatsDialog from "../dialogBoxes/StatsDialog";
+import { formatCount } from "@/services/countService";
 
 type QuestionDataProps = {};
 
@@ -84,7 +85,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
       if (problemTitle) {
         refreshProblemLikesAndDislikes(problemTitle).catch(console.error);
       }
-    }, 10000); // Refresh every 10 seconds
+    }, 60000); // Refresh every 1 minute
 
     return () => clearInterval(intervalId);
   }, [problemTitle, getProblemByTitle, refreshProblemLikesAndDislikes]);
@@ -201,7 +202,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
                   }`}
                 />
               )}
-              {storeProblem.likes || 0}
+              {formatCount(storeProblem.likes) || 0}
             </Badge>
 
             {/* Dislike badge button */}
@@ -226,7 +227,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
                   }`}
                 />
               )}
-              {storeProblem.dislikes || 0}
+              {formatCount(storeProblem.dislikes) || 0}
             </Badge>
             <StatsDialog stats={problem.problemStats} />
           </div>

@@ -166,24 +166,38 @@ const PostsTags: React.FC<PostsTagsProps> = () => {
         </div>
 
         {/* Custom webkit scrollbar styling*/}
-        <style jsx global>{`
+        <style jsx>{`
+          .tags-container {
+            scrollbar-width: none !important;
+          }
+
+          .tags-container:hover {
+            scrollbar-width: thin !important;
+            scrollbar-color: #cbd5e1 transparent;
+          }
+
           .tags-container::-webkit-scrollbar {
-            height: 6px;
+            width: 0px !important;
+            height: 0px !important;
+            background: transparent !important;
           }
+
+          .tags-container:hover::-webkit-scrollbar {
+            width: 6px !important;
+            height: 6px !important;
+          }
+
           .tags-container::-webkit-scrollbar-track {
-            background: #ffffff;
+            background: transparent;
           }
+
           .tags-container::-webkit-scrollbar-thumb {
             background-color: #cbd5e1;
             border-radius: 3px;
           }
+
           .tags-container::-webkit-scrollbar-thumb:hover {
             background-color: #94a3b8;
-          }
-          .tags-container::-webkit-scrollbar-button {
-            display: none;
-            width: 0;
-            height: 0;
           }
         `}</style>
       </div>
