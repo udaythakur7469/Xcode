@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import { X } from "lucide-react";
 
 export interface FABProps {
@@ -26,6 +26,28 @@ const FAB: React.FC<FABProps> = ({
   side,
   isBeingRepelled,
 }) => {
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const hasDragged = useRef(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+    hasDragged.current = false;
+    onDragStart(e);
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    // Only trigger onClick if we haven't dragged
+    const dragDistance = Math.sqrt(
+      Math.pow(e.clientX - dragStartPos.current.x, 2) +
+        Math.pow(e.clientY - dragStartPos.current.y, 2)
+    );
+
+    // If dragged more than 5 pixels, don't trigger click
+    if (dragDistance < 5) {
+      onClick();
+    }
+  };
+
   return (
     <div
       style={{
@@ -42,8 +64,8 @@ const FAB: React.FC<FABProps> = ({
       className="group"
     >
       <button
-        onMouseDown={onDragStart}
-        onClick={onClick}
+        onMouseDown={handleMouseDown}
+        onClick={handleClick}
         className="relative w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all cursor-grab active:cursor-grabbing flex items-center justify-center"
         aria-label={label}
       >

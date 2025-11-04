@@ -1,6 +1,6 @@
-import { Button } from "@/components/ui/button";
 import * as React from "react";
 import { useRef, useState, useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
 
 interface FloatingDialogProps {
   open: boolean;
