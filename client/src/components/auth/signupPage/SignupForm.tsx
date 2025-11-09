@@ -109,7 +109,10 @@ export const SignupForm = ({
         <PasswordStrengthMeter password={passwordValue} />
 
         {/* Submit Button */}
-        <Button type="submit" className="w-full">
+        <Button
+          type="submit"
+          className="w-full flex items-center justify-center"
+        >
           {isLoading ? (
             <PropagateLoader
               style={{
