@@ -1,6 +1,7 @@
 import * as React from "react";
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface FloatingDialogProps {
   open: boolean;
@@ -178,166 +179,178 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center"
-    >
-      <div
-        ref={dialogRef}
-        className="bg-background border rounded-lg shadow-lg relative"
-        style={{
-          width: `${size.width}px`,
-          height: `${size.height}px`,
-          left: `${position.x}px`,
-          top: `${position.y}px`,
-          position: "fixed",
-          pointerEvents: isResizing ? "none" : "auto",
-        }}
-        onMouseDown={(e) => {
-          e.stopPropagation(); // Prevent overlay click when clicking on dialog
-          if (isResizing) e.stopPropagation();
-        }}
-      >
-        {/* Edge Handles */}
-        {/* Left */}
-        <div
-          className="absolute left-1 top-1/2 -translate-y-1/2 h-8 w-1 cursor-w-resize bg-gray-300 rounded-full z-10"
-          onMouseDown={(e) => handleResizeMouseDown(e, "left")}
-        />
-        {/* Right */}
-        <div
-          className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-1 cursor-e-resize bg-gray-300 rounded-full z-10"
-          onMouseDown={(e) => handleResizeMouseDown(e, "right")}
-        />
-        {/* Top */}
-        <div
-          className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-1 cursor-n-resize bg-gray-300 rounded-full z-10"
-          onMouseDown={(e) => handleResizeMouseDown(e, "top")}
-        />
-        {/* Bottom */}
-        <div
-          className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 cursor-s-resize bg-gray-300 rounded-full z-10"
-          onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
-        />
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center"
+        >
+          <motion.div
+            ref={dialogRef}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            className="bg-background border rounded-lg shadow-lg relative"
+            style={{
+              width: `${size.width}px`,
+              height: `${size.height}px`,
+              left: `${position.x}px`,
+              top: `${position.y}px`,
+              position: "fixed",
+              pointerEvents: isResizing ? "none" : "auto",
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              if (isResizing) e.stopPropagation();
+            }}
+          >
+            {/* Edge Handles */}
+            {/* Left */}
+            <div
+              className="absolute left-1 top-1/2 -translate-y-1/2 h-8 w-1 cursor-w-resize bg-gray-300 rounded-full z-10"
+              onMouseDown={(e) => handleResizeMouseDown(e, "left")}
+            />
+            {/* Right */}
+            <div
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-1 cursor-e-resize bg-gray-300 rounded-full z-10"
+              onMouseDown={(e) => handleResizeMouseDown(e, "right")}
+            />
+            {/* Top */}
+            <div
+              className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-1 cursor-n-resize bg-gray-300 rounded-full z-10"
+              onMouseDown={(e) => handleResizeMouseDown(e, "top")}
+            />
+            {/* Bottom */}
+            <div
+              className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 cursor-s-resize bg-gray-300 rounded-full z-10"
+              onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
+            />
 
-        {/* Corner Handles */}
-        {/* Top-left */}
-        <div
-          className="absolute left-0 top-0 cursor-nw-resize z-10"
-          onMouseDown={(e) => handleResizeMouseDown(e, "top-left")}
-        >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M6 6H18M6 6V18"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-        {/* Top-right */}
-        <div
-          className="absolute right-0 top-0 cursor-ne-resize z-10"
-          onMouseDown={(e) => handleResizeMouseDown(e, "top-right")}
-        >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M18 6H6M18 6V18"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-        {/* Bottom-left */}
-        <div
-          className="absolute left-0 bottom-0 cursor-sw-resize z-10"
-          onMouseDown={(e) => handleResizeMouseDown(e, "bottom-left")}
-        >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M6 18H18M6 18V6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-        {/* Bottom-right */}
-        <div
-          className="absolute right-0 bottom-0 cursor-se-resize z-10"
-          onMouseDown={(e) => handleResizeMouseDown(e, "bottom-right")}
-        >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M18 18H6M18 18V6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        </div>
-
-        {/* Header */}
-        <div
-          className="cursor-move active:cursor-grabbing p-6 pb-4 flex justify-between items-start border-b"
-          onMouseDown={handleDragMouseDown}
-        >
-          <h2 className="flex-1 text-lg font-semibold">{title}</h2>
-          <div className="flex items-center gap-2">
-            {enableReset && (
-              <Button
-                variant="secondary"
-                onClick={handleReset}
-                className="text-small text-white hover:text-green-600 rounded"
-                title="Reset position and size"
-              >
-                Reset
-              </Button>
-            )}
-            <Button
-              variant="secondary"
-              onClick={() => onOpenChange(false)}
-              className="text-small text-white hover:text-red-500 rounded p-2"
-              title="Close"
+            {/* Corner Handles */}
+            {/* Top-left */}
+            <div
+              className="absolute left-0 top-0 cursor-nw-resize z-10"
+              onMouseDown={(e) => handleResizeMouseDown(e, "top-left")}
             >
-              ✕
-            </Button>
-          </div>
-        </div>
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M6 6H18M6 6V18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            {/* Top-right */}
+            <div
+              className="absolute right-0 top-0 cursor-ne-resize z-10"
+              onMouseDown={(e) => handleResizeMouseDown(e, "top-right")}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M18 6H6M18 6V18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            {/* Bottom-left */}
+            <div
+              className="absolute left-0 bottom-0 cursor-sw-resize z-10"
+              onMouseDown={(e) => handleResizeMouseDown(e, "bottom-left")}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M6 18H18M6 18V6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            {/* Bottom-right */}
+            <div
+              className="absolute right-0 bottom-0 cursor-se-resize z-10"
+              onMouseDown={(e) => handleResizeMouseDown(e, "bottom-right")}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M18 18H6M18 18V6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
 
-        {/* Content */}
-        <div
-          className="overflow-auto px-6 pb-6"
-          style={{ height: contentHeight }}
-        >
-          {children}
-        </div>
-      </div>
-    </div>
+            {/* Header */}
+            <div
+              className="cursor-move active:cursor-grabbing p-6 pb-4 flex justify-between items-start border-b"
+              onMouseDown={handleDragMouseDown}
+            >
+              <h2 className="flex-1 text-lg font-semibold">{title}</h2>
+              <div className="flex items-center gap-2">
+                {enableReset && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleReset}
+                    className="text-small text-white hover:text-green-600 rounded"
+                    title="Reset position and size"
+                  >
+                    Reset
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  onClick={() => onOpenChange(false)}
+                  className="text-small text-white hover:text-red-500 rounded p-2"
+                  title="Close"
+                >
+                  ✕
+                </Button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div
+              className="overflow-auto px-6 pb-6"
+              style={{ height: contentHeight }}
+            >
+              {children}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
