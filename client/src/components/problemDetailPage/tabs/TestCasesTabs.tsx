@@ -40,9 +40,9 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
       <Tabs
         value={activeTab}
         onValueChange={handleValueChange}
-        className="w-auto"
+        className="w-full"
       >
-        <TabsList>
+        <TabsList className="w-full">
           <TabsTrigger
             value="Test cases"
             className="hover:bg-gray-100 hover:text-black flex-1 text-center"
@@ -58,12 +58,14 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
             Results
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="Test cases">
-          <TestCasesPanel />
-        </TabsContent>
-        <TabsContent value="Results">
-          <ResultsPanel />
-        </TabsContent>
+        <div className="h-full w-full">
+          <TabsContent value="Test cases">
+            <TestCasesPanel />
+          </TabsContent>
+          <TabsContent value="Results">
+            <ResultsPanel />
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   );

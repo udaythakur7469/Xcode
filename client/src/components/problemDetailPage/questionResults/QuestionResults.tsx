@@ -11,9 +11,9 @@ const QuestionResults: React.FC<QuestionResultsProps> = () => {
   const { submitCodeResult, isSubmittingCode } = useSubmissionStore();
 
   return (
-    <div className="h-full w-full overflow-y-auto p-6">
+    <div className="h-full w-full overflow-y-auto">
       {/* Loading State for Submit Code */}
-      <QuestionResultsLoader isLoading={isSubmittingCode} />
+      <QuestionResultsLoader isLoading={isSubmittingCode} size={150} />
 
       {/* Show submit code results as JSON */}
       {submitCodeResult && !isSubmittingCode && (

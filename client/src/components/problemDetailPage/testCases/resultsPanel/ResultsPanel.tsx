@@ -9,8 +9,8 @@ const ResultsPanel: React.FC<ResultsPanelProps> = () => {
   const { runCodeResult, isRunningCode } = useSubmissionStore();
 
   return (
-    <div className="h-full w-full overflow-y-auto">
-      <QuestionResultsLoader isLoading={isRunningCode} />
+    <div className="h-full w-full flex justify-center items-center overflow-y-auto">
+      <QuestionResultsLoader isLoading={isRunningCode} size={50} />
       {runCodeResult && !isRunningCode && (
         <Card className="border-2 shadow-lg">
           <CardContent className="pt-6">
