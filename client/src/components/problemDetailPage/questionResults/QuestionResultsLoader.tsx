@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { MoonLoader } from "react-spinners";
 
-type QuestionResultsLoaderProps = { isLoading: boolean };
+type QuestionResultsLoaderProps = { isLoading: boolean; size: number };
 
 const QuestionResultsLoader: React.FC<QuestionResultsLoaderProps> = ({
   isLoading,
+  size,
 }) => {
   const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
   const [dots, setDots] = useState("");
@@ -81,10 +82,10 @@ const QuestionResultsLoader: React.FC<QuestionResultsLoaderProps> = ({
   if (!isLoading) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-4">
+    <div className="h-full w-full flex flex-col items-center justify-center space-y-4">
       {/* Spinner */}
       <div className="relative">
-        <MoonLoader size={150} color="#22C55E" />
+        <MoonLoader size={size} color="#22C55E" />
       </div>
 
       {/* Text with dots */}
