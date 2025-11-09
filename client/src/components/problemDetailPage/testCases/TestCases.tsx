@@ -11,12 +11,14 @@ type TestCasesProps = {
   onMaximize?: () => void;
   isMaximized?: boolean;
   showTestCasesResultsTab?: boolean;
+  setShowTestCasesResultsTab: (show: boolean) => void;
 };
 
 const TestCases: React.FC<TestCasesProps> = ({
   onMaximize,
   isMaximized = false,
   showTestCasesResultsTab = false,
+  setShowTestCasesResultsTab,
 }) => {
   const [activeTab, setActiveTab] = useState<"Test cases" | "Results">(
     "Test cases"
@@ -36,6 +38,9 @@ const TestCases: React.FC<TestCasesProps> = ({
 
   const handleTabChange = (tab: "Results" | "Test cases") => {
     setActiveTab(tab);
+    if (tab == "Test cases") {
+      setShowTestCasesResultsTab(false);
+    }
   };
 
   return (
