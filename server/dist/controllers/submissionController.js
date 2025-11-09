@@ -239,7 +239,6 @@ export const submitCode = async (req, res) => {
             return res.status(400).json({
                 message: "Code failed for a test case",
                 failedTestCase,
-                code,
                 language,
                 runtimeInMilliseconds, // Pass converted runtime
                 memoryInMegabytes, // Pass converted memory
@@ -254,7 +253,6 @@ export const submitCode = async (req, res) => {
         // Return success response
         res.status(200).json({
             message: "All test cases passed",
-            code,
             language,
             runtimeInMilliseconds, // Pass converted runtime
             memoryInMegabytes, // Pass converted memory
