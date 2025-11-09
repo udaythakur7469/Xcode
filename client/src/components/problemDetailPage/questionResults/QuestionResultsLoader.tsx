@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { MoonLoader } from "react-spinners";
 
 type QuestionResultsLoaderProps = { isLoading: boolean };
 
@@ -80,14 +81,14 @@ const QuestionResultsLoader: React.FC<QuestionResultsLoaderProps> = ({
   if (!isLoading) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-4 py-8">
+    <div className="flex flex-col items-center justify-center space-y-4">
       {/* Spinner */}
       <div className="relative">
-        <div className="w-8 h-8 border-4 border-gray-200 border-t-green-500 rounded-full animate-spin"></div>
+        <MoonLoader size={150} color="#22C55E" />
       </div>
 
       {/* Text with dots */}
-      <div className="text-gray-600 text-lg font-medium min-h-[28px] flex items-center">
+      <div className="text-white text-2xl font-medium min-h-[28px] flex items-center">
         <span>
           {shuffledMessages[currentMessageIndex]}
           {dots}
