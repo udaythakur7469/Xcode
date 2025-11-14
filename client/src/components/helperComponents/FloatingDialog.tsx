@@ -323,7 +323,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                   <Button
                     variant="secondary"
                     onClick={handleReset}
-                    className="text-small text-white hover:text-green-600 rounded"
+                    className="text-small text-white hover:text-yellow-600 rounded"
                     title="Reset position and size"
                   >
                     Reset
