@@ -5,9 +5,8 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import QuestionTabs from "../tabs/QuestionTabs";
-import TestCases from "../testCases/TestCases";
 import CodeEditor from "../codePanel/editor/CodeEditor";
-import TestCasesTabs2 from "../tabs/TestCasesTabs2";
+import TestCasesTabs from "../tabs/TestCasesTabs";
 
 type ResizablePanelsProps = {
   resetLayoutTrigger?: number;
@@ -285,7 +284,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
               className="ml-1 mt-1 rounded-lg border"
             >
               <div className="flex h-full items-center justify-center">
-                <TestCasesTabs2
+                <TestCasesTabs
                   onMaximize={handleTestCasesMaximize}
                   isMaximized={isTestCasesMaximized}
                   showTestCasesResultsTab={showTestCasesResultsTab}
