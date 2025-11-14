@@ -79,11 +79,9 @@
     useEffect(() => {
       if (getPostCardData) {
         setPosts(getPostCardData);
-        console.log("Posts data:", getPostCardData);
       }
       if (DraftPosts) {
         setDraftPosts(DraftPosts);
-        console.log("Draft Posts data:", DraftPosts);
       }
 
       if (draftPosts.length > 0) {
