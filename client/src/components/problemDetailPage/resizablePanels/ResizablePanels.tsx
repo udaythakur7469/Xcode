@@ -91,9 +91,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 
   const handleCodeSubmit = () => {
     setShowResultsTab(true);
-    setShowTestCasesResultsTab(true);
-    setVerticalSizes([60, 40]);
-    setShouldResize(true);
   };
 
   const handleCodeRun = () => {
@@ -101,8 +98,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     setVerticalSizes([60, 40]);
     setShouldResize(true);
   };
-
-  console.log("showTestCasesResultsTab", showTestCasesResultsTab);
 
   // Left panel (QuestionTabs) maximize function
   const handleLeftMaximize = () => {
