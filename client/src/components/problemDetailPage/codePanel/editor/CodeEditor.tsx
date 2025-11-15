@@ -30,6 +30,10 @@ type CodeEditorProps = {
   isMaximized?: boolean;
   runCodeTrigger?: number;
   submitCodeTrigger?: number;
+  code: string;
+  setCode: React.Dispatch<React.SetStateAction<string>>;
+  language: string;
+  setLanguage: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -39,9 +43,11 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   isMaximized = false,
   runCodeTrigger,
   submitCodeTrigger,
+  code,
+  setCode,
+  language,
+  setLanguage,
 }) => {
-  const [code, setCode] = useState<string>("");
-  const [language, setLanguage] = useState<string>("cpp");
   const [theme, setTheme] = useState<string>("dark");
   const [fontSize, setFontSize] = useState<number>(14);
   const [problemId, setProblemId] = useState<number | null>(null);
@@ -123,6 +129,9 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   };
 
   const handleRunCode = async () => {
+    if (isRunningCode || isSubmittingCode) {
+      return;
+    }
     if (!problemTitle) {
       toast.error("Problem title not found");
       return;
@@ -141,10 +150,14 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
       toast.success("Code executed");
     } catch (error) {
       toast.error("Failed to run code");
+      console.error("runCodeError", error);
     }
   };
 
   const handleSubmitCode = async () => {
+    if (isRunningCode || isSubmittingCode) {
+      return;
+    }
     if (!problemTitle) {
       toast.error("Problem title not found");
       return;
@@ -164,6 +177,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
       toast.success("Code submitted");
     } catch (error) {
       toast.error("Failed to submit code");
+      console.error("submitCodeError", error);
     }
   };
 

@@ -12,12 +12,20 @@ type ResizablePanelsProps = {
   resetLayoutTrigger?: number;
   runCodeTrigger?: number;
   submitCodeTrigger?: number;
+  code: string;
+  setCode: React.Dispatch<React.SetStateAction<string>>;
+  language: string;
+  setLanguage: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   resetLayoutTrigger,
   runCodeTrigger,
   submitCodeTrigger,
+  code,
+  setCode,
+  language,
+  setLanguage,
 }) => {
   const [showResultsTab, setShowResultsTab] = useState(false);
   const [showTestCasesResultsTab, setShowTestCasesResultsTab] = useState(false);
@@ -261,6 +269,10 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
                   onCodeRun={handleCodeRun}
                   onMaximize={handleRightMaximize}
                   isMaximized={isRightMaximized}
+                  code={code}
+                  setCode={setCode}
+                  language={language}
+                  setLanguage={setLanguage}
                 />
               </div>
             </ResizablePanel>

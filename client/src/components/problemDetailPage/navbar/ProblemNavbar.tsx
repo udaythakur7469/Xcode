@@ -5,7 +5,7 @@ import {
   MenubarMenu,
   MenubarTrigger,
 } from "@/components/ui/problem-detail-menubar";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Brain,
   ChevronLeft,
@@ -34,12 +34,18 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { toast } from "sonner";
+import { useSubmissionStore } from "@/features/submissionStore";
 
 type ProblemNavbarProps = {
   onResetLayout?: () => void;
   onRunCode?: () => void;
   onSubmitCode?: () => void;
   onToggleSidebar?: () => void;
+  code: string;
+  setCode: React.Dispatch<React.SetStateAction<string>>;
+  language: string;
+  setLanguage: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
@@ -47,10 +53,18 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   onRunCode,
   onSubmitCode,
   onToggleSidebar,
+  code,
+  setCode,
+  language,
+  setLanguage,
 }) => {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const problemTitle = searchParams.get("title");
 
   const { checkAuth, userData, isAuthenticated } = useUserStore();
+  const { runCode, isRunningCode, submitCode, isSubmittingCode } =
+    useSubmissionStore();
 
   useEffect(() => {
     checkAuth();
@@ -70,16 +84,57 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   };
 
   // Update the Run button click handler
-  const handleRunClick = () => {
-    if (onRunCode) {
-      onRunCode();
+  const handleRunClick = async () => {
+    if (isRunningCode || isSubmittingCode) {
+      return;
+    }
+    if (!problemTitle) {
+      toast.error("Problem title not found");
+      return;
+    }
+
+    if (!code.trim()) {
+      toast.error("Please write some code first");
+      return;
+    }
+
+    try {
+      if (onRunCode) {
+        onRunCode();
+      }
+      await runCode(language, code, problemTitle);
+      toast.success("Code executed");
+    } catch (error) {
+      toast.error("Failed to run code");
+      console.error("runCodeError", error);
     }
   };
 
   // Update the Submit button click handler
-  const handleSubmitClick = () => {
-    if (onSubmitCode) {
-      onSubmitCode();
+  const handleSubmitClick = async () => {
+    if (isRunningCode || isSubmittingCode) {
+      return;
+    }
+    if (!problemTitle) {
+      toast.error("Problem title not found");
+      return;
+    }
+
+    if (!code.trim()) {
+      toast.error("Please write some code first");
+      return;
+    }
+
+    try {
+      if (onSubmitCode) {
+        onSubmitCode();
+      }
+      await submitCode(language, code, problemTitle);
+
+      toast.success("Code submitted");
+    } catch (error) {
+      toast.error("Failed to submit code");
+      console.error("submitCodeError", error);
     }
   };
 
@@ -141,30 +196,54 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
               <HoverCard>
                 <HoverCardTrigger asChild>
                   <div
-                    className="flex justify-center items-center rounded-md px-2 bg-secondary h-8 w-[90px] cursor-pointer"
+                    className={`flex justify-center items-center rounded-md px-2 bg-secondary h-8 w-[90px] ${
+                      isRunningCode || isSubmittingCode
+                        ? "cursor-not-allowed opacity-75 pointer-events-none"
+                        : "cursor-pointer hover:bg-secondary/80"
+                    }`}
                     onClick={handleRunClick}
                   >
                     <Play className="mr-2 h-4 w-4" />
-                    Run
+                    <p
+                      className={`text-white ${
+                        isRunningCode || isSubmittingCode
+                          ? "cursor-not-allowed"
+                          : "cursor-pointer"
+                      }`}
+                    >
+                      {isRunningCode ? "Running..." : "Run"}
+                    </p>
                   </div>
                 </HoverCardTrigger>
                 <HoverCardContent className="mr-5 p-1">
-                  Run Code
+                  {isRunningCode ? "Running..." : "Run Code"}
                 </HoverCardContent>
               </HoverCard>
 
               <HoverCard>
                 <HoverCardTrigger asChild>
                   <div
-                    className="flex justify-center items-center rounded-md px-2 bg-secondary h-8 cursor-pointer"
+                    className={`flex justify-center items-center rounded-md px-2 bg-secondary h-8 ${
+                      isRunningCode || isSubmittingCode
+                        ? "cursor-not-allowed opacity-75 pointer-events-none"
+                        : "cursor-pointer hover:bg-secondary/80"
+                    }`}
                     onClick={handleSubmitClick}
                   >
-                    <CloudUpload className="mr-2 h-4 w-4 text-green-500" />
-                    <p className="text-green-500 cursor-pointer">Submit</p>
+                    <CloudUpload className="mr-2 h-4 w-4 text-green-400" />
+                    <p
+                      className={`text-green-400 ${
+                        isRunningCode || isSubmittingCode
+                          ? "cursor-not-allowed"
+                          : "cursor-pointer"
+                      }`}
+                    >
+                      {isSubmittingCode ? "Submitting..." : "Submit"}
+                    </p>
                   </div>
                 </HoverCardTrigger>
                 <HoverCardContent className="mr-5 p-1">
-                  Submit Code
+                  {isSubmittingCode ? "Submitting..." : "Submit Code"}
                 </HoverCardContent>
               </HoverCard>
               <div className="flex justify-center items-center rounded-md p-1 bg-secondary h-8 w-auto cursor-pointer">

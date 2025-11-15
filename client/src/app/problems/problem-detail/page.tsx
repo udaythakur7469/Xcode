@@ -13,6 +13,9 @@ const ProblemDetailsPage: React.FC = () => {
   const [runCodeTrigger, setRunCodeTrigger] = useState(0);
   const [submitCodeTrigger, setSubmitCodeTrigger] = useState(0);
 
+  const [code, setCode] = useState<string>("");
+  const [language, setLanguage] = useState<string>("cpp");
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleResetLayout = () => {
@@ -42,11 +45,19 @@ const ProblemDetailsPage: React.FC = () => {
           onRunCode={handleNavbarRunCode}
           onSubmitCode={handleNavbarSubmitCode}
           onToggleSidebar={handleToggleSidebar}
+          code={code}
+          setCode={setCode}
+          language={language}
+          setLanguage={setLanguage}
         />
         <ProblemDetail
           resetLayoutTrigger={resetLayoutTrigger}
           runCodeTrigger={runCodeTrigger}
           submitCodeTrigger={submitCodeTrigger}
+          code={code}
+          setCode={setCode}
+          language={language}
+          setLanguage={setLanguage}
         />
         {isSidebarOpen && (
           <>
