@@ -46,9 +46,7 @@ const ProblemDetailsPage: React.FC = () => {
           onSubmitCode={handleNavbarSubmitCode}
           onToggleSidebar={handleToggleSidebar}
           code={code}
-          setCode={setCode}
           language={language}
-          setLanguage={setLanguage}
         />
         <ProblemDetail
           resetLayoutTrigger={resetLayoutTrigger}

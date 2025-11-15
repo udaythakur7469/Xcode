@@ -43,9 +43,7 @@ type ProblemNavbarProps = {
   onSubmitCode?: () => void;
   onToggleSidebar?: () => void;
   code: string;
-  setCode: React.Dispatch<React.SetStateAction<string>>;
   language: string;
-  setLanguage: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
@@ -54,9 +52,7 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   onSubmitCode,
   onToggleSidebar,
   code,
-  setCode,
   language,
-  setLanguage,
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();

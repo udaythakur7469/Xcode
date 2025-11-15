@@ -21,6 +21,7 @@ import SubmissionTabs from "../questionSubmissions/submissionTabs/SubmissionTabs
 import { AnimatePresence, motion } from "framer-motion";
 import DiscussionSection from "../questionDiscussion/DiscussionSection";
 import QuestionCodeResults from "../questionResults/QuestionResults";
+import { useSubmissionStore } from "@/features/submissionStore";
 
 type QuestionTabsProps = {
   showResultsTab?: boolean;
@@ -38,6 +39,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   isMaximized = false,
 }) => {
   const [activeTab, setActiveTab] = useState("description");
+  const { clearSubmitCodeResult } = useSubmissionStore();
 
   useEffect(() => {
     if (showResultsTab) {
@@ -65,6 +67,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     if (onCloseResultsTab) {
       onCloseResultsTab(); // Call parent to hide the tab
     }
+    clearSubmitCodeResult();
     const lastOpenedTab = sessionStorage.getItem(SESSION_KEY) || "description";
     setActiveTab(lastOpenedTab);
   };
