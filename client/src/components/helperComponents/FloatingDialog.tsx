@@ -7,7 +7,8 @@ interface FloatingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
-  title?: string;
+  title?: React.ReactNode;
+  dialogType: string;
   defaultSize?: { width: number; height: number };
   defaultPosition?: { x: number; y: number };
   enableReset?: boolean;
@@ -18,6 +19,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   onOpenChange,
   children,
   title,
+  dialogType,
   defaultSize = { width: 500, height: 300 },
   defaultPosition = { x: 100, y: 100 },
   enableReset = false,
@@ -28,6 +30,13 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   const [resizeDirection, setResizeDirection] = useState("");
   const [position, setPosition] = useState(() => {
     if (typeof window === "undefined") return defaultPosition;
+
+    if (dialogType === "CommandPalette") {
+      return {
+        x: Math.max(0, window.innerWidth / 2 - defaultSize.width / 2),
+        y: Math.max(0, window.innerHeight / 2 - defaultSize.height / 2 - 100),
+      };
+    }
 
     return {
       x: Math.max(0, window.innerWidth / 2 - defaultSize.width / 2),
@@ -58,6 +67,31 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
     },
     [size.width, size.height]
   );
+
+  // Reposition dialog when window is resized
+  const repositionOnResize = useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    // Constrain size to fit within window
+    setSize((prevSize) => ({
+      width: Math.min(prevSize.width, window.innerWidth - 100),
+      height: Math.min(prevSize.height, window.innerHeight - 100),
+    }));
+
+    // Reposition to stay within bounds
+    setPosition((prevPos) => {
+      const constrainedWidth = Math.min(size.width, window.innerWidth - 100);
+      const constrainedHeight = Math.min(size.height, window.innerHeight - 100);
+
+      const maxX = Math.max(50, window.innerWidth - constrainedWidth);
+      const maxY = Math.max(50, window.innerHeight - constrainedHeight);
+
+      return {
+        x: Math.max(0, Math.min(prevPos.x, maxX)),
+        y: Math.max(0, Math.min(prevPos.y, maxY)),
+      };
+    });
+  }, [size.width, size.height]);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -137,9 +171,13 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   // Reset to default position and size
   const handleReset = () => {
     if (typeof window !== "undefined") {
+      const yOffset = dialogType === "CommandPalette" ? -100 : 0;
       const centeredPosition = {
         x: Math.max(0, window.innerWidth / 2 - defaultSize.width / 2),
-        y: Math.max(0, window.innerHeight / 2 - defaultSize.height / 2),
+        y: Math.max(
+          0,
+          window.innerHeight / 2 - defaultSize.height / 2 + yOffset
+        ),
       };
       setSize(defaultSize);
       setPosition(centeredPosition);
@@ -160,6 +198,18 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
       };
     }
   }, [isResizing, isDragging, handleMouseMove, handleMouseUp]);
+
+  // Handle window resize
+  useEffect(() => {
+    if (!open) return;
+
+    const handleResize = () => {
+      repositionOnResize();
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [open, repositionOnResize]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -314,16 +364,25 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
             {/* Header */}
             <div
-              className="cursor-move active:cursor-grabbing p-6 pb-4 flex justify-between items-start border-b"
+              className="cursor-move active:cursor-grabbing p-6 pb-4 flex flex-row items-center justify-between border-b"
               onMouseDown={handleDragMouseDown}
             >
-              <h2 className="flex-1 text-lg font-semibold">{title}</h2>
+              <div
+                className="flex-1 text-lg font-semibold mr-2"
+                onMouseDown={(e) => {
+                  if (dialogType === "CommandPalette") {
+                    e.stopPropagation();
+                  }
+                }}
+              >
+                {title}
+              </div>
               <div className="flex items-center gap-2">
                 {enableReset && (
                   <Button
                     variant="secondary"
                     onClick={handleReset}
-                    className="text-small text-white hover:text-yellow-600 rounded"
+                    className="text-small text-white hover:text-yellow-600 rounded p-2"
                     title="Reset position and size"
                   >
                     Reset
@@ -332,7 +391,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                 <Button
                   variant="secondary"
                   onClick={() => onOpenChange(false)}
-                  className="text-small text-white hover:text-red-500 rounded p-2"
+                  className="text-small text-red-500 hover:text-red-800 rounded p-2"
                   title="Close"
                 >
                   ✕

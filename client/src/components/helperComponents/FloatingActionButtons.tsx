@@ -1,10 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { MessageSquare, Terminal } from "lucide-react";
 import FAB from "./FAB";
 import { useFABSystem } from "@/hooks/useFABSystem";
 import FloatingDialog from "./FloatingDialog";
+import AIChatDialogContent from "./aiChatDialog/content/AIChatDialogContent";
+import AIChatDialogTitle from "./aiChatDialog/title/AIChatDialogTitle";
+import CommandPaletteDialogTitle from "./commandPaletteDialog/title/CommandPaletteDialogTitle";
+import CommandPaletteDialogContent from "./commandPaletteDialog/content/CommandPaletteDialogContent";
 
 const FloatingActionButtons = () => {
   const {
@@ -25,6 +29,34 @@ const FloatingActionButtons = () => {
     handleDragStart,
     handleFABClick,
   } = useFABSystem();
+
+  const [commandPaletteSearchQuery, setCommandPaletteSearchQuery] =
+    useState("");
+
+  const handleCommandPaletteSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setCommandPaletteSearchQuery(query);
+  };
+
+  const handleCommandPaletteClear = () => {
+    setCommandPaletteSearchQuery(""); // Clear the search query
+    // Clear search results by setting them to null
+    //usePostStore.setState({ searchResults: null });
+  };
+
+  /* Effect to trigger search when query changes
+    useEffect(() => {
+      if (setCommandPaletteSearchQuery.trim()) {
+        const timeoutId = setTimeout(() => {
+          searchPosts(setCommandPaletteSearchQuery.trim());
+        }, 500); // Simple debounce
+  
+        return () => clearTimeout(timeoutId);
+      } else {
+        // When search query becomes empty, clear search results
+        usePostStore.setState({ searchResults: null });
+      }
+    }, [setCommandPaletteSearchQuery, searchPosts]);*/
 
   if (!isMounted) {
     return null;
@@ -66,26 +98,30 @@ const FloatingActionButtons = () => {
       <FloatingDialog
         open={aiChatDialogOpen}
         onOpenChange={setAiChatDialogOpen}
-        title="AI Chat"
+        title={<AIChatDialogTitle />}
+        dialogType="AIChat"
         defaultSize={{ width: 600, height: 500 }}
         enableReset={true}
       >
-        <div className="h-full flex justify-center items-center">
-          AI chat box
-        </div>
+        <AIChatDialogContent />
       </FloatingDialog>
 
       {/* Command Palette Dialog */}
       <FloatingDialog
         open={commandPaletteDialogOpen}
         onOpenChange={setCommandPaletteDialogOpen}
-        title="Command Palette"
+        title={
+          <CommandPaletteDialogTitle
+            commandPaletteSearchQuery={commandPaletteSearchQuery}
+            handleCommandPaletteSearch={handleCommandPaletteSearch}
+            handleCommandPaletteClear={handleCommandPaletteClear}
+          />
+        }
+        dialogType="CommandPalette"
         defaultSize={{ width: 600, height: 400 }}
         enableReset={true}
       >
-        <div className="h-full flex justify-center items-center">
-          Command Palette content
-        </div>
+        <CommandPaletteDialogContent />
       </FloatingDialog>
     </>
   );
