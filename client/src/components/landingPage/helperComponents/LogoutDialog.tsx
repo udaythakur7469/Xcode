@@ -10,19 +10,28 @@ import { PropagateLoader } from "react-spinners";
 import { useAuthStore } from "@/features/authStore";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useUserStore } from "@/features/userStore";
 
 type LogoutDialogProps = {
   isOpen?: boolean;
+  onClose?: () => void;
 };
 
-const LogoutDialog: React.FC<LogoutDialogProps> = ({ isOpen }) => {
+const LogoutDialog: React.FC<LogoutDialogProps> = ({ isOpen, onClose }) => {
   const router = useRouter();
   const pathname = usePathname();
   const { logout, isLoading, error } = useAuthStore();
 
   const handleLogout = async () => {
     try {
+      // Close dialog first
+      onClose?.();
+
+      // Small delay to let dialog close animation complete
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
       await logout();
+
       // Redirect to home page after successful logout
       if (pathname.startsWith("/account/")) {
         router.push("/");

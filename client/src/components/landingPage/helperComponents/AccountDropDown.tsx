@@ -16,6 +16,7 @@ const AccountDropDown: React.FC<AccountDropDownProps> = () => {
   const router = useRouter();
   const pathname = usePathname();
 
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState<boolean>(false);
   const [showAccountButton, setShowAccountButton] = useState<boolean>(false);
 
   const { userData } = useUserStore();
@@ -48,7 +49,7 @@ const AccountDropDown: React.FC<AccountDropDownProps> = () => {
           </>
         )}
         <DropdownMenuSeparator />
-        <Dialog>
+        <Dialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
           <DialogTrigger asChild>
             <DropdownMenuItem
               onPointerDown={(event) => event.stopPropagation()}
@@ -60,7 +61,7 @@ const AccountDropDown: React.FC<AccountDropDownProps> = () => {
               Log Out
             </DropdownMenuItem>
           </DialogTrigger>
-          <LogoutDialog />
+          <LogoutDialog onClose={() => setIsLogoutDialogOpen(false)}/>
         </Dialog>
       </DropdownMenuContent>
     </>
