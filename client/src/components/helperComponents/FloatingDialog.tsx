@@ -364,7 +364,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
             {/* Header */}
             <div
-              className="cursor-move active:cursor-grabbing p-6 pb-4 flex flex-row items-center justify-between border-b"
+              className="cursor-move active:cursor-grabbing p-6 pb-4 flex flex-row items-center justify-between"
               onMouseDown={handleDragMouseDown}
             >
               <div

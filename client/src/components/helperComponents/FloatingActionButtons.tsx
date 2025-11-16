@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { MessageSquare, Terminal } from "lucide-react";
 import FAB from "./FAB";
 import { useFABSystem } from "@/hooks/useFABSystem";
@@ -9,6 +9,11 @@ import AIChatDialogContent from "./aiChatDialog/content/AIChatDialogContent";
 import AIChatDialogTitle from "./aiChatDialog/title/AIChatDialogTitle";
 import CommandPaletteDialogTitle from "./commandPaletteDialog/title/CommandPaletteDialogTitle";
 import CommandPaletteDialogContent from "./commandPaletteDialog/content/CommandPaletteDialogContent";
+import { SignupDialog } from "../auth/signupPage/SignupDialog";
+import { LoginDialog } from "../auth/loginPage/LoginDialog";
+import { useUserStore } from "@/features/userStore";
+import LogoutDialog from "../landingPage/helperComponents/LogoutDialog";
+import { Dialog } from "../ui/dialog";
 
 const FloatingActionButtons = () => {
   const {
@@ -32,31 +37,29 @@ const FloatingActionButtons = () => {
 
   const [commandPaletteSearchQuery, setCommandPaletteSearchQuery] =
     useState("");
+  // State to control the login dialog
+  const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
+  const [isSignupOpen, setIsSignupOpen] = useState<boolean>(false);
+  const [isLogoutOpen, setIsLogoutOpen] = useState<boolean>(false);
 
-  const handleCommandPaletteSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const { checkAuth } = useUserStore();
+
+  useEffect(() => {
+    if (!commandPaletteDialogOpen) {
+      setCommandPaletteSearchQuery("");
+    }
+  }, [commandPaletteDialogOpen]);
+
+  const handleCommandPaletteSearch = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const query = e.target.value;
     setCommandPaletteSearchQuery(query);
   };
 
   const handleCommandPaletteClear = () => {
-    setCommandPaletteSearchQuery(""); // Clear the search query
-    // Clear search results by setting them to null
-    //usePostStore.setState({ searchResults: null });
+    setCommandPaletteSearchQuery("");
   };
-
-  /* Effect to trigger search when query changes
-    useEffect(() => {
-      if (setCommandPaletteSearchQuery.trim()) {
-        const timeoutId = setTimeout(() => {
-          searchPosts(setCommandPaletteSearchQuery.trim());
-        }, 500); // Simple debounce
-  
-        return () => clearTimeout(timeoutId);
-      } else {
-        // When search query becomes empty, clear search results
-        usePostStore.setState({ searchResults: null });
-      }
-    }, [setCommandPaletteSearchQuery, searchPosts]);*/
 
   if (!isMounted) {
     return null;
@@ -121,8 +124,43 @@ const FloatingActionButtons = () => {
         defaultSize={{ width: 600, height: 400 }}
         enableReset={true}
       >
-        <CommandPaletteDialogContent />
+        <CommandPaletteDialogContent
+          onClose={() => setCommandPaletteDialogOpen(false)}
+          onOpenLogin={() => setIsLoginOpen(true)}
+          onOpenSignup={() => setIsSignupOpen(true)}
+          onOpenLogout={() => setIsLogoutOpen(true)}
+          searchQuery={commandPaletteSearchQuery}
+        />
       </FloatingDialog>
+      {/* Login Dialog */}
+      <LoginDialog
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        openSignup={() => {
+          setIsLoginOpen(false);
+          setIsSignupOpen(true);
+        }}
+        onSuccessfulAuth={checkAuth}
+      />
+
+      {/* Signup Dialog */}
+      <SignupDialog
+        isOpen={isSignupOpen}
+        onClose={() => setIsSignupOpen(false)}
+        openLogin={() => {
+          setIsSignupOpen(false);
+          setIsLoginOpen(true);
+        }}
+        onSuccessfulAuth={checkAuth}
+      />
+
+      {/* Logout Dialog */}
+      <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+        <LogoutDialog
+          isOpen={isLogoutOpen}
+          onClose={() => setIsLogoutOpen(false)}
+        />
+      </Dialog>
     </>
   );
 };
