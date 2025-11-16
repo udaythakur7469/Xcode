@@ -1,5 +1,7 @@
-import { ChevronsRight } from "lucide-react";
+"use client";
+
 import React from "react";
+import { ChevronsRight } from "lucide-react";
 
 type CommandPaletteItemProps = {
   title: string;
