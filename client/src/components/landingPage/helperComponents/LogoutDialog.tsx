@@ -10,7 +10,6 @@ import { PropagateLoader } from "react-spinners";
 import { useAuthStore } from "@/features/authStore";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { useUserStore } from "@/features/userStore";
 
 type LogoutDialogProps = {
   isOpen?: boolean;
@@ -28,7 +27,7 @@ const LogoutDialog: React.FC<LogoutDialogProps> = ({ isOpen, onClose }) => {
       onClose?.();
 
       // Small delay to let dialog close animation complete
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       await logout();
 

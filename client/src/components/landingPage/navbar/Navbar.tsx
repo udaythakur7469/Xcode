@@ -9,14 +9,18 @@ import {
 } from "@/components/ui/hover-card";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { useUserStore } from "@/features/userStore";
 import { ThemeToggle } from "@/components/themes/themeToggle";
 import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import AccountDropDown from "../helperComponents/AccountDropDown";
-import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/logout-dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+} from "@/components/ui/logout-dropdown-menu";
+import { MoonLoader } from "react-spinners";
 
 type NavbarProps = {
   firstButton: string;
@@ -25,6 +29,9 @@ type NavbarProps = {
 
 const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
   const router = useRouter();
+  const pathname = usePathname();
+
+  const [isAuthChecked, setIsAuthChecked] = useState<boolean>(false);
 
   const goToPage = (Button: string) => {
     switch (Button) {
@@ -40,8 +47,25 @@ const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
   const { checkAuth, userData, isAuthenticated } = useUserStore();
 
   useEffect(() => {
-    checkAuth();
+    const initAuth = async () => {
+      await checkAuth();
+      setIsAuthChecked(true);
+    };
+    initAuth();
   }, [checkAuth]);
+
+  // Redirect if on account page and not authenticated
+  useEffect(() => {
+    if (!isAuthChecked) return; // Wait until auth check is done
+
+    const isAccountPage = pathname?.includes("/account");
+    if (isAccountPage && isAuthenticated === false) {
+      console.log(
+        "User not authenticated on account page, redirecting to home"
+      );
+      router.push("/");
+    }
+  }, [isAuthenticated, pathname, router, isAuthChecked]);
 
   const name = userData?.name;
 
@@ -55,6 +79,15 @@ const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
   // State to control the login dialog
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
+
+  const isAccountPage = pathname?.includes("/account");
+  if (!isAuthChecked && isAccountPage) {
+    return (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background">
+        <MoonLoader color="#ffffff" size={60} />
+      </div>
+    );
+  }
 
   return (
     <>
