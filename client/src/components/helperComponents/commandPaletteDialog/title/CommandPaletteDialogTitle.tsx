@@ -20,8 +20,9 @@ const CommandPaletteDialogTitle: React.FC<CommandPaletteDialogTitleProps> = ({
 
       {/* Input Field */}
       <Input
+        autoFocus
         className="w-full border-white bg-secondary h-[40px] pl-12 pr-10 placeholder-white text-xl"
-        placeholder="Search..."
+        placeholder="Type a command or search..."
         value={commandPaletteSearchQuery}
         onChange={handleCommandPaletteSearch}
       />
