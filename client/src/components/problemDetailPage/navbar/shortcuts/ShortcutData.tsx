@@ -30,10 +30,10 @@ export const shortcutKeys: string[][] = [
   ["Ctrl", "'"], // Run code
   ["Ctrl", "Enter"], // Submit code
   ["Ctrl", "Backspace"], // Reset code
-  ["Ctrl", "→"], // Maximize left panel
-  ["Ctrl", "→"], // Maximize right panel
-  ["Ctrl", "↑"], // Maximize bottom panel
-  ["Ctrl", "↓"], // Minimize bottom panel
+  ["Ctrl", "🡲"], // Maximize left panel
+  ["Ctrl", "🡰"], // Maximize right panel
+  ["Ctrl", "🡱"], // Maximize bottom panel
+  ["Ctrl", "🡳"], // Minimize bottom panel
   ["Ctrl", "Spacebar"], // Reset panel layout
   ["Alt", "1"], // Switch to description tab
   ["Alt", "2"], // Switch to editorial tab
@@ -46,8 +46,8 @@ export const shortcutKeys: string[][] = [
   ["Alt", "T"], // Start timer
   ["Alt", "Shift", "Backspace"], // Reset timer
   ["Alt", "Shift", "Spacebar"], // Play/Pause timer
-  ["Alt", "→"], // Open problem sidebar
-  ["Alt", "←"], // Close problem sidebar
+  ["Alt", "🡲"], // Open problem sidebar
+  ["Alt", "🡰"], // Close problem sidebar
   ["Alt", "H"], // Open hints dialog
-  ["Alt", "Shift", "/"], // Open shortcuts dialog
+  ["Alt", "/"], // Open shortcuts dialog
 ];
