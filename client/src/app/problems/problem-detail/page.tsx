@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import ProblemDetail from "@/components/problemDetailPage/resizablePanels/ResizablePanels";
+import ResizablePanels from "@/components/problemDetailPage/resizablePanels/ResizablePanels";
 import ProblemNavbar from "@/components/problemDetailPage/navbar/ProblemNavbar";
 import ProblemSidebar from "@/components/problemDetailPage/navbar/sidebar/ProblemSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -48,7 +48,7 @@ const ProblemDetailsPage: React.FC = () => {
           code={code}
           language={language}
         />
-        <ProblemDetail
+        <ResizablePanels
           resetLayoutTrigger={resetLayoutTrigger}
           runCodeTrigger={runCodeTrigger}
           submitCodeTrigger={submitCodeTrigger}

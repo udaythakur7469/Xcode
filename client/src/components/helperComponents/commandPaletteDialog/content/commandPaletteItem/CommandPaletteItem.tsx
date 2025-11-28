@@ -35,7 +35,7 @@ const CommandPaletteItem = forwardRef<HTMLDivElement, CommandPaletteItemProps>(
         ref={ref}
         className={`w-full h-auto p-2 my-2 flex flex-row border rounded-md cursor-pointer items-center transition-all duration-150 ${
           isSelected
-            ? "bg-blue-500/20 border-blue-500 scale-[1.02]"
+            ? "bg-blue-600/20 border-blue-600 scale-[1.02]"
             : "bg-transparent border-gray-700 hover:bg-gray-800/50 hover:border-gray-600"
         }`}
         onClick={onClick}

@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/problem-detail-menubar";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  Brain,
   ChevronLeft,
   ChevronRight,
   CloudUpload,
@@ -15,6 +14,7 @@ import {
   List,
   Play,
   Settings,
+  StickyNote,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/themes/themeToggle";
 import {
@@ -28,7 +28,6 @@ import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
 import Timer from "./Timer";
 import LayoutDropdown from "./LayoutDropdown";
-import FloatingDialog from "@/components/helperComponents/FloatingDialog";
 import {
   HoverCard,
   HoverCardContent,
@@ -73,7 +72,6 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
-  const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);
 
   const goToHomePage = () => {
     router.push("/");
@@ -180,13 +178,13 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                 <HoverCardTrigger asChild>
                   <div
                     className="flex justify-center items-center rounded-md px-2 bg-secondary h-8 cursor-pointer"
-                    onClick={() => setIsAIDialogOpen(true)}
+                    onClick={() => console.log("notes icon clicked")}
                   >
-                    <Brain className="h-4 w-4 text-yellow-400" />
+                    <StickyNote className="h-5 w-5 text-yellow-400" />
                   </div>
                 </HoverCardTrigger>
                 <HoverCardContent className="mr-5 p-1">
-                  AI Chat
+                  Sticky notes
                 </HoverCardContent>
               </HoverCard>
               <HoverCard>
@@ -312,13 +310,6 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
           setIsLoginOpen(true);
         }}
         onSuccessfulAuth={checkAuth}
-      />
-      <FloatingDialog
-        open={isAIDialogOpen}
-        onOpenChange={setIsAIDialogOpen}
-        title="AI Chat"
-        defaultSize={{ width: 600, height: 500 }}
-        enableReset={true}
       />
     </>
   );
