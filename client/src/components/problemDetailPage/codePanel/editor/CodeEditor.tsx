@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
@@ -93,42 +93,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   }, [baseCode]);
 
-  // Add useEffect to handle run code trigger from navbar
-  useEffect(() => {
-    if (runCodeTrigger && runCodeTrigger > 0) {
-      console.log("Run code triggered in CodeEditor from navbar");
-      handleRunCode();
-    }
-  }, [runCodeTrigger]);
-
-  // Add useEffect to handle submit code trigger from navbar
-  useEffect(() => {
-    if (submitCodeTrigger && submitCodeTrigger > 0) {
-      console.log("Submit code triggered in CodeEditor from navbar");
-      handleSubmitCode();
-    }
-  }, [submitCodeTrigger]);
-
-  const handleLanguageChange = (newLanguage: string) => {
-    setLanguage(newLanguage);
-  };
-
-  const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme);
-  };
-
-  const handleFontSizeChange = (newSize: number) => {
-    setFontSize(newSize);
-  };
-
-  const handleResetCode = async () => {
-    if (problemId) {
-      await fetchBaseClassCode(problemId, language);
-      setCode(baseCode || "");
-    }
-  };
-
-  const handleRunCode = async () => {
+  const handleRunCode = useCallback(async () => {
     if (isRunningCode || isSubmittingCode) {
       return;
     }
@@ -152,9 +117,17 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
       toast.error("Failed to run code");
       console.error("runCodeError", error);
     }
-  };
+  }, [
+    isRunningCode,
+    isSubmittingCode,
+    problemTitle,
+    code,
+    onCodeRun,
+    runCode,
+    language,
+  ]);
 
-  const handleSubmitCode = async () => {
+  const handleSubmitCode = useCallback(async () => {
     if (isRunningCode || isSubmittingCode) {
       return;
     }
@@ -173,18 +146,130 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         onCodeSubmit();
       }
       await submitCode(language, code, problemTitle);
-
       toast.success("Code submitted");
     } catch (error) {
       toast.error("Failed to submit code");
       console.error("submitCodeError", error);
     }
-  };
+  }, [
+    isRunningCode,
+    isSubmittingCode,
+    problemTitle,
+    code,
+    onCodeSubmit,
+    submitCode,
+    language,
+  ]);
 
-  const handleMaximizeMinimize = () => {
+  const handleResetCode = useCallback(async () => {
+    if (problemId) {
+      await fetchBaseClassCode(problemId, language);
+      setCode(baseCode || "");
+    }
+  }, [problemId, language, fetchBaseClassCode, baseCode, setCode]);
+
+  const handleMaximizeMinimize = useCallback(() => {
     if (onMaximize) {
       onMaximize();
     }
+  }, [onMaximize]);
+
+  // Add useEffect to handle run code trigger from navbar
+  useEffect(() => {
+    if (runCodeTrigger && runCodeTrigger > 0) {
+      console.log("Run code triggered in CodeEditor from navbar");
+      handleRunCode();
+    }
+
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isControl = e.ctrlKey || e.metaKey;
+      const isKey = e.key === "'";
+
+      if (isControl && isKey) {
+        e.preventDefault();
+        handleRunCode();
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [runCodeTrigger, handleRunCode]);
+
+  // Add useEffect to handle submit code trigger from navbar
+  useEffect(() => {
+    if (submitCodeTrigger && submitCodeTrigger > 0) {
+      console.log("Submit code triggered in CodeEditor from navbar");
+      handleSubmitCode();
+    }
+
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isControl = e.ctrlKey || e.metaKey;
+      const isEnter = e.key === "Enter";
+
+      if (isControl && isEnter) {
+        e.preventDefault();
+        handleSubmitCode();
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [submitCodeTrigger, handleSubmitCode]);
+
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isControl = e.ctrlKey || e.metaKey;
+      const isBackspace = e.key === "Backspace";
+
+      if (isControl && isBackspace) {
+        e.preventDefault();
+        handleResetCode();
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [handleResetCode]);
+
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isControl = e.ctrlKey || e.metaKey;
+      const isLeftArrow = e.key === "ArrowLeft";
+
+      // Ctrl + Right Arrow to maximize (when not maximized)
+      if (isControl && isLeftArrow && !isMaximized) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleMaximizeMinimize();
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [isMaximized, handleMaximizeMinimize]);
+
+  const handleLanguageChange = (newLanguage: string) => {
+    setLanguage(newLanguage);
+  };
+
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+  };
+
+  const handleFontSizeChange = (newSize: number) => {
+    setFontSize(newSize);
   };
 
   const getLanguageExtension = () => {

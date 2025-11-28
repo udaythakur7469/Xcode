@@ -1,6 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+} from "react";
 import { AlarmClock, RefreshCcw, Play, Pause, ChevronLeft } from "lucide-react";
 import {
   HoverCard,
@@ -11,11 +16,26 @@ import { motion, AnimatePresence } from "framer-motion";
 
 type TimerProps = {};
 
-const Timer: React.FC<TimerProps> = () => {
+export interface TimerRef {
+  toggleTimer: () => void;
+}
+
+const Timer = forwardRef<TimerRef, TimerProps>((props, ref) => {
   const [showTimer, setShowTimer] = useState<boolean>(false);
   const [time, setTime] = useState<number>(0);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isHidden, setIsHidden] = useState<boolean>(false);
+
+  // Expose methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    toggleTimer: () => {
+      if (!showTimer || isHidden) {
+        handleShowTimer();
+      } else {
+        handleHideTimer();
+      }
+    },
+  }));
 
   const formatTime = (time: number): string => {
     const hours = Math.floor(time / 3600);
@@ -38,6 +58,40 @@ const Timer: React.FC<TimerProps> = () => {
 
     return () => clearInterval(intervalId);
   }, [isRunning]);
+
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isAlt = e.altKey;
+      const isShift = e.shiftKey;
+      const isW = e.key === "w" || e.key === "W";
+      const isBackspace = e.key === "Backspace";
+      const isSpace = e.key === " ";
+
+      // Alt + Shift + W to close timer
+      if (isAlt && isShift && isW && showTimer && !isHidden) {
+        e.preventDefault();
+        handleHideTimer();
+      }
+
+      // Shift + Backspace to reset timer
+      if (isShift && isBackspace && showTimer && !isHidden) {
+        e.preventDefault();
+        handleReset();
+      }
+
+      // Shift + Spacebar to pause/play timer
+      if (isShift && isSpace && showTimer && !isHidden) {
+        e.preventDefault();
+        handlePlayPause();
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [showTimer, isHidden, isRunning]);
 
   const handleReset = () => {
     setTime(0);
@@ -168,6 +222,8 @@ const Timer: React.FC<TimerProps> = () => {
       </AnimatePresence>
     </div>
   );
-};
+});
+
+Timer.displayName = "Timer";
 
 export default Timer;

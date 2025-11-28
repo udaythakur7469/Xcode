@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import ResizablePanels from "@/components/problemDetailPage/resizablePanels/ResizablePanels";
 import ProblemNavbar from "@/components/problemDetailPage/navbar/ProblemNavbar";
 import ProblemSidebar from "@/components/problemDetailPage/navbar/sidebar/ProblemSidebar";
@@ -36,6 +36,32 @@ const ProblemDetailsPage: React.FC = () => {
   const handleToggleSidebar = () => {
     setIsSidebarOpen((prev) => !prev);
   };
+
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isAlt = e.altKey;
+      const isLeftArrow = e.key === "ArrowLeft";
+      const isRightArrow = e.key === "ArrowRight";
+
+      // Alt + Right Arrow to open sidebar
+      if (isAlt && isRightArrow && !isSidebarOpen) {
+        e.preventDefault();
+        setIsSidebarOpen(true);
+      }
+
+      // Alt + Left Arrow to close sidebar
+      else if (isAlt && isLeftArrow && isSidebarOpen) {
+        e.preventDefault();
+        setIsSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [isSidebarOpen]);
 
   return (
     <SidebarProvider>

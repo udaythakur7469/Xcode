@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   Menubar,
@@ -10,10 +10,10 @@ import {
   ChevronLeft,
   ChevronRight,
   CloudUpload,
+  Keyboard,
   LayoutDashboard,
   List,
   Play,
-  Settings,
   StickyNote,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/themes/themeToggle";
@@ -26,7 +26,7 @@ import AccountDropDown from "@/components/landingPage/helperComponents/AccountDr
 import { useUserStore } from "@/features/userStore";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
-import Timer from "./Timer";
+import Timer, { TimerRef } from "./Timer";
 import LayoutDropdown from "./LayoutDropdown";
 import {
   HoverCard,
@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/hover-card";
 import { toast } from "sonner";
 import { useSubmissionStore } from "@/features/submissionStore";
+import { Dialog, DialogTrigger } from "@/components/ui/dialog";
+import ShortcutDialog from "./shortcuts/ShortcutDialog";
 
 type ProblemNavbarProps = {
   onResetLayout?: () => void;
@@ -57,9 +59,47 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   const searchParams = useSearchParams();
   const problemTitle = searchParams.get("title");
 
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [isShortcutDialogOpen, setIsShortcutDialogOpen] = useState(false);
+  const timerRef = useRef<TimerRef>(null);
+
   const { checkAuth, userData, isAuthenticated } = useUserStore();
   const { runCode, isRunningCode, submitCode, isSubmittingCode } =
     useSubmissionStore();
+
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isAlt = e.altKey;
+      const isS = e.key === "s" || e.key === "S";
+      const isT = e.key === "t" || e.key === "T";
+      const isSlash = e.key === "/";
+
+      // Alt + S for sticky notes
+      if (isAlt && isS) {
+        e.preventDefault();
+        console.log("notes icon clicked");
+      }
+
+      // Alt + T for timer
+      if (isAlt && isT) {
+        e.preventDefault();
+        timerRef.current?.toggleTimer();
+      }
+
+      // Ctrl + Shift + / for shortcuts dialog
+      if (isAlt && isSlash) {
+        e.preventDefault();
+        setIsShortcutDialogOpen(true);
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, []);
 
   useEffect(() => {
     checkAuth();
@@ -69,9 +109,6 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
 
   const picture: string | unknown = userData?.picture;
   const firstLetter = name ? name[0] : null;
-
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [isSignupOpen, setIsSignupOpen] = useState(false);
 
   const goToHomePage = () => {
     router.push("/");
@@ -241,7 +278,7 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                 </HoverCardContent>
               </HoverCard>
               <div className="flex justify-center items-center rounded-md p-1 bg-secondary h-8 w-auto cursor-pointer">
-                <Timer />
+                <Timer ref={timerRef} />
               </div>
             </div>
           </MenubarMenu>
@@ -262,9 +299,17 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                 </DropdownMenuTrigger>
                 <LayoutDropdown onResetLayout={onResetLayout} />
               </DropdownMenu>
-              <div className="flex justify-center items-center rounded-md p-1 bg-secondary h-8 w-8 cursor-pointer">
-                <Settings className="h-4 w-4" />
-              </div>
+              <Dialog
+                open={isShortcutDialogOpen}
+                onOpenChange={setIsShortcutDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <div className="flex justify-center items-center rounded-md p-1 bg-secondary h-8 w-8 cursor-pointer">
+                    <Keyboard className="h-4 w-4" />
+                  </div>
+                </DialogTrigger>
+                <ShortcutDialog />
+              </Dialog>
               <MenubarMenu>
                 {isAuthenticated ? (
                   <DropdownMenu>

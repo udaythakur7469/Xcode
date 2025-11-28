@@ -90,6 +90,29 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
     return () => clearInterval(intervalId);
   }, [problemTitle, getProblemByTitle, refreshProblemLikesAndDislikes]);
 
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isAlt = e.altKey;
+      const isH = e.key === "h" || e.key === "H";
+
+      // Alt + H to open hints dialog
+      if (isAlt && isH && !isLoading && problem) {
+        e.preventDefault();
+        // Trigger the dialog by programmatically clicking the trigger
+        const hintButton = document.querySelector("[data-hint-trigger]");
+        if (hintButton instanceof HTMLElement) {
+          hintButton.click();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [isLoading, problem]);
+
   // Handle user reactions (like/dislike)
   const handleReaction = async (action: "like" | "dislike") => {
     if (!problemTitle || !storeProblem || isReacting) return;
@@ -171,6 +194,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
                 <Badge
                   variant="secondary"
                   className="ml-2 px-2 py-0.5 flex items-center cursor-pointer"
+                  data-hint-trigger
                 >
                   <Lightbulb className="h-4 w-4 mr-1 text-yellow-400" />
                   Hint

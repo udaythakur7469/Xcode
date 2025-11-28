@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   HoverCard,
@@ -30,11 +30,11 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
 
   const prevShowTestCasesResultsTab = useRef(showTestCasesResultsTab);
 
-  const handleMaximizeMinimize = () => {
+  const handleMaximizeMinimize = useCallback(() => {
     if (onMaximize) {
       onMaximize();
     }
-  };
+  }, [onMaximize]);
 
   const handleTabChange = (tab: "Results" | "Test cases") => {
     setActiveTab(tab);
@@ -62,6 +62,63 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
     }
     prevShowTestCasesResultsTab.current = showTestCasesResultsTab;
   }, [showTestCasesResultsTab]);
+
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isControl = e.ctrlKey || e.metaKey;
+      const isUpArrow = e.key === "ArrowUp";
+      const isDownArrow = e.key === "ArrowDown";
+
+      // Ctrl + Up Arrow to maximize (when not maximized)
+      if (isControl && isUpArrow && !isMaximized) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleMaximizeMinimize();
+      }
+
+      // Ctrl + Down Arrow to minimize (when maximized)
+      else if (isControl && isDownArrow && isMaximized) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleMaximizeMinimize();
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [isMaximized, handleMaximizeMinimize]);
+
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      // Only trigger if maximized
+      if (!isMaximized) return;
+
+      const isShift = e.shiftKey;
+      const isLeftArrow = e.key === "ArrowLeft";
+      const isRightArrow = e.key === "ArrowRight";
+
+      // Shift + Left Arrow to open Test cases
+      if (isShift && isLeftArrow) {
+        e.preventDefault();
+        setActiveTab("Test cases");
+      }
+
+      // Shift + Right Arrow to open Results
+      else if (isShift && isRightArrow) {
+        e.preventDefault();
+        setActiveTab("Results");
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [isMaximized]);
 
   return (
     <div className="h-full w-full flex flex-col">

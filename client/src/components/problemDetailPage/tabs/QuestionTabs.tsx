@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   HoverCard,
@@ -41,6 +41,12 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   const [activeTab, setActiveTab] = useState("description");
   const { clearSubmitCodeResult } = useSubmissionStore();
 
+  const handleMaximizeMinimize = useCallback(() => {
+    if (onMaximize) {
+      onMaximize();
+    }
+  }, [onMaximize]);
+
   useEffect(() => {
     if (showResultsTab) {
       setActiveTab("results");
@@ -62,6 +68,103 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isAlt = e.altKey;
+      const isW = e.key === "w" || e.key === "W";
+
+      if (isAlt && isW && showResultsTab) {
+        e.preventDefault();
+        if (onCloseResultsTab) {
+          onCloseResultsTab();
+        }
+        clearSubmitCodeResult();
+        const lastOpenedTab =
+          sessionStorage.getItem(SESSION_KEY) || "description";
+        setActiveTab(lastOpenedTab);
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [showResultsTab, onCloseResultsTab, clearSubmitCodeResult]);
+
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isControl = e.ctrlKey || e.metaKey;
+      const isRightArrow = e.key === "ArrowRight";
+
+      // Ctrl + Right Arrow to maximize (when not maximized)
+      if (isControl && isRightArrow && !isMaximized) {
+        e.preventDefault();
+        handleMaximizeMinimize();
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [isMaximized, handleMaximizeMinimize]);
+
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isAlt = e.altKey;
+      const key = e.key;
+
+      if (isAlt) {
+        e.preventDefault();
+
+        // If results tab is showing
+        if (showResultsTab) {
+          switch (key) {
+            case "1":
+              setActiveTab("description");
+              break;
+            case "2":
+              setActiveTab("editorial");
+              break;
+            case "3":
+              setActiveTab("results");
+              break;
+            case "4":
+              setActiveTab("submissions");
+              break;
+            case "5":
+              setActiveTab("discussion");
+              break;
+          }
+        } else {
+          // If results tab is not showing
+          switch (key) {
+            case "1":
+              setActiveTab("description");
+              break;
+            case "2":
+              setActiveTab("editorial");
+              break;
+            case "3":
+              setActiveTab("submissions");
+              break;
+            case "4":
+              setActiveTab("discussion");
+              break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, [showResultsTab]);
+
   const onResultsClose = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the tab change
     if (onCloseResultsTab) {
@@ -70,12 +173,6 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     clearSubmitCodeResult();
     const lastOpenedTab = sessionStorage.getItem(SESSION_KEY) || "description";
     setActiveTab(lastOpenedTab);
-  };
-
-  const handleMaximizeMinimize = () => {
-    if (onMaximize) {
-      onMaximize();
-    }
   };
 
   return (

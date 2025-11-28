@@ -97,6 +97,30 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     }
   }, [shouldResetLayout]);
 
+  // Add keyboard shortcut for reset layout
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isControl = e.ctrlKey || e.metaKey;
+      const isSpace = e.key === " ";
+
+      if (isControl && isSpace) {
+        e.preventDefault();
+        setHorizontalSizes(DEFAULT_HORIZONTAL_SIZES);
+        setVerticalSizes(DEFAULT_VERTICAL_SIZES);
+        setIsLeftMaximized(false);
+        setIsRightMaximized(false);
+        setIsTestCasesMaximized(false);
+        setShouldResetLayout(true);
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+
+    return () => {
+      window.removeEventListener("keydown", keyboardShortcut);
+    };
+  }, []);
+
   const handleCodeSubmit = () => {
     setShowResultsTab(true);
   };
