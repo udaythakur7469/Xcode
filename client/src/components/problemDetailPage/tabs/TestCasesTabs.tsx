@@ -15,6 +15,7 @@ type TestCasesTabsProps = {
   isMaximized?: boolean;
   showTestCasesResultsTab?: boolean;
   setShowTestCasesResultsTab: (show: boolean) => void;
+  verticalSizes: number[];
 };
 
 const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
@@ -22,6 +23,7 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
   isMaximized = false,
   showTestCasesResultsTab = false,
   setShowTestCasesResultsTab,
+  verticalSizes,
 }) => {
   const [activeTab, setActiveTab] = useState<"Test cases" | "Results">(
     "Test cases"
@@ -94,20 +96,22 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
       // Only trigger if maximized
-      if (!isMaximized) return;
+      if (verticalSizes[1] <= 7) return;
 
       const isShift = e.shiftKey;
-      const isLeftArrow = e.key === "ArrowLeft";
-      const isRightArrow = e.key === "ArrowRight";
+      const isOneKey =
+        e.key === "1" || e.code === "Digit1" || e.code === "Numpad1";
+      const isTwoKey =
+        e.key === "2" || e.code === "Digit2" || e.code === "Numpad2";
 
-      // Shift + Left Arrow to open Test cases
-      if (isShift && isLeftArrow) {
+      // Shift + 1 Arrow to open Test cases
+      if (isShift && isOneKey) {
         e.preventDefault();
         setActiveTab("Test cases");
       }
 
-      // Shift + Right Arrow to open Results
-      else if (isShift && isRightArrow) {
+      // Shift + 2 Arrow to open Results
+      else if (isShift && isTwoKey) {
         e.preventDefault();
         setActiveTab("Results");
       }
@@ -118,7 +122,7 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
     return () => {
       window.removeEventListener("keydown", keyboardShortcut);
     };
-  }, [isMaximized]);
+  }, [verticalSizes]);
 
   return (
     <div className="h-full w-full flex flex-col">

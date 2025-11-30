@@ -320,6 +320,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
                   isMaximized={isTestCasesMaximized}
                   showTestCasesResultsTab={showTestCasesResultsTab}
                   setShowTestCasesResultsTab={setShowTestCasesResultsTab}
+                  verticalSizes={verticalSizes}
                 />
               </div>
             </ResizablePanel>

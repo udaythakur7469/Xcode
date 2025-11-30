@@ -13,6 +13,8 @@ export const shortcutName: string[] = [
   "Switch to editorial tab",
   "Switch to submissions tab",
   "Switch to discussion tab",
+  "Switch to Test cases tab",
+  "Switch to results tab",
   "Close results tab",
   "Open command bar",
   "Open AI chat",
@@ -39,6 +41,8 @@ export const shortcutKeys: string[][] = [
   ["Alt", "2"], // Switch to editorial tab
   ["Alt", "3"], // Switch to submissions tab
   ["Alt", "4"], // Switch to discussion tab
+  ["Shift", "1"], // Switch to Test cases tab
+  ["Shift", "2"], // Switch to results tab
   ["Alt", "W"], // Close results tab
   ["Ctrl", "K"], // Open command bar
   ["Ctrl", "Q"], // Open AI chat
