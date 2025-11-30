@@ -27,7 +27,7 @@ const TagsList: React.FC<TagsListProps> = ({
           key={tag}
           onClick={() => handleTagToggle(tag)}
           className={`${
-            selectedTags.includes(tag) ? "bg-blue-600" : "bg-gray-700"
+            selectedTags.includes(tag) ? "bg-indigo-600" : "bg-gray-800"
           } text-white m-1 p-2 rounded-lg`}
         >
           {tag}
