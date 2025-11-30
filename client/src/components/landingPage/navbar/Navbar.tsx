@@ -44,7 +44,7 @@ const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
     }
   };
 
-  const { checkAuth, userData, isAuthenticated } = useUserStore();
+  const { checkAuth, userData, isUserAuthenticated } = useUserStore();
 
   useEffect(() => {
     const initAuth = async () => {
@@ -59,13 +59,13 @@ const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
     if (!isAuthChecked) return; // Wait until auth check is done
 
     const isAccountPage = pathname?.includes("/account");
-    if (isAccountPage && isAuthenticated === false) {
+    if (isAccountPage && isUserAuthenticated === false) {
       console.log(
         "User not authenticated on account page, redirecting to home"
       );
       router.push("/");
     }
-  }, [isAuthenticated, pathname, router, isAuthChecked]);
+  }, [isUserAuthenticated, pathname, router, isAuthChecked]);
 
   const name = userData?.name;
 
@@ -140,7 +140,7 @@ const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
           <div className="flex items-center gap-4 px-2">
             <ThemeToggle />
             <MenubarMenu>
-              {isAuthenticated ? (
+              {isUserAuthenticated ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <div className="cursor-pointer">

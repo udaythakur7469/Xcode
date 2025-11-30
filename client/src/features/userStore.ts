@@ -8,7 +8,7 @@ axios.defaults.withCredentials = true;
 
 interface authData {
   userData: User | null;
-  isAuthenticated: boolean;
+  isUserAuthenticated: boolean;
   error: string | null;
   isLoading: boolean;
   isDataUpdating: boolean;
@@ -33,7 +33,7 @@ interface authData {
 
 export const useUserStore = create<authData>()((set) => ({
   userData: null,
-  isAuthenticated: false,
+  isUserAuthenticated: false,
   error: null,
   isLoading: false,
   isDataUpdating: false,
@@ -45,19 +45,23 @@ export const useUserStore = create<authData>()((set) => ({
   setUser: (user: User) =>
     set({
       userData: user,
-      isAuthenticated: true,
+      isUserAuthenticated: true,
       isCheckingUserAuth: false,
     }),
 
   clearUser: () =>
     set({
       userData: null,
-      isAuthenticated: false,
+      isUserAuthenticated: false,
       isCheckingUserAuth: false,
     }),
 
   checkAuth: async () => {
-    set({ isCheckingUserAuth: true, error: null, isLoading: true });
+    set({
+      isCheckingUserAuth: true,
+      error: null,
+      isLoading: true,
+    });
     try {
       const response = await axios.get(`${API_URL}/user/checkUser`);
 
@@ -69,7 +73,7 @@ export const useUserStore = create<authData>()((set) => ({
       set({
         userData: response.data.user,
         userLinks,
-        isAuthenticated: true,
+        isUserAuthenticated: true,
         isCheckingUserAuth: false,
         isLoading: false,
       });
@@ -78,7 +82,7 @@ export const useUserStore = create<authData>()((set) => ({
       set({
         error: errMsg,
         isCheckingUserAuth: false,
-        isAuthenticated: false,
+        isUserAuthenticated: false,
         userData: null,
         userLinks: null,
         isLoading: false,

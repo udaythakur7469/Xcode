@@ -14,14 +14,14 @@ type HeroSectionProps = {};
 const HeroSection: React.FC<HeroSectionProps> = () => {
   const router = useRouter();
 
-  const { checkAuth, isAuthenticated } = useUserStore();
+  const { checkAuth, isUserAuthenticated } = useUserStore();
 
   // State to control the login dialog
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
 
   const generateInterview = () => {
-    if (isAuthenticated) {
+    if (isUserAuthenticated) {
       router.push("/interview/generate-interview");
     } else {
       setIsLoginOpen(true);

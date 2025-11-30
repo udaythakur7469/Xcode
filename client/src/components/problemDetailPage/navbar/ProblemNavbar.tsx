@@ -64,7 +64,7 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   const [isShortcutDialogOpen, setIsShortcutDialogOpen] = useState(false);
   const timerRef = useRef<TimerRef>(null);
 
-  const { checkAuth, userData, isAuthenticated } = useUserStore();
+  const { checkAuth, userData, isUserAuthenticated } = useUserStore();
   const { runCode, isRunningCode, submitCode, isSubmittingCode } =
     useSubmissionStore();
 
@@ -311,7 +311,7 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                 <ShortcutDialog />
               </Dialog>
               <MenubarMenu>
-                {isAuthenticated ? (
+                {isUserAuthenticated ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <div className="cursor-pointer">

@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState } from "react";
 import CommandPaletteItem from "./commandPaletteItem/CommandPaletteItem";
 import { CommandPaletteData } from "./commandPaletteData/CommandPaletteData";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuthStore } from "@/features/authStore";
 import { useUserStore } from "@/features/userStore";
 
 type CommandPaletteDialogContentProps = {
@@ -27,8 +26,7 @@ const CommandPaletteDialogContent: React.FC<
   const router = useRouter();
   const pathname = usePathname();
 
-  const { isAuthenticated } = useAuthStore();
-  const { userData } = useUserStore();
+  const { userData, isUserAuthenticated } = useUserStore();
 
   const [selectedIndex, setSelectedIndex] = useState(0);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -65,7 +63,7 @@ const CommandPaletteDialogContent: React.FC<
   const filteredData = CommandPaletteData.filter((item) => {
     // Filter based on authentication
     if (item.type === "action") {
-      if (isAuthenticated) {
+      if (isUserAuthenticated) {
         return item.title === "Logout";
       } else {
         return item.title === "Login" || item.title === "SignUp";
@@ -73,7 +71,7 @@ const CommandPaletteDialogContent: React.FC<
     } else if (item.type === "navigation") {
       // Filter Account based on authentication
       if (item.title === "Account") {
-        if (!isAuthenticated) return false;
+        if (!isUserAuthenticated) return false;
 
         // Hide Account if on account page
         if (pathname.startsWith("/account")) return false;
