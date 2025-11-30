@@ -39,9 +39,9 @@ const HeroSection: React.FC = () => {
       <div className="h-[5vh]" />
       {/* Title Section (Fixed Height) */}
       <div className="h-[10vh] flex items-center justify-center">
-        <Card className="text-3xl font-bold text-center p-2 border cursor-default">
-          This is what Xcode offers you
-        </Card>
+        <div className="text-4xl font-bold text-center p-2 cursor-default border-b">
+          What Xcode offers you
+        </div>
       </div>
 
       {/* Fullscreen Carousel (Fixed Height) */}
