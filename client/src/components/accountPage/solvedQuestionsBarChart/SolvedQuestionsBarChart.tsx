@@ -199,7 +199,7 @@ const SolvedQuestionsBarChart: React.FC = () => {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-end mt-3 space-x-2">
+      <div className="flex items-center justify-end mt-1 space-x-2">
         <span className="text-xs text-white">Less</span>
         <div className="flex space-x-1">
           <div
