@@ -148,8 +148,8 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
         <div>
           <div className="h-full w-full flex flex-row justify-between items-center bg-background p-2">
             <div className="flex items-center ml-1">
-              <p className="text-4xl">{problem.id}. </p>
-              <p className="text-4xl">{problem.title}</p>
+              <p className="text-5xl">{problem.id}. </p>
+              <p className="text-5xl">{problem.title}</p>
             </div>
             <div className="px-2">
               <div className="text-md">
@@ -166,7 +166,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
           <div className="flex flex-row items-center p-2 px-4">
             <Badge
               variant="secondary"
-              className="px-2 py-0.5 flex items-center cursor-default"
+              className="px-3 py-1 flex items-center cursor-default"
             >
               <p
                 className={`cursor-default ${
@@ -184,7 +184,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
               <Badge
                 key={index}
                 variant="secondary"
-                className="ml-2 px-2 py-0.5 flex items-center cursor-default"
+                className="ml-2 px-3 py-1 flex items-center cursor-default"
               >
                 {tag}
               </Badge>
@@ -193,7 +193,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
               <DialogTrigger asChild>
                 <Badge
                   variant="secondary"
-                  className="ml-2 px-2 py-0.5 flex items-center cursor-pointer"
+                  className="ml-2 px-3 py-1 flex items-center cursor-pointer"
                   data-hint-trigger
                 >
                   <Lightbulb className="h-4 w-4 mr-1 text-yellow-400" />
@@ -208,7 +208,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
             <Badge
               variant="secondary"
               onClick={() => handleReaction("like")}
-              className={`px-2 py-0.5 flex items-center ml-2 ${
+              className={`px-3 py-1 flex items-center ml-2 ${
                 storeProblem.userReaction === "like" ? "bg-secondary" : ""
               } ${
                 isReacting ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
@@ -233,7 +233,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
             <Badge
               variant="secondary"
               onClick={() => handleReaction("dislike")}
-              className={`px-2 py-0.5 flex items-center ml-2 ${
+              className={`px-3 py-1 flex items-center ml-2 ${
                 storeProblem.userReaction === "dislike" ? "bg-secondary" : ""
               } ${
                 isReacting ? "opacity-70 cursor-not-allowed" : "cursor-pointer"

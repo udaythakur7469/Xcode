@@ -135,4 +135,87 @@ p, h1 {
   background: #f0f0f0;
 }
 
+/* React Calendar Heatmap Styles */
+.react-calendar-heatmap {
+  width: 100%;
+}
+
+.react-calendar-heatmap text {
+  font-size: 10px;
+  fill: #6b7280;
+}
+
+.react-calendar-heatmap .react-calendar-heatmap-small-text {
+  font-size: 8px;
+}
+
+.react-calendar-heatmap rect {
+  rx: 2;
+}
+
+.react-calendar-heatmap rect:hover {
+  stroke: #000;
+  stroke-width: 1px;
+  opacity: 0.8;
+  cursor: pointer;
+}
+
+.react-calendar-heatmap .react-calendar-heatmap-month-label {
+  font-size: 10px;
+  fill: #6b7280;
+}
+
+.react-calendar-heatmap .react-calendar-heatmap-weekday-label {
+  font-size: 9px;
+  fill: #6b7280;
+}
+
+/* Color Scale */
+.react-calendar-heatmap .color-empty {
+  fill: #ebedf0;
+}
+
+.react-calendar-heatmap .color-scale-1 {
+  fill: #c6e48b;
+}
+
+.react-calendar-heatmap .color-scale-2 {
+  fill: #7bc96f;
+}
+
+.react-calendar-heatmap .color-scale-3 {
+  fill: #239a3b;
+}
+
+.react-calendar-heatmap .color-scale-4 {
+  fill: #196127;
+}
+
+/* Dark Mode */
+.dark .react-calendar-heatmap .color-empty {
+  fill: #161b22;
+}
+
+.dark .react-calendar-heatmap text {
+  fill: #8b949e;
+}
+
+.dark .react-calendar-heatmap rect:hover {
+  stroke: #fff;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .react-calendar-heatmap text {
+    font-size: 8px;
+  }
+  
+  .react-calendar-heatmap .react-calendar-heatmap-month-label {
+    font-size: 8px;
+  }
+  
+  .react-calendar-heatmap .react-calendar-heatmap-weekday-label {
+    font-size: 7px;
+  }
+}
 
