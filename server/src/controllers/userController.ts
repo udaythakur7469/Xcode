@@ -245,21 +245,28 @@ export const getUserHeatmapData = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    // Get all solved problems with their dates
-    const solvedProblems = await prisma.solvedProblems.findMany({
-      where: { userId },
+    // Get all accepted submissions with their creation dates
+    // This captures all dates when problems were solved, not just the latest date
+    const acceptedSubmissions = await prisma.submission.findMany({
+      where: {
+        userId,
+        status: "accepted",
+      },
       select: {
-        solvedAt: true,
+        createdAt: true,
       },
       orderBy: {
-        solvedAt: "asc",
+        createdAt: "asc",
       },
     });
 
-    // Group by day
+    // Group by UTC day
     const dailyCounts: Record<string, number> = {};
-    solvedProblems.forEach(({ solvedAt }) => {
-      const dateStr = solvedAt.toISOString().split("T")[0]; // YYYY-MM-DD
+    acceptedSubmissions.forEach(({ createdAt }) => {
+      const year = createdAt.getUTCFullYear();
+      const month = String(createdAt.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(createdAt.getUTCDate()).padStart(2, "0");
+      const dateStr = `${year}-${month}-${day}`;
       dailyCounts[dateStr] = (dailyCounts[dateStr] || 0) + 1;
     });
 
@@ -268,7 +275,7 @@ export const getUserHeatmapData = async (req, res) => {
       heatmapData: dailyCounts,
     });
   } catch (error) {
-    console.error("Error fetching heatmap data:", error);
+    logger.error("Error fetching heatmap data:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch heatmap data",

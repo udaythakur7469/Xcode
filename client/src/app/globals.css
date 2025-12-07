@@ -135,7 +135,7 @@ p, h1 {
   background: #f0f0f0;
 }
 
-/* React Calendar Heatmap Styles */
+/* React Calendar Heatmap Styles 
 .react-calendar-heatmap {
   width: 100%;
 }
@@ -170,7 +170,7 @@ p, h1 {
   fill: #6b7280;
 }
 
-/* Color Scale */
+/* Color Scale 
 .react-calendar-heatmap .color-empty {
   fill: #ebedf0;
 }
@@ -191,7 +191,7 @@ p, h1 {
   fill: #196127;
 }
 
-/* Dark Mode */
+/* Dark Mode 
 .dark .react-calendar-heatmap .color-empty {
   fill: #161b22;
 }
@@ -204,7 +204,7 @@ p, h1 {
   stroke: #fff;
 }
 
-/* Mobile Responsive */
+/* Mobile Responsive 
 @media (max-width: 768px) {
   .react-calendar-heatmap text {
     font-size: 8px;
@@ -218,4 +218,6 @@ p, h1 {
     font-size: 7px;
   }
 }
+
+*/
 
