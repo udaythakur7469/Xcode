@@ -34,6 +34,117 @@ export // Helper function to poll Judge0 API for the result
     return result.data;
 };
 /**
+ * Process Judge0 submission result based on status code
+ * @param {Object} result - The Judge0 API result
+ * @param {Array} errorInfo - Array of parsed error information
+ * @param {string} language - The programming language
+ * @returns {Object} Formatted response with appropriate status
+ */
+export const processSubmissionResult = (result, errorInfo, language) => {
+    const statusId = result.status.id;
+    // Status code categories
+    const ACCEPTED = 3;
+    const WRONG_ANSWER = 4;
+    const TIME_LIMIT_EXCEEDED = 5;
+    const COMPILATION_ERROR = 6;
+    const RUNTIME_ERRORS = [7, 8, 9, 10, 11, 12];
+    const INTERNAL_ERROR_THRESHOLD = 13;
+    // Handle successful execution
+    if (statusId === ACCEPTED) {
+        return {
+            success: true,
+            status: "accepted",
+            statusDescription: result.status.description,
+            stdout: result.stdout,
+            time: result.time,
+            memory: result.memory,
+        };
+    }
+    // Handle wrong answer
+    if (statusId === WRONG_ANSWER) {
+        return {
+            success: false,
+            status: "wrong_answer",
+            statusDescription: result.status.description,
+            stdout: result.stdout,
+            stderr: result.stderr,
+            time: result.time,
+            memory: result.memory,
+        };
+    }
+    // Handle time limit exceeded
+    if (statusId === TIME_LIMIT_EXCEEDED) {
+        return {
+            success: false,
+            status: "time_limit_exceeded",
+            statusDescription: result.status.description,
+            message: "Your program took too long to execute. Consider optimizing your algorithm.",
+            time: result.time,
+            memory: result.memory,
+        };
+    }
+    // Handle compilation errors
+    if (statusId === COMPILATION_ERROR) {
+        return processCompilationError(result, errorInfo);
+    }
+    // Handle runtime errors
+    if (RUNTIME_ERRORS.includes(statusId)) {
+        return processRuntimeError(result, statusId);
+    }
+    // Handle internal server errors (status >= 13)
+    if (statusId >= INTERNAL_ERROR_THRESHOLD) {
+        return {
+            success: false,
+            status: "internal_error",
+            statusDescription: result.status.description,
+            message: "An internal error occurred while processing your submission. Please try again.",
+            error: result.status.description,
+        };
+    }
+    // Fallback for unknown status codes
+    return {
+        success: false,
+        status: "unknown_error",
+        statusDescription: result.status.description,
+        message: "An unexpected error occurred.",
+        stderr: result.stderr,
+    };
+};
+/**
+ * Process runtime error output and format it for client response
+ * @param {Object} result - The Judge0 API result
+ * @param {number} statusId - The status ID
+ * @returns {Object} Formatted runtime error response
+ */
+export const processRuntimeError = (result, statusId) => {
+    const errorMessages = {
+        7: "Segmentation Fault: Your program tried to access invalid memory. Check array bounds and pointer usage.",
+        8: "File Size Limit Exceeded: Your program tried to create or write to a file that exceeded the size limit.",
+        9: "Floating Point Exception: Your program encountered a mathematical error (e.g., division by zero).",
+        10: "Program Aborted: Your program called abort() or encountered a fatal error.",
+        11: "Non-Zero Exit Code: Your program exited with an error code. Check for runtime exceptions.",
+        12: "Runtime Error: Your program encountered an error during execution.",
+    };
+    let stderr = result.stderr || "";
+    // Try to extract meaningful error information
+    let errorDetails = "";
+    if (stderr) {
+        // Extract last few lines which usually contain the actual error
+        const lines = stderr.trim().split("\n");
+        errorDetails = lines.slice(-5).join("\n");
+    }
+    return {
+        success: false,
+        status: "runtime_error",
+        statusDescription: result.status.description,
+        statusId: statusId,
+        message: errorMessages[statusId] || errorMessages[12],
+        stderr: errorDetails || stderr,
+        time: result.time,
+        memory: result.memory,
+    };
+};
+/**
  * Process compilation error output and format it for client response
  * @param {Object} result - The Judge0 API result
  * @param {Array} errorInfo - Array of parsed error information
@@ -79,7 +190,9 @@ export const processCompilationError = (result, errorInfo) => {
         }
     }
     return {
-        error: result.status.description,
+        success: false,
+        status: "compilation_error",
+        statusDescription: result.status.description,
         stderr: result.stderr,
         compile_output: simplified_output,
         errorInfo: cleanErrorInfo,

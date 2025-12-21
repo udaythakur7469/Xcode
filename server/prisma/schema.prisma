@@ -338,6 +338,7 @@ model Submission {
 enum SubmissionStatus {
   accepted
   wrong_answer
+  compilation_error
   time_limit_exceeded
   runtime_error
 }

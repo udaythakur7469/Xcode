@@ -4,7 +4,7 @@ import {
   getLanguageId,
   parseErrorPosition,
   pollJudge0Result,
-  processCompilationError,
+  processSubmissionResult,
 } from "../services/submissionService.js";
 import { Difficulty, SubmissionStatus } from "@prisma/client";
 import logger from "../configs/loggerConfig.js";
@@ -16,6 +16,35 @@ export const JUDGE0_HEADERS = {
   "x-rapidapi-host": process.env.JUDGE0_HOST,
   "Content-Type": "application/json",
 };
+
+// Type definitions for processed results
+interface BaseProcessedResult {
+  success: boolean;
+  status: string;
+  statusDescription: string;
+}
+
+interface SuccessResult extends BaseProcessedResult {
+  success: true;
+  status: "accepted";
+  stdout: string;
+  time: number;
+  memory: number;
+}
+
+interface ErrorResult extends BaseProcessedResult {
+  success: false;
+  message?: string;
+  stderr?: string;
+  stdout?: string;
+  compile_output?: string;
+  errorInfo?: any;
+  statusId?: number;
+  time?: number;
+  memory?: number;
+}
+
+type ProcessedResult = SuccessResult | ErrorResult;
 
 export const storeBaseClassCode = async (req, res) => {
   const { problemId, language, baseClassCode, headerFiles, mainClassCode } =
@@ -153,9 +182,6 @@ export const runCode = async (req, res, next) => {
       }
     );
 
-    // Poll Judge0 API for the result
-    const submissionId = judge0Response.data.token;
-
     const result = judge0Response.data;
     console.log("Judge0 response:", JSON.stringify(judge0Response.data));
 
@@ -175,21 +201,45 @@ export const runCode = async (req, res, next) => {
 
     const errorInfo = parseErrorPosition(result.compile_output, language);
 
-    // Check if the code ran successfully
-    if (result.status.id !== 3) {
-      // Code failed to run - use the helper function
-      const errorResponse = processCompilationError(result, errorInfo);
-      return res.status(400).json(errorResponse);
+    // Process the submission result based on status code
+    const processedResult: ProcessedResult = processSubmissionResult(
+      result,
+      errorInfo,
+      language
+    );
+
+    // Handle internal errors (status >= 13)
+    if (result.status.id >= 13) {
+      return res.status(500).json({
+        error: "Internal server error",
+        message:
+          "message" in processedResult
+            ? processedResult.message
+            : "An error occurred",
+        statusDescription: processedResult.statusDescription,
+      });
     }
 
-    // Return the result of the first test case
+    // Handle non-accepted submissions (compilation errors, runtime errors, etc.)
+    if (!processedResult.success) {
+      return res.status(400).json({
+        ...processedResult,
+        testCase: {
+          input: Buffer.from(problemData.testCases[0].userInput).toString(),
+          userOutput: problemData.testCases[0].userExpectedOutput || null,
+        },
+      });
+    }
+
+    // Return successful execution
     res.status(200).json({
       message: "Code executed successfully",
-      stdout: result.stdout,
-      time: result.time,
-      memory: result.memory,
+      stdout: processedResult.stdout, // This is safe because SuccessResult has stdout
+      time: processedResult.time,
+      memory: processedResult.memory,
+      status: processedResult.status,
       testCase: {
-        input: Buffer.from(problemData.testCases[0].userInput).toString(), // Original input without base64 encoding
+        input: Buffer.from(problemData.testCases[0].userInput).toString(),
         userOutput: problemData.testCases[0].userExpectedOutput || null,
       },
     });
@@ -208,7 +258,7 @@ export const submitCode = async (req, res) => {
   }
 
   const { language, code } = req.body;
-  const { title } = req.query; // Get problemTitle from the query parameters
+  const { title } = req.query;
 
   if (!title || typeof title !== "string") {
     return res
@@ -220,13 +270,13 @@ export const submitCode = async (req, res) => {
     // Fetch the problem details, including test cases and base code
     const problemData = await prisma.problem.findFirst({
       where: { title },
-      include: {
+      select: {
         testCases: true,
         baseCodes: true,
+        id: true,
+        difficulty: true,
       },
     });
-
-    console.log("problem", problemData);
 
     if (!problemData) {
       return res.status(404).json({ error: "Problem not found" });
@@ -248,88 +298,189 @@ export const submitCode = async (req, res) => {
       baseCode.mainClassCode || ""
     }`;
 
-    console.log("Full code being sent:", fullCode); // For debugging
+    console.log("Full code being sent:", fullCode);
 
-    // Validate the code against all test cases
+    const totalTestCases = problemData.testCases.length;
+
+    // Submit all test cases in parallel
+    const submissionPromises = problemData.testCases.map(
+      async (testCase, index) => {
+        try {
+          const judge0Response = await axios.post(
+            `${JUDGE0_URL}/submissions`,
+            {
+              source_code: fullCode,
+              language_id: getLanguageId(language),
+              stdin: testCase.apiInput,
+            },
+            {
+              headers: JUDGE0_HEADERS,
+            }
+          );
+
+          const submissionId = judge0Response.data.token;
+          const result = await pollJudge0Result(submissionId);
+
+          // Decode stderr and compile_output if present
+          if (result.stderr) {
+            result.stderr = Buffer.from(result.stderr, "base64").toString();
+          }
+          if (result.compile_output) {
+            result.compile_output = Buffer.from(
+              result.compile_output,
+              "base64"
+            ).toString();
+          }
+
+          const runtime = parseFloat(result.time) || 0;
+          const memory = parseFloat(result.memory) || 0;
+
+          const errorInfo = parseErrorPosition(result.compile_output, language);
+          const processedResult: ProcessedResult = processSubmissionResult(
+            result,
+            errorInfo,
+            language
+          );
+
+          return {
+            index,
+            testCase,
+            result,
+            processedResult,
+            runtime,
+            memory,
+          };
+        } catch (error) {
+          console.error(`Error processing test case ${index}:`, error);
+          throw error;
+        }
+      }
+    );
+
+    // Wait for all submissions to complete
+    const submissionResults = await Promise.all(submissionPromises);
+
+    // Process results to find first failure
     let allTestCasesPassed = true;
     let failedTestCase = null;
-    let totalTestCases = problemData.testCases.length;
     let testCasesPassed = 0;
-    let runtime = 0; // Default value for runtime
-    let memory = 0; // Default value for memory
+    let failureReason = "wrong_answer";
+    let maxRuntime = 0;
+    let maxMemory = 0;
 
-    for (const testCase of problemData.testCases) {
-      const judge0Response = await axios.post(
-        `${JUDGE0_URL}/submissions`,
-        {
-          source_code: fullCode,
-          language_id: getLanguageId(language),
-          stdin: testCase.apiInput,
-        },
-        {
-          headers: JUDGE0_HEADERS,
-        }
-      );
+    // Sort by index to maintain original test case order
+    submissionResults.sort((a, b) => a.index - b.index);
 
-      // Poll Judge0 API for the result
-      const submissionId = judge0Response.data.token;
-      const result = await pollJudge0Result(submissionId);
+    for (const submission of submissionResults) {
+      const { testCase, result, processedResult, runtime, memory } = submission;
 
-      // Extract runtime and memory from the result
-      runtime = parseFloat(result.time) || 0; // Ensure runtime is a number
-      memory = parseFloat(result.memory) || 0; // Ensure memory is a number
+      // Track maximum runtime and memory across all test cases
+      maxRuntime = Math.max(maxRuntime, runtime);
+      maxMemory = Math.max(maxMemory, memory);
 
-      // Check if the code failed for this test case
-      if (
-        result.status.id !== 3 ||
-        result.stdout.trim() !== testCase.apiExpectedOutput.trim()
-      ) {
+      // Handle internal errors
+      if (result.status.id >= 13) {
+        return res.status(500).json({
+          error: "Internal server error occurred during submission",
+          message:
+            (processedResult as ErrorResult).message || "An error occurred",
+          statusDescription: processedResult.statusDescription,
+        });
+      }
+
+      // Check if submission failed (not accepted)
+      if (!processedResult.success && !failedTestCase) {
         allTestCasesPassed = false;
+        const errorResult = processedResult as ErrorResult;
+        failureReason = errorResult.status;
+
+        failedTestCase = {
+          input: testCase.userInput,
+          expectedOutput: testCase.userExpectedOutput,
+          actualOutput: result.stdout || null,
+          status: errorResult.status,
+          statusDescription: errorResult.statusDescription,
+          message: errorResult.message,
+          stderr: errorResult.stderr,
+          compile_output: errorResult.compile_output,
+          errorInfo: errorResult.errorInfo,
+          runtime,
+          memory,
+        };
+        // Don't break - continue to check for internal errors in remaining results
+        continue;
+      }
+
+      // Check if output matches expected output
+      if (result.stdout !== testCase.apiExpectedOutput && !failedTestCase) {
+        allTestCasesPassed = false;
+        failureReason = "wrong_answer";
+
         failedTestCase = {
           input: testCase.userInput,
           expectedOutput: testCase.userExpectedOutput,
           actualOutput: result.stdout,
+          status: "wrong_answer",
+          statusDescription: "Wrong Answer",
           stderr: result.stderr,
-          runtime, // Include runtime in the failed test case response
-          memory, // Include memory in the failed test case response
+          runtime,
+          memory,
         };
-        break;
-      } else {
+        // Don't break - continue to check for internal errors in remaining results
+        continue;
+      }
+
+      // Only increment if this test case passed
+      if (
+        processedResult.success &&
+        result.stdout === testCase.apiExpectedOutput
+      ) {
         testCasesPassed++;
       }
     }
 
-    // Convert runtime to milliseconds and memory to megabytes
-    const runtimeInMilliseconds = Math.round(runtime * 1000); // Convert to milliseconds
-    const memoryInMegabytes = memory / 1024; // Convert KB to MB
+    const runtimeInMilliseconds = Math.round(maxRuntime * 1000);
+    const memoryInMegabytes = maxMemory / 1024;
     const userId = req.user.userId;
+
+    // Map failure reason to submission status
+    const submissionStatus = allTestCasesPassed
+      ? "accepted"
+      : failureReason === "compilation_error"
+      ? "compilation_error"
+      : failureReason === "runtime_error"
+      ? "runtime_error"
+      : failureReason === "time_limit_exceeded"
+      ? "time_limit_exceeded"
+      : "wrong_answer";
 
     if (!allTestCasesPassed) {
       updateStatistics(
         userId,
         problemData.id,
         problemData.difficulty,
-        "wrong_answer",
+        submissionStatus,
         code,
         language,
-        runtimeInMilliseconds, // Pass converted runtime
-        memoryInMegabytes, // Pass converted memory
+        runtimeInMilliseconds,
+        memoryInMegabytes,
         testCasesPassed,
         totalTestCases
       );
 
       return res.status(400).json({
-        message: "Code failed for a test case",
+        message: `Code failed: ${
+          failedTestCase.statusDescription || "Wrong Answer"
+        }`,
         failedTestCase,
         language,
-        runtimeInMilliseconds, // Pass converted runtime
-        memoryInMegabytes, // Pass converted memory
+        runtimeInMilliseconds,
+        memoryInMegabytes,
         testCasesPassed,
         totalTestCases,
       });
     }
 
-    // Update user statistics and problem statistics
     updateStatistics(
       userId,
       problemData.id,
@@ -337,18 +488,17 @@ export const submitCode = async (req, res) => {
       "accepted",
       code,
       language,
-      runtimeInMilliseconds, // Pass converted runtime
-      memoryInMegabytes, // Pass converted memory
+      runtimeInMilliseconds,
+      memoryInMegabytes,
       testCasesPassed,
       totalTestCases
     );
 
-    // Return success response
     res.status(200).json({
       message: "All test cases passed",
       language,
-      runtimeInMilliseconds, // Pass converted runtime
-      memoryInMegabytes, // Pass converted memory
+      runtimeInMilliseconds,
+      memoryInMegabytes,
       testCasesPassed,
       totalTestCases,
     });
