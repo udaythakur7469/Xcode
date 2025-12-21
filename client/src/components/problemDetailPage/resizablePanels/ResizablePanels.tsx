@@ -50,10 +50,77 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   const leftPanelRef = useRef<any>(null);
   const rightPanelRef = useRef<any>(null);
 
+  // Track active animations per panel
+  const activeAnimations = useRef<Map<any, number>>(new Map());
+
+  // Flag to prevent layout callbacks during programmatic animations
+  const isAnimatingRef = useRef(false);
+
+  // Promise-based smooth animation function
+  const animateResize = (
+    panelRef: any,
+    targetSize: number,
+    duration: number = 500
+  ): Promise<void> => {
+    return new Promise((resolve) => {
+      if (!panelRef.current) {
+        resolve();
+        return;
+      }
+
+      // Cancel any ongoing animation for this specific panel
+      const existingAnimation = activeAnimations.current.get(panelRef);
+      if (existingAnimation) {
+        cancelAnimationFrame(existingAnimation);
+        activeAnimations.current.delete(panelRef);
+      }
+
+      const startSize = panelRef.current.getSize();
+      const startTime = performance.now();
+
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+
+        // Smooth cubic easing function (ease-in-out)
+        const easeProgress =
+          progress < 0.5
+            ? 4 * progress * progress * progress
+            : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+        const currentSize = startSize + (targetSize - startSize) * easeProgress;
+
+        if (panelRef.current) {
+          panelRef.current.resize(currentSize);
+        }
+
+        if (progress < 1) {
+          const animationId = requestAnimationFrame(animate);
+          activeAnimations.current.set(panelRef, animationId);
+        } else {
+          activeAnimations.current.delete(panelRef);
+          resolve();
+        }
+      };
+
+      const animationId = requestAnimationFrame(animate);
+      activeAnimations.current.set(panelRef, animationId);
+    });
+  };
+
+  // Cleanup animations on unmount
+  useEffect(() => {
+    return () => {
+      activeAnimations.current.forEach((animationId) => {
+        cancelAnimationFrame(animationId);
+      });
+      activeAnimations.current.clear();
+    };
+  }, []);
+
   // Add useEffect to handle run code trigger from navbar
   useEffect(() => {
     if (runCodeTrigger && runCodeTrigger > 0) {
-      console.log("Run code triggered from navbar");
       handleCodeRun();
     }
   }, [runCodeTrigger]);
@@ -61,7 +128,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   // Add useEffect to handle submit code trigger from navbar
   useEffect(() => {
     if (submitCodeTrigger && submitCodeTrigger > 0) {
-      console.log("Submit code triggered from navbar");
       handleCodeSubmit();
     }
   }, [submitCodeTrigger]);
@@ -78,22 +144,34 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     }
   }, [resetLayoutTrigger]);
 
-  // Handle layout reset
+  // Handle layout reset with smooth animations
   useEffect(() => {
     if (shouldResetLayout) {
-      // Reset horizontal panels
+      isAnimatingRef.current = true;
+      const animations = [];
+
       if (leftPanelRef.current && rightPanelRef.current) {
-        leftPanelRef.current.resize(DEFAULT_HORIZONTAL_SIZES[0]);
-        rightPanelRef.current.resize(DEFAULT_HORIZONTAL_SIZES[1]);
+        animations.push(
+          animateResize(leftPanelRef, DEFAULT_HORIZONTAL_SIZES[0], 500)
+        );
+        animations.push(
+          animateResize(rightPanelRef, DEFAULT_HORIZONTAL_SIZES[1], 500)
+        );
       }
 
-      // Reset vertical panels
       if (codeEditorPanelRef.current && testCasesPanelRef.current) {
-        codeEditorPanelRef.current.resize(DEFAULT_VERTICAL_SIZES[0]);
-        testCasesPanelRef.current.resize(DEFAULT_VERTICAL_SIZES[1]);
+        animations.push(
+          animateResize(codeEditorPanelRef, DEFAULT_VERTICAL_SIZES[0], 500)
+        );
+        animations.push(
+          animateResize(testCasesPanelRef, DEFAULT_VERTICAL_SIZES[1], 500)
+        );
       }
 
-      setShouldResetLayout(false);
+      Promise.all(animations).then(() => {
+        setShouldResetLayout(false);
+        isAnimatingRef.current = false;
+      });
     }
   }, [shouldResetLayout]);
 
@@ -173,42 +251,51 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 
   useEffect(() => {
     if (shouldResize) {
-      // Use the imperative API to resize panels
-      if (codeEditorPanelRef.current && testCasesPanelRef.current) {
-        codeEditorPanelRef.current.resize(60);
-        testCasesPanelRef.current.resize(40);
-      }
-      setShouldResize(false);
+      isAnimatingRef.current = true;
+      Promise.all([
+        animateResize(codeEditorPanelRef, 60, 500),
+        animateResize(testCasesPanelRef, 40, 500),
+      ]).then(() => {
+        setShouldResize(false);
+        isAnimatingRef.current = false;
+      });
     }
-  }, [shouldResize, verticalSizes]);
+  }, [shouldResize]);
 
   useEffect(() => {
     if (shouldMaximizeHorizontal) {
-      // Use the imperative API to resize horizontal panels
-      if (leftPanelRef.current && rightPanelRef.current) {
-        leftPanelRef.current.resize(horizontalSizes[0]);
-        rightPanelRef.current.resize(horizontalSizes[1]);
-      }
-      setShouldMaximizeHorizontal(false);
+      isAnimatingRef.current = true;
+      Promise.all([
+        animateResize(leftPanelRef, horizontalSizes[0], 500),
+        animateResize(rightPanelRef, horizontalSizes[1], 500),
+      ]).then(() => {
+        setShouldMaximizeHorizontal(false);
+        isAnimatingRef.current = false;
+      });
     }
   }, [shouldMaximizeHorizontal, horizontalSizes]);
 
   useEffect(() => {
     if (shouldMaximizeVertical) {
-      // Use the imperative API to resize vertical panels
-      if (codeEditorPanelRef.current && testCasesPanelRef.current) {
-        codeEditorPanelRef.current.resize(verticalSizes[0]);
-        testCasesPanelRef.current.resize(verticalSizes[1]);
-      }
-      setShouldMaximizeVertical(false);
+      isAnimatingRef.current = true;
+      Promise.all([
+        animateResize(codeEditorPanelRef, verticalSizes[0], 500),
+        animateResize(testCasesPanelRef, verticalSizes[1], 500),
+      ]).then(() => {
+        setShouldMaximizeVertical(false);
+        isAnimatingRef.current = false;
+      });
     }
   }, [shouldMaximizeVertical, verticalSizes]);
 
   const handleCloseSubmissionTab = () => {
-    setShowResultsTab(false); // This will hide the result tab
+    setShowResultsTab(false);
   };
 
   const handleVerticalLayoutChange = (sizes: number[]) => {
+    // Ignore layout changes during programmatic animations
+    if (isAnimatingRef.current) return;
+
     setVerticalSizes(sizes);
 
     // Update maximize states based on actual sizes for vertical panels
@@ -222,6 +309,9 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   };
 
   const handleHorizontalLayoutChange = (sizes: number[]) => {
+    // Ignore layout changes during programmatic animations
+    if (isAnimatingRef.current) return;
+
     setHorizontalSizes(sizes);
 
     // Update maximize states based on actual sizes
@@ -240,7 +330,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 
   return (
     <div className="flex-1 h-[calc(100vh-3rem)] overflow-auto flex justify-center items-center m-4 rounded-lg">
-      {/* Add a key to force re-render when layout changes */}
       <ResizablePanelGroup
         direction="horizontal"
         onLayout={handleHorizontalLayoutChange}
@@ -248,7 +337,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         {/* Left Panel (QuestionTabs) */}
         <ResizablePanel
           ref={leftPanelRef}
-          defaultSize={50} // Use layout state for default size
+          defaultSize={50}
           minSize={5}
           maxSize={95}
           className="mr-1 rounded-lg border"
@@ -271,7 +360,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         {/* Right Panel (CodeEditor and TestCases) */}
         <ResizablePanel
           ref={rightPanelRef}
-          defaultSize={50} // Use layout state for default size
+          defaultSize={50}
           minSize={5}
           maxSize={95}
         >
