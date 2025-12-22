@@ -39,6 +39,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   isMaximized = false,
 }) => {
   const [activeTab, setActiveTab] = useState("description");
+  const [previousTab, setPreviousTab] = useState("description");
   const { clearSubmitCodeResult } = useSubmissionStore();
 
   const handleMaximizeMinimize = useCallback(() => {
@@ -47,8 +48,29 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     }
   }, [onMaximize]);
 
+  // Get tab order index for animation direction
+  const getTabIndex = (tabValue: string) => {
+    const tabs = showResultsTab
+      ? ["description", "editorial", "results", "submissions", "discussion"]
+      : ["description", "editorial", "submissions", "discussion"];
+    return tabs.indexOf(tabValue);
+  };
+
+  // Determine slide direction based on tab order
+  const getSlideDirection = () => {
+    const currentIndex = getTabIndex(activeTab);
+    const previousIndex = getTabIndex(previousTab);
+    return currentIndex > previousIndex ? 1 : -1;
+  };
+
+  const handleTabChange = (newTab: string) => {
+    setPreviousTab(activeTab);
+    setActiveTab(newTab);
+  };
+
   useEffect(() => {
     if (showResultsTab) {
+      setPreviousTab(activeTab);
       setActiveTab("results");
     }
   }, [showResultsTab]);
@@ -57,8 +79,10 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     const savedTab = sessionStorage.getItem("lastOpenedTab");
     if (savedTab && savedTab !== "results") {
       setActiveTab(savedTab);
+      setPreviousTab(savedTab);
     } else {
       setActiveTab("description");
+      setPreviousTab("description");
     }
   }, []);
 
@@ -81,7 +105,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
         clearSubmitCodeResult();
         const lastOpenedTab =
           sessionStorage.getItem(SESSION_KEY) || "description";
-        setActiveTab(lastOpenedTab);
+        handleTabChange(lastOpenedTab);
       }
     };
 
@@ -90,7 +114,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     return () => {
       window.removeEventListener("keydown", keyboardShortcut);
     };
-  }, [showResultsTab, onCloseResultsTab, clearSubmitCodeResult]);
+  }, [showResultsTab, onCloseResultsTab, clearSubmitCodeResult, activeTab]);
 
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
@@ -123,35 +147,35 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
         if (showResultsTab) {
           switch (key) {
             case "1":
-              setActiveTab("description");
+              handleTabChange("description");
               break;
             case "2":
-              setActiveTab("editorial");
+              handleTabChange("editorial");
               break;
             case "3":
-              setActiveTab("results");
+              handleTabChange("results");
               break;
             case "4":
-              setActiveTab("submissions");
+              handleTabChange("submissions");
               break;
             case "5":
-              setActiveTab("discussion");
+              handleTabChange("discussion");
               break;
           }
         } else {
           // If results tab is not showing
           switch (key) {
             case "1":
-              setActiveTab("description");
+              handleTabChange("description");
               break;
             case "2":
-              setActiveTab("editorial");
+              handleTabChange("editorial");
               break;
             case "3":
-              setActiveTab("submissions");
+              handleTabChange("submissions");
               break;
             case "4":
-              setActiveTab("discussion");
+              handleTabChange("discussion");
               break;
           }
         }
@@ -163,7 +187,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     return () => {
       window.removeEventListener("keydown", keyboardShortcut);
     };
-  }, [showResultsTab]);
+  }, [showResultsTab, activeTab]);
 
   const onResultsClose = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent triggering the tab change
@@ -172,14 +196,31 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     }
     clearSubmitCodeResult();
     const lastOpenedTab = sessionStorage.getItem(SESSION_KEY) || "description";
-    setActiveTab(lastOpenedTab);
+    handleTabChange(lastOpenedTab);
+  };
+
+  // Animation variants for tab content - Pure slide with no fade
+  const slideDirection = getSlideDirection();
+  const tabVariants = {
+    enter: {
+      x: slideDirection * 100 + "%",
+      opacity: 1,
+    },
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: {
+      x: slideDirection * -100 + "%",
+      opacity: 1,
+    },
   };
 
   return (
     <div className="h-full w-full pt-0 mt-0">
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
+        onValueChange={handleTabChange}
         className="h-full w-full"
       >
         <TabsList className="w-full flex flex-row justify-stretch">
@@ -265,22 +306,84 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
             </HoverCard>
           )}
         </TabsList>
-        <div className="w-full h-full">
-          <TabsContent value="description">
-            <QuestionData />
-          </TabsContent>
-          <TabsContent value="editorial">
-            <QuestionEditorial />
-          </TabsContent>
-          <TabsContent value="results">
-            <QuestionCodeResults />
-          </TabsContent>
-          <TabsContent value="submissions">
-            <SubmissionTabs />
-          </TabsContent>
-          <TabsContent value="discussion">
-            <DiscussionSection />
-          </TabsContent>
+        <div className="w-full h-full overflow-hidden relative">
+          <AnimatePresence mode="sync" initial={false}>
+            {activeTab === "description" && (
+              <motion.div
+                key="description"
+                variants={tabVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="absolute inset-0 w-full h-full"
+              >
+                <TabsContent value="description" className="h-full m-0">
+                  <QuestionData />
+                </TabsContent>
+              </motion.div>
+            )}
+            {activeTab === "editorial" && (
+              <motion.div
+                key="editorial"
+                variants={tabVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="absolute inset-0 w-full h-full"
+              >
+                <TabsContent value="editorial" className="h-full m-0">
+                  <QuestionEditorial />
+                </TabsContent>
+              </motion.div>
+            )}
+            {activeTab === "results" && (
+              <motion.div
+                key="results"
+                variants={tabVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="absolute inset-0 w-full h-full"
+              >
+                <TabsContent value="results" className="h-full m-0">
+                  <QuestionCodeResults />
+                </TabsContent>
+              </motion.div>
+            )}
+            {activeTab === "submissions" && (
+              <motion.div
+                key="submissions"
+                variants={tabVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="absolute inset-0 w-full h-full"
+              >
+                <TabsContent value="submissions" className="h-full m-0">
+                  <SubmissionTabs />
+                </TabsContent>
+              </motion.div>
+            )}
+            {activeTab === "discussion" && (
+              <motion.div
+                key="discussion"
+                variants={tabVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+                className="absolute inset-0 w-full h-full"
+              >
+                <TabsContent value="discussion" className="h-full m-0">
+                  <DiscussionSection />
+                </TabsContent>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </Tabs>
     </div>
