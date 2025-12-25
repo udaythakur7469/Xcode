@@ -68,6 +68,8 @@ model User {
   // - One-to-one relation with stats (optional).
   stats Stats?
 
+  Chats Chat[]
+
   // Timestamp fields.
   lastLogin DateTime @default(now())
   createdAt DateTime @default(now())
@@ -529,4 +531,78 @@ model PostReaction {
   updatedAt DateTime     @updatedAt
 
   @@id([userId, postId])
+}
+
+// =========================================================
+// Chat Model
+// Represents a chat between user and AI
+// =========================================================
+
+model Chat {
+  id String @id @default(cuid())
+
+  // Relation: The user who owns this Chat
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+
+  // Chat metadata
+  title String @default("New Chat")
+
+  isGuest Boolean @default(true)
+
+  // Relations
+  messages Message[]
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt]) // Index for efficient user Chat queries
+}
+
+// =========================================================
+// Message Model
+// Represents individual messages in a Chat
+// =========================================================
+
+model Message {
+  id String @id @default(cuid())
+
+  // Relation: The Chat this message belongs to
+  Chat   Chat   @relation(fields: [ChatId], references: [id], onDelete: Cascade)
+  ChatId String
+
+  // Message content
+  text String @db.Text // Use Text type for longer messages
+
+  // Message metadata
+  role   MessageRole // 'user' or 'assistant'
+  status MessageStatus @default(sent)
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ChatId, createdAt]) // Index for efficient message queries
+}
+
+// =========================================================
+// MessageRole Enum
+// Represents who sent the message
+// =========================================================
+
+enum MessageRole {
+  user
+  assistant
+}
+
+// =========================================================
+// MessageStatus Enum
+// Represents the status of a message
+// =========================================================
+
+enum MessageStatus {
+  sending
+  sent
+  error
 }
