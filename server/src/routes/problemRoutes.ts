@@ -4,6 +4,7 @@ import {
   addHints,
   addTestCases,
   createProblem,
+  generateHints,
   getEditorialByProblemTitle,
   getProblemByTitle,
   getProblemReactions,
@@ -27,5 +28,6 @@ router.post("/reaction", authMiddleware, problemReaction);
 router.get("/getProblemReactions", authMiddleware, getProblemReactions);
 router.route("/testCases").post(addTestCases);
 router.route("/getTestCases").get(getTestCases);
+router.route("/getHints").post(generateHints);
 
 export default router;

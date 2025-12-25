@@ -1,8 +1,8 @@
 import prisma from "../configs/db.js";
 import createHttpError from "http-errors";
 import logger from "../configs/loggerConfig.js";
-import { string } from "zod";
-import { create } from "domain";
+import { generateText } from "ai";
+import { google } from "@ai-sdk/google";
 
 interface CreateProblemInput {
   title: string;
@@ -699,5 +699,41 @@ export const getTestCases = async (req, res, next) => {
   } catch (error) {
     logger.error("Error fetching editorial by problem title:", error);
     next(error);
+  }
+};
+
+export const generateHints = async (req, res, next) => {
+  const { problemTitle, problemDesc, userCode } = req.body;
+  try {
+    const { text: hints } = await generateText({
+      model: google("gemini-2.0-flash-001"),
+      prompt: `
+You are an AI assistant for a LeetCode clone. A user is trying to solve the following problem:
+
+Problem Title: ${problemTitle}
+Problem Description: ${problemDesc}
+User's Partial Code: 
+\\\`
+${userCode}
+\\\`
+
+Generate *exactly 3 hints* to help the user progress. Follow these rules:
+1. Never provide the full solution code, even if requested.  
+2. Hints must be *suggestive, not explicit solutions*.  
+3. Each hint should be *concise and no more than 2 lines*.  
+4. Hint 1: Suggest the overall *approach* the user can use.  
+5. Hint 2: Suggest possible *algorithms or data structures* (give options, do not specify the exact one).  
+6. Hint 3: Instruct the user which *algorithm or data structure* to use.  
+7. Number the hints as 1, 2, 3 in a markdown list.  
+
+Return *only the 3 hints in a numbered markdown list*.
+      `,
+    });
+
+    console.log("Hints:\n", hints);
+    res.status(200).json({ hints: hints });
+  } catch (error) {
+    console.error("Error generating hints:", error);
+    next();
   }
 };
