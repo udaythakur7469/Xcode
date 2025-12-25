@@ -1,7 +1,13 @@
 import * as React from "react";
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { AnimatePresence, motion } from "framer-motion";
+import {
+  AnimatePresence,
+  motion,
+  useMotionValue,
+  useSpring,
+} from "framer-motion";
+import { Maximize, Menu, Minimize, RotateCcw, X } from "lucide-react";
 
 interface FloatingDialogProps {
   open: boolean;
@@ -12,6 +18,10 @@ interface FloatingDialogProps {
   defaultSize?: { width: number; height: number };
   defaultPosition?: { x: number; y: number };
   enableReset?: boolean;
+  enableMaximize?: boolean;
+  enableSidebar?: boolean;
+  sidebarContent?: React.ReactNode;
+  defaultSidebarWidth?: number;
 }
 
 const FloatingDialog: React.FC<FloatingDialogProps> = ({
@@ -23,11 +33,21 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   defaultSize = { width: 500, height: 300 },
   defaultPosition = { x: 100, y: 100 },
   enableReset = false,
+  enableMaximize = false,
+  enableSidebar = false,
+  sidebarContent,
+  defaultSidebarWidth = 250,
 }) => {
   const [size, setSize] = useState(defaultSize);
   const [isResizing, setIsResizing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [resizeDirection, setResizeDirection] = useState("");
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [preMaximizeState, setPreMaximizeState] = useState<{
+    size: { width: number; height: number };
+    position: { x: number; y: number };
+  } | null>(null);
   const [position, setPosition] = useState(() => {
     if (typeof window === "undefined") return defaultPosition;
 
@@ -43,11 +63,36 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
       y: Math.max(0, window.innerHeight / 2 - defaultSize.height / 2),
     };
   });
+
   const dialogRef = useRef<HTMLDivElement>(null);
   const startPos = useRef({ x: 0, y: 0 });
   const startSize = useRef({ width: 0, height: 0 });
   const startPosition = useRef({ x: 0, y: 0 });
   const dragOffset = useRef({ x: 0, y: 0 });
+
+  // Motion values for smooth animation
+  const motionX = useMotionValue(position.x);
+  const motionY = useMotionValue(position.y);
+  const motionWidth = useMotionValue(size.width);
+  const motionHeight = useMotionValue(size.height);
+
+  // Spring configuration for smooth animation
+  const springConfig = { stiffness: 300, damping: 30 };
+  const springX = useSpring(motionX, springConfig);
+  const springY = useSpring(motionY, springConfig);
+  const springWidth = useSpring(motionWidth, springConfig);
+  const springHeight = useSpring(motionHeight, springConfig);
+
+  // Update motion values when position or size changes
+  useEffect(() => {
+    motionX.set(position.x);
+    motionY.set(position.y);
+  }, [position.x, position.y, motionX, motionY]);
+
+  useEffect(() => {
+    motionWidth.set(size.width);
+    motionHeight.set(size.height);
+  }, [size.width, size.height, motionWidth, motionHeight]);
 
   // Boundary-aware position setter
   const setBoundaryPosition = useCallback(
@@ -168,7 +213,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
     }
   };
 
-  // Reset to default position and size
+  // Reset to default position and size with smooth animation
   const handleReset = () => {
     if (typeof window !== "undefined") {
       const yOffset = dialogType === "CommandPalette" ? -100 : 0;
@@ -179,11 +224,42 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
           window.innerHeight / 2 - defaultSize.height / 2 + yOffset
         ),
       };
+
       setSize(defaultSize);
       setPosition(centeredPosition);
+      setIsMaximized(false);
     } else {
       setSize(defaultSize);
       setPosition(defaultPosition);
+      setIsMaximized(false);
+    }
+  };
+
+  // Maximize/Minimize functionality
+  const handleMaximize = () => {
+    if (typeof window === "undefined") return;
+
+    if (isMaximized) {
+      // Restore to previous state
+      if (preMaximizeState) {
+        setSize(preMaximizeState.size);
+        setPosition(preMaximizeState.position);
+      }
+      setIsMaximized(false);
+    } else {
+      // Save current state before maximizing
+      setPreMaximizeState({
+        size: { ...size },
+        position: { ...position },
+      });
+
+      // Maximize to full screen
+      setSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+      setPosition({ x: 0, y: 0 });
+      setIsMaximized(true);
     }
   };
 
@@ -246,10 +322,10 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             className="bg-background border rounded-lg shadow-lg relative"
             style={{
-              width: `${size.width}px`,
-              height: `${size.height}px`,
-              left: `${position.x}px`,
-              top: `${position.y}px`,
+              width: springWidth,
+              height: springHeight,
+              left: springX,
+              top: springY,
               position: "fixed",
               pointerEvents: isResizing ? "none" : "auto",
             }}
@@ -258,32 +334,36 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
               if (isResizing) e.stopPropagation();
             }}
           >
-            {/* Edge Handles */}
+            {/* Edge Handles - Extended 20px on each side */}
             {/* Left */}
             <div
-              className="absolute left-1 top-1/2 -translate-y-1/2 h-8 w-1 cursor-w-resize bg-gray-300 rounded-full z-10"
+              className="absolute left-1 top-1/2 -translate-y-1/2 w-1 cursor-w-resize bg-gray-300 rounded-full z-10 transition-all opacity-0 hover:opacity-100"
+              style={{ height: "calc(1.5rem + 40px)" }}
               onMouseDown={(e) => handleResizeMouseDown(e, "left")}
             />
             {/* Right */}
             <div
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-1 cursor-e-resize bg-gray-300 rounded-full z-10"
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-1 cursor-e-resize bg-gray-300 rounded-full z-10 transition-all opacity-0 hover:opacity-100"
+              style={{ height: "calc(1.5rem + 40px)" }}
               onMouseDown={(e) => handleResizeMouseDown(e, "right")}
             />
             {/* Top */}
             <div
-              className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-1 cursor-n-resize bg-gray-300 rounded-full z-10"
+              className="absolute top-1 left-1/2 -translate-x-1/2 h-1 cursor-n-resize bg-gray-300 rounded-full z-10 transition-all opacity-0 hover:opacity-100"
+              style={{ width: "calc(2rem + 40px)" }}
               onMouseDown={(e) => handleResizeMouseDown(e, "top")}
             />
             {/* Bottom */}
             <div
-              className="absolute bottom-1 left-1/2 -translate-x-1/2 w-8 h-1 cursor-s-resize bg-gray-300 rounded-full z-10"
+              className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 cursor-s-resize bg-gray-300 rounded-full z-10 transition-all opacity-0 hover:opacity-100"
+              style={{ width: "calc(2rem + 40px)" }}
               onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
             />
 
             {/* Corner Handles */}
             {/* Top-left */}
             <div
-              className="absolute left-0 top-0 cursor-nw-resize z-10"
+              className="absolute left-0 top-0 cursor-nw-resize z-10 transition-all opacity-0 hover:opacity-100"
               onMouseDown={(e) => handleResizeMouseDown(e, "top-left")}
             >
               <svg
@@ -303,7 +383,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
             </div>
             {/* Top-right */}
             <div
-              className="absolute right-0 top-0 cursor-ne-resize z-10"
+              className="absolute right-0 top-0 cursor-ne-resize z-10 transition-all opacity-0 hover:opacity-100"
               onMouseDown={(e) => handleResizeMouseDown(e, "top-right")}
             >
               <svg
@@ -323,7 +403,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
             </div>
             {/* Bottom-left */}
             <div
-              className="absolute left-0 bottom-0 cursor-sw-resize z-10"
+              className="absolute left-0 bottom-0 cursor-sw-resize z-10 transition-all opacity-0 hover:opacity-100"
               onMouseDown={(e) => handleResizeMouseDown(e, "bottom-left")}
             >
               <svg
@@ -343,7 +423,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
             </div>
             {/* Bottom-right */}
             <div
-              className="absolute right-0 bottom-0 cursor-se-resize z-10"
+              className="absolute right-0 bottom-0 cursor-se-resize z-10 transition-all opacity-0 hover:opacity-100"
               onMouseDown={(e) => handleResizeMouseDown(e, "bottom-right")}
             >
               <svg
@@ -367,17 +447,45 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
               className="cursor-move active:cursor-grabbing p-6 pb-4 flex flex-row items-center justify-between"
               onMouseDown={handleDragMouseDown}
             >
-              <div
-                className="flex-1 text-lg font-semibold mr-2"
-                onMouseDown={(e) => {
-                  if (dialogType === "CommandPalette") {
-                    e.stopPropagation();
-                  }
-                }}
-              >
-                {title}
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {enableSidebar && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="h-8 w-8 flex-shrink-0"
+                    title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+                  >
+                    {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                  </Button>
+                )}
+                <div
+                  className="flex-1 min-w-0"
+                  onMouseDown={(e) => {
+                    if (dialogType === "CommandPalette") {
+                      e.stopPropagation();
+                    }
+                  }}
+                >
+                  {title}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                {enableMaximize && (
+                  <Button
+                    variant="secondary"
+                    onClick={handleMaximize}
+                    className="text-small text-white hover:text-green-600 rounded p-2"
+                    title={isMaximized ? "Minimize" : "Maximize"}
+                  >
+                    {isMaximized ? (
+                      <Minimize strokeWidth={3} />
+                    ) : (
+                      <Maximize strokeWidth={3} />
+                    )}
+                  </Button>
+                )}
                 {enableReset && (
                   <Button
                     variant="secondary"
@@ -385,7 +493,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                     className="text-small text-white hover:text-yellow-600 rounded p-2"
                     title="Reset position and size"
                   >
-                    Reset
+                    <RotateCcw strokeWidth={3} />
                   </Button>
                 )}
                 <Button
@@ -394,17 +502,38 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                   className="text-small text-red-500 hover:text-red-800 rounded p-2"
                   title="Close"
                 >
-                  ✕
+                  <X strokeWidth={3} />
                 </Button>
               </div>
             </div>
 
-            {/* Content */}
-            <div
-              className="overflow-auto px-6 pb-6"
-              style={{ height: contentHeight }}
-            >
-              {children}
+            {/* Content Area with Sidebar */}
+            <div className="flex" style={{ height: contentHeight }}>
+              {/* Sidebar */}
+              {enableSidebar && (
+                <motion.div
+                  initial={false}
+                  animate={{
+                    width: isSidebarOpen ? defaultSidebarWidth : 0,
+                    opacity: isSidebarOpen ? 1 : 0,
+                  }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                  style={{ flexShrink: 0 }}
+                >
+                  {isSidebarOpen && (
+                    <div
+                      style={{ width: defaultSidebarWidth }}
+                      className="h-full"
+                    >
+                      {sidebarContent}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Main Content */}
+              <div className="flex-1 overflow-auto px-6 pb-6">{children}</div>
             </div>
           </motion.div>
         </motion.div>

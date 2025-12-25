@@ -86,7 +86,7 @@ const FloatingActionButtons = () => {
       {commandPaletteVisible && (
         <FAB
           icon={<Terminal size={24} />}
-          label="Command Palette (Ctrl+K)"
+          label="Command Palette (⌘/Ctrl+K)"
           onClick={() => handleFABClick("commandPalette")}
           onClose={() => setCommandPalettePermanentlyHidden(true)}
           position={positions.commandPalette}
@@ -103,8 +103,12 @@ const FloatingActionButtons = () => {
         onOpenChange={setAiChatDialogOpen}
         title={<AIChatDialogTitle />}
         dialogType="AIChat"
-        defaultSize={{ width: 600, height: 500 }}
+        defaultSize={{ width: 700, height: 500 }}
         enableReset={true}
+        enableMaximize={true}
+        enableSidebar={true}
+        sidebarContent={"sidebar"}
+        defaultSidebarWidth={250}
       >
         <AIChatDialogContent />
       </FloatingDialog>
@@ -123,6 +127,7 @@ const FloatingActionButtons = () => {
         dialogType="CommandPalette"
         defaultSize={{ width: 600, height: 400 }}
         enableReset={true}
+        enableMaximize={false}
       >
         <CommandPaletteDialogContent
           onClose={() => setCommandPaletteDialogOpen(false)}
