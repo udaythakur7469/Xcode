@@ -108,7 +108,6 @@ const FloatingActionButtons = () => {
         enableMaximize={true}
         enableSidebar={true}
         sidebarContent={"sidebar"}
-        defaultSidebarWidth={250}
       >
         <AIChatDialogContent />
       </FloatingDialog>

@@ -30,13 +30,12 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   children,
   title,
   dialogType,
-  defaultSize = { width: 500, height: 300 },
+  defaultSize,
   defaultPosition = { x: 100, y: 100 },
   enableReset = false,
   enableMaximize = false,
   enableSidebar = false,
   sidebarContent,
-  defaultSidebarWidth = 250,
 }) => {
   const [size, setSize] = useState(defaultSize);
   const [isResizing, setIsResizing] = useState(false);
@@ -298,10 +297,6 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onOpenChange]);
 
-  // Calculate content height based on actual header height
-  const headerHeight = 80;
-  const contentHeight = `calc(100% - ${headerHeight}px)`;
-
   if (!open) return null;
 
   return (
@@ -320,7 +315,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="bg-background border rounded-lg shadow-lg relative"
+            className="bg-background border rounded-lg shadow-lg relative flex flex-col"
             style={{
               width: springWidth,
               height: springHeight,
@@ -444,7 +439,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
             {/* Header */}
             <div
-              className="cursor-move active:cursor-grabbing p-6 pb-4 flex flex-row items-center justify-between"
+              className="cursor-move active:cursor-grabbing p-3 flex flex-row items-center justify-between"
               onMouseDown={handleDragMouseDown}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -457,7 +452,11 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                     className="h-8 w-8 flex-shrink-0"
                     title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
                   >
-                    {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+                    {isSidebarOpen ? (
+                      <X strokeWidth={3} />
+                    ) : (
+                      <Menu strokeWidth={3} />
+                    )}
                   </Button>
                 )}
                 <div
@@ -508,13 +507,13 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
             </div>
 
             {/* Content Area with Sidebar */}
-            <div className="flex" style={{ height: contentHeight }}>
+            <div className="flex flex-1 overflow-hidden">
               {/* Sidebar */}
               {enableSidebar && (
                 <motion.div
                   initial={false}
                   animate={{
-                    width: isSidebarOpen ? defaultSidebarWidth : 0,
+                    width: isSidebarOpen ? `${size.width * 0.35}px` : 0,
                     opacity: isSidebarOpen ? 1 : 0,
                   }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
@@ -523,8 +522,8 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                 >
                   {isSidebarOpen && (
                     <div
-                      style={{ width: defaultSidebarWidth }}
-                      className="h-full"
+                      style={{ width: `${size.width * 0.35}px` }}
+                      className="h-full bg-red-500 rounded-bl-lg"
                     >
                       {sidebarContent}
                     </div>
@@ -533,7 +532,9 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
               )}
 
               {/* Main Content */}
-              <div className="flex-1 overflow-auto px-6 pb-6">{children}</div>
+              <div className="flex-1 overflow-auto px-2 pb-2 bg-green-500 rounded-b-lg">
+                {children}
+              </div>
             </div>
           </motion.div>
         </motion.div>
