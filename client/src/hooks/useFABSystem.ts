@@ -303,19 +303,37 @@ export const useFABSystem = () => {
       // Ctrl/Cmd + Q for AI Chat
       if (e.key === "q" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setAiChatDialogOpen(true);
+        // Close command palette if open, then open AI chat
+        if (commandPaletteDialogOpen) {
+          setCommandPaletteDialogOpen(false);
+          // Wait for next render cycle
+          requestAnimationFrame(() => {
+            setAiChatDialogOpen(true);
+          });
+        } else {
+          setAiChatDialogOpen(true);
+        }
       }
 
       // Ctrl + K for Command Palette
-      if (e.ctrlKey && e.key.toLowerCase() === "k") {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setCommandPaletteDialogOpen(true);
+        // Close AI chat if open, then open command palette
+        if (aiChatDialogOpen) {
+          setAiChatDialogOpen(false);
+          // Wait for next render cycle
+          requestAnimationFrame(() => {
+            setCommandPaletteDialogOpen(true);
+          });
+        } else {
+          setCommandPaletteDialogOpen(true);
+        }
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [aiChatDialogOpen, commandPaletteDialogOpen]);
 
   // Handle window resize
   useEffect(() => {
