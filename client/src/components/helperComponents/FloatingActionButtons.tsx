@@ -5,8 +5,6 @@ import { MessageSquare, Terminal } from "lucide-react";
 import FAB from "./FAB";
 import { useFABSystem } from "@/hooks/useFABSystem";
 import FloatingDialog from "./FloatingDialog";
-import AIChatDialogContent from "./aiChatDialog/content/AIChatDialogContent";
-import AIChatDialogTitle from "./aiChatDialog/title/AIChatDialogTitle";
 import CommandPaletteDialogTitle from "./commandPaletteDialog/title/CommandPaletteDialogTitle";
 import CommandPaletteDialogContent from "./commandPaletteDialog/content/CommandPaletteDialogContent";
 import { SignupDialog } from "../auth/signupPage/SignupDialog";
@@ -14,6 +12,9 @@ import { LoginDialog } from "../auth/loginPage/LoginDialog";
 import { useUserStore } from "@/features/userStore";
 import LogoutDialog from "../landingPage/helperComponents/LogoutDialog";
 import { Dialog } from "../ui/dialog";
+import ChatWindow from "./aiChatDialog/chat/ChatWindow";
+import ChatTitle from "./aiChatDialog/title/ChatTitle";
+import ChatSidebar from "./aiChatDialog/sidebar/ChatSidebar";
 
 const FloatingActionButtons = () => {
   const {
@@ -101,15 +102,15 @@ const FloatingActionButtons = () => {
       <FloatingDialog
         open={aiChatDialogOpen}
         onOpenChange={setAiChatDialogOpen}
-        title={<AIChatDialogTitle />}
+        title={<ChatTitle />}
         dialogType="AIChat"
         defaultSize={{ width: 700, height: 500 }}
         enableReset={true}
         enableMaximize={true}
         enableSidebar={true}
-        sidebarContent={"sidebar"}
+        sidebarContent={<ChatSidebar />}
       >
-        <AIChatDialogContent />
+        <ChatWindow />
       </FloatingDialog>
 
       {/* Command Palette Dialog */}
