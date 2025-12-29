@@ -608,8 +608,8 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                         ? "block"
                         : "none",
                   }}
-                >
-                  <div className="h-full bg-red-500 rounded-bl-lg overflow-auto">
+                > 
+                  <div className="h-full rounded-bl-lg overflow-auto border">
                     {sidebarContent}
                   </div>
 
@@ -624,7 +624,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
               )}
 
               {/* Main Content */}
-              <div className="flex-1 overflow-auto px-2 pb-2 bg-green-500 rounded-b-lg">
+              <div className="flex-1 overflow-auto px-2 pb-2 border rounded-b-lg">
                 {children}
               </div>
             </div>
