@@ -13,7 +13,7 @@ export const createChat = async (req, res, next) => {
       return res.status(200).json({
         success: true,
         message: "Chat created successfully",
-        conversationId: `guest-${randomUUID()}`,
+        ChatId: `guest-${randomUUID()}`,
         isGuest: true,
       });
     }
@@ -55,13 +55,6 @@ export const deleteChat = async (req, res, next) => {
         .json({ success: true, message: "Chat deleted successfully" });
     }
 
-    if (!userId || chatId.startsWith("guest-")) {
-      return res.status(200).json({
-        success: true,
-        message: "Chat deleted successfully",
-      });
-    }
-
     const chat = await prisma.chat.findUnique({ where: { id: chatId } });
 
     if (!chat || chat.userId !== userId) {
@@ -101,18 +94,16 @@ export const sendMessage = async (req, res, next) => {
     if (!userId || chatId.startsWith("guest-")) {
       return res.status(200).json({
         success: true,
-        messages: [
-          {
-            id: randomUUID(),
-            role: "user",
-            text: message,
-          },
-          {
-            id: randomUUID(),
-            role: "assistant",
-            text: aiResponse,
-          },
-        ],
+        userMessage: {
+          id: randomUUID(),
+          role: "user",
+          text: message,
+        },
+        aiMessage: {
+          id: randomUUID(),
+          role: "assistant",
+          text: aiResponse,
+        },
         isGuest: true,
       });
     }
@@ -143,14 +134,16 @@ export const sendMessage = async (req, res, next) => {
       },
     });
 
-    return res.status(201).json({
+    return res.status(200).json({
       success: true,
       userMessage: {
         id: userMessage.id,
+        role: userMessage.role,
         text: userMessage.text,
       },
       aiMessage: {
         id: aiMessage.id,
+        role: aiMessage.role,
         text: aiMessage.text,
       },
       isGuest: false,
