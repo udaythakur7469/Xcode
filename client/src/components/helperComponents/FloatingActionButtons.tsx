@@ -15,6 +15,7 @@ import { Dialog } from "../ui/dialog";
 import ChatWindow from "./aiChatDialog/chat/ChatWindow";
 import ChatTitle from "./aiChatDialog/title/ChatTitle";
 import ChatSidebar from "./aiChatDialog/sidebar/ChatSidebar";
+import { useChatStore } from "@/features/chatStore";
 
 const FloatingActionButtons = () => {
   const {
@@ -45,11 +46,70 @@ const FloatingActionButtons = () => {
 
   const { checkAuth } = useUserStore();
 
+const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const {
+    createChat,
+    getChatMessages,
+    chatMessage,
+    sendMessage,
+    isSendingMessage,
+    getUserChats,
+    userChats,
+    isLoadingUserChats,
+  } = useChatStore();
+
+  const handleNewChat = async () => {
+    try {
+      await createChat();
+      await getUserChats();
+
+      const { userChats: refreshedChats } = useChatStore.getState();
+      if (refreshedChats && refreshedChats.length > 0) {
+        setActiveChatId(refreshedChats[0].id);
+        await getChatMessages(refreshedChats[0].id);
+      }
+    } catch (error) {
+      console.error("Failed to create new chat:", error);
+    }
+  };
+
+  const handleSelectChat = async (chatId: string) => {
+    setActiveChatId(chatId);
+    await getChatMessages(chatId);
+  };
+
+  const handleSendMessage = async (text: string) => {
+    if (!activeChatId) {
+      await handleNewChat();
+      const { userChats: refreshedChats } = useChatStore.getState();
+      if (refreshedChats && refreshedChats.length > 0) {
+        const newChatId = refreshedChats[0].id;
+        await sendMessage(newChatId, text);
+        await getChatMessages(newChatId);
+      }
+      return;
+    }
+
+    try {
+      await sendMessage(activeChatId, text);
+      await getChatMessages(activeChatId);
+      await getUserChats();
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
+  };
+
   useEffect(() => {
     if (!commandPaletteDialogOpen) {
       setCommandPaletteSearchQuery("");
     }
   }, [commandPaletteDialogOpen]);
+
+  useEffect(() => {
+    if (aiChatDialogOpen) {
+      getUserChats();
+    }
+  }, [aiChatDialogOpen, getUserChats]);
 
   const handleCommandPaletteSearch = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -108,9 +168,21 @@ const FloatingActionButtons = () => {
         enableReset={true}
         enableMaximize={true}
         enableSidebar={true}
-        sidebarContent={<ChatSidebar />}
+        sidebarContent={
+          <ChatSidebar
+            chats={userChats || []}
+            activeChatId={activeChatId}
+            onSelectChat={handleSelectChat}
+            onNewChat={handleNewChat}
+            isLoading={isLoadingUserChats}
+          />
+        }
       >
-        <ChatWindow />
+        <ChatWindow
+          messages={chatMessage}
+          sendMessage={handleSendMessage}
+          sendingMessage={isSendingMessage}
+        />
       </FloatingDialog>
 
       {/* Command Palette Dialog */}
