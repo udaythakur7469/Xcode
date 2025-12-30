@@ -81,11 +81,15 @@ export const sendMessage = async (req, res, next) => {
                     id: randomUUID(),
                     role: "user",
                     text: message,
+                    status: "sent",
+                    updatedAt: new Date().toISOString(),
                 },
                 aiMessage: {
                     id: randomUUID(),
                     role: "assistant",
                     text: aiResponse,
+                    status: "sent",
+                    updatedAt: new Date().toISOString(),
                 },
                 isGuest: true,
             });
@@ -117,11 +121,15 @@ export const sendMessage = async (req, res, next) => {
                 id: userMessage.id,
                 role: userMessage.role,
                 text: userMessage.text,
+                status: userMessage.status,
+                updatedAt: userMessage.updatedAt,
             },
             aiMessage: {
                 id: aiMessage.id,
                 role: aiMessage.role,
                 text: aiMessage.text,
+                status: aiMessage.status,
+                updatedAt: aiMessage.updatedAt,
             },
             isGuest: false,
         });
@@ -167,6 +175,26 @@ export const getMessages = async (req, res, next) => {
     }
     catch (error) {
         logger.error("error in getMessages controller", error);
+        next(error);
+    }
+};
+export const getChats = async (req, res, next) => {
+    const userId = req.user?.Id || req.user?.userId;
+    try {
+        const chats = await prisma.chat.findMany({
+            where: { userId: userId },
+            orderBy: { updatedAt: "desc" },
+            select: { id: true, title: true },
+        });
+        if (!chats) {
+            throw createHttpError.NotFound("No chats found for the user");
+        }
+        res.status(200).json({
+            chats,
+        });
+    }
+    catch (error) {
+        logger.error("Error in getChats controller", error);
         next(error);
     }
 };

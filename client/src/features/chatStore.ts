@@ -3,6 +3,8 @@ import { create } from "zustand";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+axios.defaults.withCredentials = true;
+
 interface ChatCreationResponse {
   success: boolean;
   message: string;
@@ -17,8 +19,8 @@ interface ChatDeletionResponse {
 
 interface SendMessageResponse {
   success: boolean;
-  userMessage: { id: string; role: string; text: string };
-  aiMessage: { id: string; role: string; text: string };
+  userMessage: Message;
+  aiMessage: Message;
   isGuest: boolean;
 }
 
@@ -30,7 +32,7 @@ export interface Message {
   updatedAt: string;
 }
 
-interface getChatsResponse {
+export interface getChatsResponse {
   id: string;
   title: string;
 }
@@ -48,7 +50,7 @@ interface ChatDetails {
   chatMessage: Message[];
   isGettingChatMessages: boolean;
   chatMessagesError: string | null;
-  userChats: getChatsResponse[] | null;
+  userChats: getChatsResponse[];
   isLoadingUserChats: boolean;
   UserChatsError: string | null;
 
@@ -166,7 +168,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       const response = await axios.get(`${API_URL}/chat/getUserChats`);
 
       set({
-        userChats: response.data,
+        userChats: response.data.chats,
         isLoadingUserChats: false,
         UserChatsError: null,
       });
