@@ -30,6 +30,11 @@ export interface Message {
   updatedAt: string;
 }
 
+interface getChatsResponse {
+  id: string;
+  title: string;
+}
+
 interface ChatDetails {
   chatCreation: ChatCreationResponse | null;
   isCreatingChat: boolean;
@@ -43,11 +48,15 @@ interface ChatDetails {
   chatMessage: Message[];
   isGettingChatMessages: boolean;
   chatMessagesError: string | null;
+  userChats: getChatsResponse[] | null;
+  isLoadingUserChats: boolean;
+  UserChatsError: string | null;
 
   createChat: () => Promise<void>;
   deleteChat: (chatId: string) => Promise<void>;
   sendMessage: (chatId: string, message: string) => Promise<void>;
   getChatMessages: (chatId: string) => Promise<void>;
+  getUserChats: () => Promise<void>;
 }
 
 export const useChatStore = create<ChatDetails>()((set, get) => ({
@@ -63,6 +72,9 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
   chatMessage: [],
   isGettingChatMessages: false,
   chatMessagesError: null,
+  userChats: [],
+  isLoadingUserChats: false,
+  UserChatsError: null,
 
   createChat: async () => {
     set({ isCreatingChat: true, chatCreationError: null });
@@ -118,7 +130,9 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
         messageSendingError: null,
       });
     } catch (error) {
-      const errMsg = error.response?.data?.message;
+      const errMsg =
+        error.response?.data?.message ||
+        "An error occurred while sending message";
       set({ isSendingMessage: false, messageSendingError: errMsg });
       throw new Error(errMsg);
     }
@@ -137,8 +151,30 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
         chatMessagesError: null,
       });
     } catch (error) {
-      const errMsg = error.response?.data?.message;
+      const errMsg =
+        error.response?.data?.message ||
+        "An error occurred while getting chat messages";
       set({ isGettingChatMessages: false, chatMessagesError: errMsg });
+      throw new Error(errMsg);
+    }
+  },
+
+  getUserChats: async () => {
+    set({ isLoadingUserChats: true, UserChatsError: null });
+
+    try {
+      const response = await axios.get(`${API_URL}/chat/getUserChats`);
+
+      set({
+        userChats: response.data,
+        isLoadingUserChats: false,
+        UserChatsError: null,
+      });
+    } catch (error) {
+      const errMsg =
+        error.response?.data?.message ||
+        "An error occurred while getting user chats";
+      set({ isLoadingUserChats: false, UserChatsError: errMsg });
       throw new Error(errMsg);
     }
   },
