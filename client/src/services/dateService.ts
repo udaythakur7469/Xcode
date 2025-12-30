@@ -5,7 +5,7 @@ export const formatDate = (dateString: string) => {
   const date = moment(dateString);
 
   // Format it to just show the date portion
-  return date.format("MM/D/YYYY");
+  return date.format("MMM Do YYYY");         
 };
 
 export const relativeDate = (dateString: string) => {

@@ -11,7 +11,7 @@ export const createChat = async (req, res, next) => {
             return res.status(200).json({
                 success: true,
                 message: "Chat created successfully",
-                ChatId: `guest-${randomUUID()}`,
+                chatId: `guest-${randomUUID()}`,
                 isGuest: true,
             });
         }
@@ -25,7 +25,7 @@ export const createChat = async (req, res, next) => {
         return res.status(200).json({
             success: true,
             message: "Chat created successfully",
-            ChatId: Chat.id,
+            chatId: Chat.id,
             isGuest: false,
         });
     }
