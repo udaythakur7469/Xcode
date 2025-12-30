@@ -3,6 +3,7 @@ import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js
 import {
   createChat,
   deleteChat,
+  getChats,
   getMessages,
   sendMessage,
 } from "../controllers/chatController.js";
@@ -13,5 +14,6 @@ router.route("/createChat").post(optionalAuthMiddleware, createChat);
 router.route("/deleteChat").delete(optionalAuthMiddleware, deleteChat);
 router.route("/sendMessage").post(optionalAuthMiddleware, sendMessage);
 router.route("/getMessages").get(optionalAuthMiddleware, getMessages);
+router.route("/getUserChats").get(optionalAuthMiddleware, getChats);
 
 export default router;
