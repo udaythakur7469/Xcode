@@ -609,7 +609,11 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                         : "none",
                   }}
                 >
-                  <div className="h-full rounded-bl-lg overflow-auto">
+                  <div
+                    className={`h-full rounded-bl-lg overflow-auto ${
+                      dialogType === "AIChat" ? "border" : ""
+                    }`}
+                  >
                     {sidebarContent}
                   </div>
 
@@ -624,7 +628,11 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
               )}
 
               {/* Main Content */}
-              <div className="flex-1 overflow-auto px-2 pb-2 rounded-b-lg">
+              <div
+                className={`flex-1 overflow-auto px-2 pb-2 ${
+                  dialogType === "AIChat" ? "border" : ""
+                } ${isSidebarOpen ? "" : "rounded-b-lg"}`}
+              >
                 {children}
               </div>
             </div>

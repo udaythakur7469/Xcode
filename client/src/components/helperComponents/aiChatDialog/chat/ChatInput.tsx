@@ -4,7 +4,7 @@ import React, { useRef, useState } from "react";
 import { SendHorizontal } from "lucide-react";
 
 type ChatInputProps = {
-  onSend: (chatId: string, text: string) => void;
+  onSend: (text: string) => void;
   disabled?: boolean;
 };
 
@@ -15,7 +15,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const handleSend = () => {
     if (!value.trim() || disabled) return;
 
-    onSend("jffj", value.trim());
+    onSend(value.trim());
     setValue("");
 
     if (textareaRef.current) {

@@ -22,11 +22,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
         }${message.status === "sending" ? "opacity-70 animate-pulse" : ""}
   ${message.status === "error" ? "bg-red-950 border-red-500/60" : ""}`}
       >
-        <div
-          className={`whitespace-pre-wrap leading-relaxed ${
-            isUser ? "justify-end" : "justify-start"
-          }`}
-        >
+        <div className="whitespace-pre-wrap leading-relaxed break-words">
           {message.text}
         </div>
         {message.status === "sending" && (
