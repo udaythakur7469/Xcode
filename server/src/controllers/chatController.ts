@@ -198,3 +198,26 @@ export const getMessages = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getChats = async (req, res, next) => {
+  const userId = req.user.Id || req.user.userId;
+
+  try {
+    const chats = await prisma.chat.findMany({
+      where: { id: userId },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, title: true },
+    });
+
+    if (!chats) {
+      throw createHttpError.NotFound("No chats found for the user");
+    }
+
+    res.status(200).json({
+      chats,
+    });
+  } catch (error) {
+    logger.error("Error in getChats controller", error);
+    next(error);
+  }
+};
