@@ -47,9 +47,8 @@ const FloatingActionButtons = () => {
 
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const prevDialogOpenRef = useRef(false);
-  // ✅ NEW: Track the chat that should be pinned to top (most recently interacted with)
   const pinnedChatIdRef = useRef<string | null>(null);
-  
+
   const {
     createChat,
     getChatMessages,
@@ -76,7 +75,10 @@ const FloatingActionButtons = () => {
       return null;
     }
 
-    if (currentActiveChatId && chatsList.some(chat => chat.id === currentActiveChatId)) {
+    if (
+      currentActiveChatId &&
+      chatsList.some((chat) => chat.id === currentActiveChatId)
+    ) {
       return currentActiveChatId;
     }
 
@@ -89,9 +91,12 @@ const FloatingActionButtons = () => {
 
     if (resolvedChatId !== activeChatId) {
       setActiveChatId(resolvedChatId);
-      
+
       if (resolvedChatId) {
-        getChatMessages(resolvedChatId);
+        // ✅ GUARD: Don't try to load messages for temporary chat IDs
+        if (!resolvedChatId.startsWith("temp-")) {
+          getChatMessages(resolvedChatId);
+        }
       } else {
         clearMessages();
       }
@@ -102,14 +107,12 @@ const FloatingActionButtons = () => {
   useEffect(() => {
     if (pinnedChatIdRef.current && userChats.length > 0) {
       const pinnedChatExists = userChats.some(
-        chat => chat.id === pinnedChatIdRef.current
+        (chat) => chat.id === pinnedChatIdRef.current
       );
-      
+
       if (pinnedChatExists) {
-        // Move pinned chat to top
         moveChatToTop(pinnedChatIdRef.current);
       } else {
-        // Pinned chat was deleted, clear the pin
         pinnedChatIdRef.current = null;
       }
     }
@@ -118,10 +121,9 @@ const FloatingActionButtons = () => {
   // ✅ FIX 3: Dialog Open Lifecycle Guard
   useEffect(() => {
     const dialogJustOpened = aiChatDialogOpen && !prevDialogOpenRef.current;
-    
+
     if (dialogJustOpened) {
       getUserChats();
-      // Clear pinned chat when dialog opens fresh
       pinnedChatIdRef.current = null;
     }
 
@@ -130,21 +132,40 @@ const FloatingActionButtons = () => {
 
   // ✅ FIX 4: First chat auto-selection
   useEffect(() => {
-    if (aiChatDialogOpen && userChats.length > 0 && !activeChatId && !isLoadingUserChats) {
+    if (
+      aiChatDialogOpen &&
+      userChats.length > 0 &&
+      !activeChatId &&
+      !isLoadingUserChats
+    ) {
       const firstChatId = userChats[0].id;
-      setActiveChatId(firstChatId);
-      getChatMessages(firstChatId);
+
+      // ✅ GUARD: Only set as active and load messages if it's a real chat ID
+      if (!firstChatId.startsWith("temp-")) {
+        setActiveChatId(firstChatId);
+        getChatMessages(firstChatId);
+      }
     }
-  }, [aiChatDialogOpen, userChats, activeChatId, isLoadingUserChats, getChatMessages]);
+  }, [
+    aiChatDialogOpen,
+    userChats,
+    activeChatId,
+    isLoadingUserChats,
+    getChatMessages,
+  ]);
 
   const handleNewChat = async () => {
     try {
       const newChatId = await createChat();
-      
+
       if (newChatId) {
         setActiveChatId(newChatId);
-        await getChatMessages(newChatId);
-        // Pin this new chat to top
+
+        // ✅ GUARD: Only load messages if not a temp ID
+        if (!newChatId.startsWith("temp-")) {
+          await getChatMessages(newChatId);
+        }
+
         pinnedChatIdRef.current = newChatId;
       }
     } catch (error) {
@@ -153,33 +174,40 @@ const FloatingActionButtons = () => {
   };
 
   const handleSelectChat = async (chatId: string) => {
+    // ✅ GUARD: Don't allow selecting temporary chats
+    if (chatId.startsWith("temp-")) {
+      return;
+    }
+
     setActiveChatId(chatId);
     await getChatMessages(chatId);
-    // Don't pin on selection, only on message send
   };
 
   const handleDeleteChat = async (chatId: string) => {
     const isActiveChat = chatId === activeChatId;
     const currentChatIndex = userChats.findIndex((chat) => chat.id === chatId);
-    
-    // Clear pin if deleting the pinned chat
+
     if (pinnedChatIdRef.current === chatId) {
       pinnedChatIdRef.current = null;
     }
-    
+
     try {
       await deleteChat(chatId);
       await getUserChats();
-      
+
       const { userChats: updatedChats } = useChatStore.getState();
-      
+
       if (isActiveChat) {
         if (updatedChats.length > 0) {
           const nextIndex = Math.min(currentChatIndex, updatedChats.length - 1);
           const nextChatId = updatedChats[nextIndex].id;
-          
+
           setActiveChatId(nextChatId);
-          await getChatMessages(nextChatId);
+
+          // ✅ GUARD: Only load messages if not a temp ID
+          if (!nextChatId.startsWith("temp-")) {
+            await getChatMessages(nextChatId);
+          }
         } else {
           setActiveChatId(null);
           clearMessages();
@@ -191,24 +219,19 @@ const FloatingActionButtons = () => {
   };
 
   const handleSendMessage = async (text: string) => {
-    // If no active chat, create one first
     if (!activeChatId) {
       try {
         const newChatId = await createChat();
-        
+
         if (newChatId) {
           setActiveChatId(newChatId);
-          
-          // Pin this chat to ensure it stays at top
           pinnedChatIdRef.current = newChatId;
-          
-          // Send message (will move to top optimistically)
+
+          // Send message - the store will handle optimistic updates
           await sendMessage(newChatId, text);
-          
-          // ✅ Refresh from backend to get updated chat title
-          // Backend typically generates title from first message
+
+          // Refresh to get updated chat title from backend
           await getUserChats();
-          // The pinned chat effect will ensure it stays at top
         }
       } catch (error) {
         console.error("Failed to create chat and send message:", error);
@@ -217,26 +240,17 @@ const FloatingActionButtons = () => {
     }
 
     try {
-      // Check if this chat has any messages (to detect first message scenario)
-      const isFirstMessage = chatMessage.length === 0;
-      
-      // ✅ CRITICAL FIX: Pin the chat before sending
-      // This ensures it stays at top even after backend refresh
+      // Pin the chat before sending
       pinnedChatIdRef.current = activeChatId;
-      
-      // Move to top optimistically (immediate UI feedback)
+
+      // Move to top optimistically
       moveChatToTop(activeChatId);
-      
+
       // Send message to backend
       await sendMessage(activeChatId, text);
-      
-      // ✅ Always refresh chat list from backend to get:
-      // - Updated timestamps
-      // - Updated chat title (especially important for first message)
+
+      // Refresh chat list to get updated timestamps and title
       await getUserChats();
-      
-      // The useEffect with pinnedChatIdRef will automatically move it back to top
-      // after the backend data loads
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -351,7 +365,7 @@ const FloatingActionButtons = () => {
           searchQuery={commandPaletteSearchQuery}
         />
       </FloatingDialog>
-      
+
       {/* Login Dialog */}
       <LoginDialog
         isOpen={isLoginOpen}

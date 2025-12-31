@@ -35,7 +35,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         onClick={onNewChat}
       >
         <MessageCirclePlus />
-        New Chat
+        <span className="truncate">New Chat</span>
       </div>
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto px-2">
