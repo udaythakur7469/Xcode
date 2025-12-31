@@ -184,7 +184,7 @@ export const getMessages = async (req, res, next) => {
       },
       include: {
         messages: {
-          orderBy: { createdAt: "desc" },
+          orderBy: { createdAt: "asc" },
           select: {
             id: true,
             text: true,

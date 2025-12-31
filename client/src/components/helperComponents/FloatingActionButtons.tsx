@@ -85,23 +85,27 @@ const FloatingActionButtons = () => {
   };
 
   const handleSendMessage = async (text: string) => {
+    // If no active chat, create one first
     if (!activeChatId) {
       await handleNewChat();
       const { userChats: refreshedChats } = useChatStore.getState();
       if (refreshedChats && refreshedChats.length > 0) {
         const newChatId = refreshedChats[0].id;
+        setActiveChatId(newChatId);
+        // Send message will now use optimistic updates
         await sendMessage(newChatId, text);
-        await getChatMessages(newChatId);
       }
       return;
     }
 
     try {
+      // Optimistic update happens inside sendMessage now
       await sendMessage(activeChatId, text);
-      await getChatMessages(activeChatId);
+      // Refresh chat list to update timestamps
       await getUserChats();
     } catch (error) {
       console.error("Failed to send message:", error);
+      // Error handling is now in the store
     }
   };
 

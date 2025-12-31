@@ -118,24 +118,63 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
   },
 
   sendMessage: async (chatId, message) => {
-    set({ isSendingMessage: true, messageSendingError: null });
+    // Generate temporary ID for optimistic message
+    const tempId = `temp-${Date.now()}`;
+
+    // STEP 1: Add optimistic user message immediately
+    const optimisticUserMessage: Message = {
+      id: tempId,
+      text: message,
+      role: "user",
+      status: "sending",
+      updatedAt: new Date().toISOString(),
+    };
+
+    set((state) => ({
+      isSendingMessage: true,
+      messageSendingError: null,
+      chatMessage: [...state.chatMessage, optimisticUserMessage],
+    }));
 
     try {
+      // STEP 2: Send to backend
       const response = await axios.post(
         `${API_URL}/chat/sendMessage`,
         { message },
         { params: { chatId } }
       );
-      set({
-        sentMessage: response.data,
-        isSendingMessage: false,
-        messageSendingError: null,
+
+      // STEP 3: Replace optimistic message with real messages from server
+      set((state) => {
+        const messagesWithoutTemp = state.chatMessage.filter(
+          (m) => m.id !== tempId
+        );
+
+        return {
+          sentMessage: response.data,
+          isSendingMessage: false,
+          messageSendingError: null,
+          chatMessage: [
+            ...messagesWithoutTemp,
+            response.data.userMessage,
+            response.data.aiMessage,
+          ],
+        };
       });
-    } catch (error) {
+    } catch (error: any) {
       const errMsg =
         error.response?.data?.message ||
         "An error occurred while sending message";
-      set({ isSendingMessage: false, messageSendingError: errMsg });
+
+      // STEP 4: Mark optimistic message as error
+      set((state) => ({
+        isSendingMessage: false,
+        messageSendingError: errMsg,
+        chatMessage: state.chatMessage.map((msg) =>
+          msg.id === tempId ? { ...msg, status: "error" as const } : msg
+        ),
+      }));
+
       throw new Error(errMsg);
     }
   },
