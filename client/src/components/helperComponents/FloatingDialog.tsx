@@ -44,7 +44,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   const [resizeDirection, setResizeDirection] = useState("");
   const [isMaximized, setIsMaximized] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(enableSidebar);
-  const [sidebarWidthPercent, setSidebarWidthPercent] = useState(35);
+  const [sidebarWidthPercent, setSidebarWidthPercent] = useState(31.1);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const [preMaximizeState, setPreMaximizeState] = useState<{
     size: { width: number; height: number };
@@ -278,10 +278,10 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
       setPosition(centeredPosition);
       setIsMaximized(false);
 
-      // Animate sidebar back to 35% if it's open
+      // Animate sidebar back to 31.1% if it's open
       if (isSidebarOpen) {
-        motionSidebarWidthPercent.set(35);
-        setSidebarWidthPercent(35);
+        motionSidebarWidthPercent.set(31.1);
+        setSidebarWidthPercent(31.1);
       }
     } else {
       setSize(defaultSize);
@@ -289,8 +289,8 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
       setIsMaximized(false);
 
       if (isSidebarOpen) {
-        motionSidebarWidthPercent.set(35);
-        setSidebarWidthPercent(35);
+        motionSidebarWidthPercent.set(31.1);
+        setSidebarWidthPercent(31.1);
       }
     }
   };
