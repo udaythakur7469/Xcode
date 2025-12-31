@@ -3,6 +3,7 @@
 import React from "react";
 import { MessageCirclePlus, Trash2 } from "lucide-react";
 import { getChatsResponse } from "@/features/chatStore";
+import { MoonLoader } from "react-spinners";
 
 type ChatSidebarProps = {
   chats?: getChatsResponse[];
@@ -11,6 +12,7 @@ type ChatSidebarProps = {
   onNewChat: () => void;
   isLoading?: boolean;
   onDeleteChat: (chatId: string) => void;
+  gettingChatsError : string | null;
 };
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -20,6 +22,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onNewChat,
   isLoading = false,
   onDeleteChat,
+  gettingChatsError,
 }) => {
   return (
     <div className="h-full w-full flex flex-col">
@@ -32,9 +35,13 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
       </div>
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto px-2">
-        {isLoading ? (
-          <div className="p-4 text-center text-gray-400 text-sm">
-            Loading chats...
+        {gettingChatsError ? (
+          <div className="flex h-full justify-center items-center break-words text-red-500 text-sm">
+            {gettingChatsError}
+          </div>
+        ) : isLoading ? (
+          <div className="flex h-full justify-center items-center">
+            <MoonLoader color="#ffffff" />
           </div>
         ) : chats?.length === 0 ? (
           <div className="p-4 text-center text-gray-400 text-sm">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { SendHorizontal } from "lucide-react";
 
 type ChatInputProps = {
@@ -11,6 +11,10 @@ type ChatInputProps = {
 const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const [value, setValue] = useState<string>("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+  }, []);
 
   const handleSend = () => {
     if (!value.trim() || disabled) return;
@@ -48,7 +52,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           placeholder="Chat with Helix..."
           disabled={disabled}
           rows={1}
-          autoFocus
           className="
           w-full
           flex items-center justify-center

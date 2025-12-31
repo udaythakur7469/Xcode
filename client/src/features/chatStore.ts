@@ -59,6 +59,8 @@ interface ChatDetails {
   sendMessage: (chatId: string, message: string) => Promise<void>;
   getChatMessages: (chatId: string) => Promise<void>;
   getUserChats: () => Promise<void>;
+  moveChatsToTop: (chatId: string) => void;
+  clearMessages: () => void;
 }
 
 export const useChatStore = create<ChatDetails>()((set, get) => ({
@@ -79,19 +81,45 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
   UserChatsError: null,
 
   createChat: async () => {
-    set({ isCreatingChat: true, chatCreationError: null });
+    const tempId = `temp-chat-${Date.now()}`;
+
+    const optimisticChat: getChatsResponse = {
+      id: tempId,
+      title: "New Chat",
+    };
+
+    set((state) => ({
+      isCreatingChat: true,
+      chatCreationError: null,
+      userChats: [optimisticChat, ...state.userChats],
+    }));
+
     try {
       const response = await axios.post(`${API_URL}/chat/createChat`);
-      set({
+
+      set((state) => ({
         chatCreation: response.data,
         isCreatingChat: false,
         chatCreationError: null,
-      });
-    } catch (error) {
+        userChats: state.userChats.map((chat) =>
+          chat.id === tempId
+            ? { id: response.data.chatId, title: "New Chat" }
+            : chat
+        ),
+      }));
+
+      return response.data.chatId;
+    } catch (error: any) {
       const errMsg =
         error.response?.data?.message ||
         "An error occurred while creating chat";
-      set({ isCreatingChat: false, chatCreationError: errMsg });
+
+      set((state) => ({
+        isCreatingChat: false,
+        chatCreationError: errMsg,
+        userChats: state.userChats.filter((chat) => chat.id !== tempId),
+      }));
+
       throw new Error(errMsg);
     }
   },
@@ -118,10 +146,8 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
   },
 
   sendMessage: async (chatId, message) => {
-    // Generate temporary ID for optimistic message
     const tempId = `temp-${Date.now()}`;
 
-    // STEP 1: Add optimistic user message immediately
     const optimisticUserMessage: Message = {
       id: tempId,
       text: message,
@@ -136,15 +162,16 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       chatMessage: [...state.chatMessage, optimisticUserMessage],
     }));
 
+    // Immediately move chat to top (optimistic)
+    get().moveChatsToTop(chatId);
+
     try {
-      // STEP 2: Send to backend
       const response = await axios.post(
         `${API_URL}/chat/sendMessage`,
         { message },
         { params: { chatId } }
       );
 
-      // STEP 3: Replace optimistic message with real messages from server
       set((state) => {
         const messagesWithoutTemp = state.chatMessage.filter(
           (m) => m.id !== tempId
@@ -166,7 +193,6 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
         error.response?.data?.message ||
         "An error occurred while sending message";
 
-      // STEP 4: Mark optimistic message as error
       set((state) => ({
         isSendingMessage: false,
         messageSendingError: errMsg,
@@ -218,5 +244,22 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       set({ isLoadingUserChats: false, UserChatsError: errMsg });
       throw new Error(errMsg);
     }
+  },
+
+  moveChatsToTop: (chatId: string) => {
+    set((state) => {
+      const chatIndex = state.userChats.findIndex((chat) => chat.id === chatId);
+      if (chatIndex === -1 || chatIndex === 0) return state;
+
+      const newChats = [...state.userChats];
+      const [movedChat] = newChats.splice(chatIndex, 1);
+      newChats.unshift(movedChat);
+
+      return { userChats: newChats };
+    });
+  },
+
+  clearMessages: () => {
+    set({ chatMessage: [] });
   },
 }));

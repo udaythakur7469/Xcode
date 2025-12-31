@@ -35,7 +35,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   defaultPosition = { x: 100, y: 100 },
   enableReset = false,
   enableMaximize = false,
-  enableSidebar = false,
+  enableSidebar,
   sidebarContent,
 }) => {
   const [size, setSize] = useState(defaultSize);
@@ -43,7 +43,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [resizeDirection, setResizeDirection] = useState("");
   const [isMaximized, setIsMaximized] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(enableSidebar);
   const [sidebarWidthPercent, setSidebarWidthPercent] = useState(35);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
   const [preMaximizeState, setPreMaximizeState] = useState<{

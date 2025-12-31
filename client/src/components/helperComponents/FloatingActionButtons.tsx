@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { MessageSquare, Terminal } from "lucide-react";
 import FAB from "./FAB";
 import { useFABSystem } from "@/hooks/useFABSystem";
@@ -44,6 +44,8 @@ const FloatingActionButtons = () => {
   const [isSignupOpen, setIsSignupOpen] = useState<boolean>(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState<boolean>(false);
 
+  const hasInitializedRef = useRef(false);
+
   const { checkAuth } = useUserStore();
 
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -57,17 +59,56 @@ const FloatingActionButtons = () => {
     userChats,
     isLoadingUserChats,
     deleteChat,
+    isGettingChatMessages,
+    chatMessagesError,
+    UserChatsError,
+    clearMessages,
   } = useChatStore();
+
+  // ✅ FIX 1: Auto-select first chat when dialog opens
+  useEffect(() => {
+    if (
+      aiChatDialogOpen &&
+      userChats.length > 0 &&
+      !activeChatId &&
+      !hasInitializedRef.current
+    ) {
+      hasInitializedRef.current = true;
+      const firstChatId = userChats[0].id;
+      setActiveChatId(firstChatId);
+      getChatMessages(firstChatId);
+    }
+
+    // Reset initialization flag when dialog closes
+    if (!aiChatDialogOpen) {
+      hasInitializedRef.current = false;
+    }
+  }, [aiChatDialogOpen, userChats, activeChatId, getChatMessages]);
+
+  // ✅ FIX 2: Validate activeChatId against current chat list
+  useEffect(() => {
+    if (activeChatId && userChats.length > 0) {
+      const chatExists = userChats.some((chat) => chat.id === activeChatId);
+      if (!chatExists) {
+        // Active chat was deleted, select first available chat
+        const firstChatId = userChats[0].id;
+        setActiveChatId(firstChatId);
+        getChatMessages(firstChatId);
+      }
+    } else if (activeChatId && userChats.length === 0) {
+      // All chats deleted, clear everything
+      setActiveChatId(null);
+      clearMessages();
+    }
+  }, [userChats, activeChatId, getChatMessages, clearMessages]);
 
   const handleNewChat = async () => {
     try {
-      await createChat();
-      await getUserChats();
+      const newChatId = await createChat();
 
-      const { userChats: refreshedChats } = useChatStore.getState();
-      if (refreshedChats && refreshedChats.length > 0) {
-        setActiveChatId(refreshedChats[0].id);
-        await getChatMessages(refreshedChats[0].id);
+      if (newChatId) {
+        setActiveChatId(newChatId);
+        await getChatMessages(newChatId);
       }
     } catch (error) {
       console.error("Failed to create new chat:", error);
@@ -80,32 +121,58 @@ const FloatingActionButtons = () => {
   };
 
   const handleDeleteChat = async (chatId: string) => {
-    await deleteChat(chatId);
-    await getUserChats();
+    const currentChatIndex = userChats.findIndex((chat) => chat.id === chatId);
+    const isActiveChat = chatId === activeChatId;
+
+    try {
+      await deleteChat(chatId);
+      await getUserChats();
+
+      // ✅ FIX 3: Handle active chat deletion
+      if (isActiveChat) {
+        const { userChats: updatedChats } = useChatStore.getState();
+
+        if (updatedChats.length > 0) {
+          // Select the chat at the same index, or the last one if we deleted the last chat
+          const nextIndex = Math.min(currentChatIndex, updatedChats.length - 1);
+          const nextChatId = updatedChats[nextIndex].id;
+          setActiveChatId(nextChatId);
+          await getChatMessages(nextChatId);
+        } else {
+          // ✅ FIX 4: All chats deleted
+          setActiveChatId(null);
+          clearMessages();
+        }
+      }
+    } catch (error) {
+      console.error("Failed to delete chat:", error);
+    }
   };
 
   const handleSendMessage = async (text: string) => {
     // If no active chat, create one first
     if (!activeChatId) {
-      await handleNewChat();
-      const { userChats: refreshedChats } = useChatStore.getState();
-      if (refreshedChats && refreshedChats.length > 0) {
-        const newChatId = refreshedChats[0].id;
+      const newChatId = await createChat();
+
+      if (newChatId) {
         setActiveChatId(newChatId);
-        // Send message will now use optimistic updates
         await sendMessage(newChatId, text);
+        // Chat will be moved to top by sendMessage in store
       }
       return;
     }
 
     try {
-      // Optimistic update happens inside sendMessage now
+      // ✅ FIX 5: Send message - chat will auto-move to top via store
       await sendMessage(activeChatId, text);
-      // Refresh chat list to update timestamps
+
+      // Ensure the chat that just received a message stays active
+      // (moveChatToTop is already called inside sendMessage)
+
+      // Optionally refresh from backend to sync timestamps
       await getUserChats();
     } catch (error) {
       console.error("Failed to send message:", error);
-      // Error handling is now in the store
     }
   };
 
@@ -115,6 +182,7 @@ const FloatingActionButtons = () => {
     }
   }, [commandPaletteDialogOpen]);
 
+  // ✅ Load chats when dialog opens
   useEffect(() => {
     if (aiChatDialogOpen) {
       getUserChats();
@@ -186,6 +254,7 @@ const FloatingActionButtons = () => {
             onNewChat={handleNewChat}
             isLoading={isLoadingUserChats}
             onDeleteChat={handleDeleteChat}
+            gettingChatsError={UserChatsError}
           />
         }
       >
@@ -193,6 +262,8 @@ const FloatingActionButtons = () => {
           messages={chatMessage}
           sendMessage={handleSendMessage}
           sendingMessage={isSendingMessage}
+          gettingMessage={isGettingChatMessages}
+          gettingMessagesError={chatMessagesError}
         />
       </FloatingDialog>
 
