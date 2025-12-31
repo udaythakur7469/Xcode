@@ -95,9 +95,24 @@ export const sendMessage = async (req, res, next) => {
             });
         }
         // Logged-in user
-        const chat = await prisma.chat.findUnique({ where: { id: chatId } });
+        const chat = await prisma.chat.findUnique({
+            where: { id: chatId },
+            include: { messages: true },
+        });
         if (!chat || chat.userId !== userId) {
             throw createHttpError.NotFound("Chat not found");
+        }
+        const isFirstMessage = chat.messages.length === 0;
+        if (isFirstMessage) {
+            // Generate title from first message (first 50 chars or less)
+            const title = message.length > 50 ? message.substring(0, 50) + "..." : message;
+            await prisma.chat.update({
+                where: { id: chatId },
+                data: {
+                    title: title,
+                    updatedAt: new Date(), // Update timestamp for ordering
+                },
+            });
         }
         const userMessage = await prisma.message.create({
             data: {
@@ -115,6 +130,12 @@ export const sendMessage = async (req, res, next) => {
                 status: "sent",
             },
         });
+        if (!isFirstMessage) {
+            await prisma.chat.update({
+                where: { id: chatId },
+                data: { updatedAt: new Date() },
+            });
+        }
         return res.status(200).json({
             success: true,
             userMessage: {

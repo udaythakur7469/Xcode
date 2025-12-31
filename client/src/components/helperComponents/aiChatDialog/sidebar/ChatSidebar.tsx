@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { MessageCirclePlus, Trash2 } from "lucide-react";
 import { getChatsResponse } from "@/features/chatStore";
 import { MoonLoader } from "react-spinners";
@@ -24,6 +24,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onDeleteChat,
   gettingChatsError,
 }) => {
+  // In ChatSidebar
+  useEffect(() => {
+    console.log("📊 ChatSidebar received chats:", chats);
+  }, [chats]);
   return (
     <div className="h-full w-full flex flex-col">
       <div
@@ -44,7 +48,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             <MoonLoader color="#ffffff" />
           </div>
         ) : chats?.length === 0 ? (
-          <div className="p-4 text-center text-gray-400 text-sm">
+          <div className="flex h-full justify-center pb-10 items-center text-gray-400 text-sm">
             No chats yet
           </div>
         ) : (
@@ -66,7 +70,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 }
               `}
             >
-              <div className="truncate">{chat.title || "New Chat"}</div>
+              <div className="truncate flex-1" title={chat.title}>
+                {chat.title || "New Chat"}
+              </div>
               {activeChatId === chat.id ? (
                 <Trash2 size={16} onClick={() => onDeleteChat(activeChatId)} />
               ) : null}

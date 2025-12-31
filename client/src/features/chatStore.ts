@@ -54,12 +54,12 @@ interface ChatDetails {
   isLoadingUserChats: boolean;
   UserChatsError: string | null;
 
-  createChat: () => Promise<void>;
+  createChat: () => Promise<string | null>;
   deleteChat: (chatId: string) => Promise<void>;
   sendMessage: (chatId: string, message: string) => Promise<void>;
   getChatMessages: (chatId: string) => Promise<void>;
   getUserChats: () => Promise<void>;
-  moveChatsToTop: (chatId: string) => void;
+  moveChatToTop: (chatId: string) => void;
   clearMessages: () => void;
 }
 
@@ -136,7 +136,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
         isDeletingChat: false,
         chatDeletionError: null,
       });
-    } catch (error) {
+    } catch (error: any) {
       const errMsg =
         error.response?.data?.message ||
         "An error occurred during deleting chat";
@@ -162,15 +162,19 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       chatMessage: [...state.chatMessage, optimisticUserMessage],
     }));
 
-    // Immediately move chat to top (optimistic)
-    get().moveChatsToTop(chatId);
+    // NOTE: moveChatToTop is now handled in the component layer
+    // to work with the pinning system
 
     try {
+
+      console.log("📤 Sending message to backend, chatId:", chatId);
       const response = await axios.post(
         `${API_URL}/chat/sendMessage`,
         { message },
         { params: { chatId } }
       );
+
+      console.log("✅ Backend response:", response.data);
 
       set((state) => {
         const messagesWithoutTemp = state.chatMessage.filter(
@@ -217,7 +221,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
         isGettingChatMessages: false,
         chatMessagesError: null,
       });
-    } catch (error) {
+    } catch (error: any) {
       const errMsg =
         error.response?.data?.message ||
         "An error occurred while getting chat messages";
@@ -230,14 +234,19 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
     set({ isLoadingUserChats: true, UserChatsError: null });
 
     try {
+      console.log("🔄 Fetching user chats from backend...");
       const response = await axios.get(`${API_URL}/chat/getUserChats`);
+
+      console.log("📦 Backend returned chats:", response.data.chats);
 
       set({
         userChats: response.data.chats,
         isLoadingUserChats: false,
         UserChatsError: null,
       });
-    } catch (error) {
+
+      console.log("✅ Store updated with", response.data.chats.length, "chats");
+    } catch (error: any) {
       const errMsg =
         error.response?.data?.message ||
         "An error occurred while getting user chats";
@@ -246,7 +255,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
     }
   },
 
-  moveChatsToTop: (chatId: string) => {
+  moveChatToTop: (chatId: string) => {
     set((state) => {
       const chatIndex = state.userChats.findIndex((chat) => chat.id === chatId);
       if (chatIndex === -1 || chatIndex === 0) return state;

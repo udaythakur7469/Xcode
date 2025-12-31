@@ -10,6 +10,7 @@ type ChatWindowProps = {
   sendingMessage: boolean;
   gettingMessage: boolean;
   gettingMessagesError: string | null;
+  activeChatId: string | null;
 };
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -18,6 +19,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   sendingMessage,
   gettingMessage,
   gettingMessagesError,
+  activeChatId,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +31,10 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     });
   }, [messages]);
 
+  // ✅ FIX: Strict Message Ownership Rule
+  // Only render messages when we have a valid active chat
+  const shouldRenderMessages = activeChatId !== null && messages.length > 0;
+
   return (
     <div className="h-full w-full flex flex-col">
       <div className="flex-1 overflow-y-auto my-2">
@@ -38,13 +44,20 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           </div>
         ) : gettingMessage ? (
           <div className="flex h-full justify-center items-center p-4 text-gray-400 text-sm">
-            <MoonLoader color="#ffffff"/>
+            <MoonLoader color="#ffffff" />
           </div>
-        ) : messages?.length === 0 ? (
+        ) : !activeChatId ? (
+          // ✅ No active chat selected
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+            Select a chat or create a new one to start messaging
+          </div>
+        ) : !shouldRenderMessages ? (
+          // ✅ Active chat exists but no messages yet
           <div className="flex items-center justify-center h-full text-gray-400 text-sm">
             Start the conversation by sending a message below
           </div>
         ) : (
+          // ✅ Render messages only when ownership is valid
           messages.map((message) => (
             <ChatBubble key={message.id} message={message} />
           ))
@@ -52,8 +65,12 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
         {/* Invisible div to scroll to */}
         <div ref={messagesEndRef} />
       </div>
-      <ChatInput onSend={sendMessage} disabled={sendingMessage} />
+      <ChatInput
+        onSend={sendMessage}
+        disabled={sendingMessage || !activeChatId}
+      />
     </div>
   );
 };
+
 export default ChatWindow;
