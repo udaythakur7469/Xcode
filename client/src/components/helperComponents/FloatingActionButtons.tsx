@@ -46,7 +46,7 @@ const FloatingActionButtons = () => {
 
   const { checkAuth } = useUserStore();
 
-const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const {
     createChat,
     getChatMessages,
@@ -56,6 +56,7 @@ const [activeChatId, setActiveChatId] = useState<string | null>(null);
     getUserChats,
     userChats,
     isLoadingUserChats,
+    deleteChat,
   } = useChatStore();
 
   const handleNewChat = async () => {
@@ -76,6 +77,11 @@ const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const handleSelectChat = async (chatId: string) => {
     setActiveChatId(chatId);
     await getChatMessages(chatId);
+  };
+
+  const handleDeleteChat = async (chatId: string) => {
+    await deleteChat(chatId);
+    await getUserChats();
   };
 
   const handleSendMessage = async (text: string) => {
@@ -175,6 +181,7 @@ const [activeChatId, setActiveChatId] = useState<string | null>(null);
             onSelectChat={handleSelectChat}
             onNewChat={handleNewChat}
             isLoading={isLoadingUserChats}
+            onDeleteChat={handleDeleteChat}
           />
         }
       >

@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
 import React from "react";
-import { MessageCirclePlus } from "lucide-react";
+import { MessageCirclePlus, Trash2 } from "lucide-react";
 import { getChatsResponse } from "@/features/chatStore";
 
 type ChatSidebarProps = {
@@ -10,6 +10,7 @@ type ChatSidebarProps = {
   onSelectChat: (chatId: string) => void;
   onNewChat: () => void;
   isLoading?: boolean;
+  onDeleteChat: (chatId: string) => void;
 };
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -18,6 +19,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onSelectChat,
   onNewChat,
   isLoading = false,
+  onDeleteChat,
 }) => {
   return (
     <div className="h-full w-full flex flex-col">
@@ -51,12 +53,16 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 text-sm
                 transition-colors
                 border
+                flex flex-row items-center justify-between
                 ${
                   activeChatId === chat.id ? "bg-blue-700" : "hover:bg-zinc-600"
                 }
               `}
             >
               <div className="truncate">{chat.title || "New Chat"}</div>
+              {activeChatId === chat.id ? (
+                <Trash2 size={16} onClick={() => onDeleteChat(activeChatId)} />
+              ) : null}
             </div>
           ))
         )}
