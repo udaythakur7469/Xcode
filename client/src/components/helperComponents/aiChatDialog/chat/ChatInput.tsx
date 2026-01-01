@@ -49,7 +49,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          placeholder="Chat with Helix..."
+          placeholder="Chat with Nova..."
           disabled={disabled}
           rows={1}
           className="
