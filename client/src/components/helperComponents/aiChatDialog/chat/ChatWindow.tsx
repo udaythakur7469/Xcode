@@ -67,7 +67,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       </div>
       <ChatInput
         onSend={sendMessage}
-        disabled={sendingMessage || !activeChatId}
+        disabled={sendingMessage}
       />
     </div>
   );

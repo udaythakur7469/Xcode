@@ -43,7 +43,7 @@ const FloatingActionButtons = () => {
   const [isSignupOpen, setIsSignupOpen] = useState<boolean>(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState<boolean>(false);
 
-  const { checkAuth } = useUserStore();
+  const { checkAuth, isUserAuthenticated } = useUserStore();
 
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const prevDialogOpenRef = useRef(false);
@@ -63,6 +63,7 @@ const FloatingActionButtons = () => {
     UserChatsError,
     clearMessages,
     moveChatToTop,
+    resetStore,
   } = useChatStore();
 
   // ✅ FIX 1: Deterministic Active Chat Resolver
@@ -83,6 +84,19 @@ const FloatingActionButtons = () => {
 
     return chatsList[0].id;
   };
+
+  // Clear chat data when dialog closes
+  useEffect(() => {
+    if (!aiChatDialogOpen) {
+      // Small delay to let dialog close animation complete
+      const timer = setTimeout(() => {
+        resetStore();
+        setActiveChatId(null);
+      }, 300); // Adjust delay to match your dialog animation duration
+
+      return () => clearTimeout(timer);
+    }
+  }, [aiChatDialogOpen, resetStore]);
 
   // ✅ FIX 2: Master State Synchronization Effect
   useEffect(() => {
@@ -107,11 +121,23 @@ const FloatingActionButtons = () => {
     const dialogJustOpened = aiChatDialogOpen && !prevDialogOpenRef.current;
 
     if (dialogJustOpened) {
-      getUserChats();
+      if (isUserAuthenticated) {
+        getUserChats();
+      } else {
+        resetStore();
+        setActiveChatId(null);
+        clearMessages();
+      }
     }
 
     prevDialogOpenRef.current = aiChatDialogOpen;
-  }, [aiChatDialogOpen, getUserChats]);
+  }, [
+    aiChatDialogOpen,
+    getUserChats,
+    isUserAuthenticated,
+    resetStore,
+    clearMessages,
+  ]);
 
   // ✅ FIX 4: First chat auto-selection
   useEffect(() => {
@@ -213,7 +239,9 @@ const FloatingActionButtons = () => {
           await sendMessage(newChatId, text);
 
           // ✅ ONLY refresh for first message (to get title update)
-          await getUserChats();
+          if (isUserAuthenticated) {
+            await getUserChats();
+          }
         }
       } catch (error) {
         console.error("Failed to create chat and send message:", error);
@@ -231,7 +259,7 @@ const FloatingActionButtons = () => {
       await sendMessage(activeChatId, text);
 
       // ✅ OPTIMIZED: Only refetch if first message (for title update)
-      if (isFirstMessage) {
+      if (isFirstMessage && isUserAuthenticated) {
         await getUserChats();
         // Re-apply ordering after backend refresh
         moveChatToTop(activeChatId);

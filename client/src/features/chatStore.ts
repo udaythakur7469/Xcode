@@ -61,6 +61,7 @@ interface ChatDetails {
   getUserChats: () => Promise<void>;
   moveChatToTop: (chatId: string) => void;
   clearMessages: () => void;
+  resetStore: () => void;
 }
 
 export const useChatStore = create<ChatDetails>()((set, get) => ({
@@ -170,14 +171,14 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       updatedAt: new Date().toISOString(),
     };
 
+    // ✅ Check if this is the first message BEFORE updating state
+    const isFirstMessage = get().chatMessage.length === 0;
+
     set((state) => ({
       isSendingMessage: true,
       messageSendingError: null,
       chatMessage: [...state.chatMessage, optimisticUserMessage],
     }));
-
-    // NOTE: moveChatToTop is now handled in the component layer
-    // to work with the pinning system
 
     try {
       const response = await axios.post(
@@ -191,6 +192,18 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
           (m) => m.id !== tempId
         );
 
+        // ✅ For guest users: Update chat title if this is the first message
+        let updatedChats = state.userChats;
+        if (response.data.isGuest && isFirstMessage) {
+          // Generate title from first message (first 50 chars or less)
+          const title =
+            message.length > 50 ? message.substring(0, 50) + "..." : message;
+
+          updatedChats = state.userChats.map((chat) =>
+            chat.id === chatId ? { ...chat, title } : chat
+          );
+        }
+
         return {
           sentMessage: response.data,
           isSendingMessage: false,
@@ -200,6 +213,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
             response.data.userMessage,
             response.data.aiMessage,
           ],
+          userChats: updatedChats,
         };
       });
     } catch (error: any) {
@@ -275,5 +289,25 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
 
   clearMessages: () => {
     set({ chatMessage: [] });
+  },
+
+  resetStore: () => {
+    set({
+      chatCreation: null,
+      isCreatingChat: false,
+      chatCreationError: null,
+      chatDeletion: null,
+      isDeletingChat: false,
+      chatDeletionError: null,
+      sentMessage: null,
+      isSendingMessage: false,
+      messageSendingError: null,
+      chatMessage: [],
+      isGettingChatMessages: false,
+      chatMessagesError: null,
+      userChats: [],
+      isLoadingUserChats: false,
+      UserChatsError: null,
+    });
   },
 }));
