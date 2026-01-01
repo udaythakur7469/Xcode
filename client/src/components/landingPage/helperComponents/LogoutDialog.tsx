@@ -10,6 +10,7 @@ import { PropagateLoader } from "react-spinners";
 import { useAuthStore } from "@/features/authStore";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useChatStore } from "@/features/chatStore";
 
 type LogoutDialogProps = {
   isOpen?: boolean;
@@ -20,6 +21,7 @@ const LogoutDialog: React.FC<LogoutDialogProps> = ({ isOpen, onClose }) => {
   const router = useRouter();
   const pathname = usePathname();
   const { logout, isLoading, error } = useAuthStore();
+  const { resetStore } = useChatStore();
 
   const handleLogout = async () => {
     try {
@@ -30,6 +32,8 @@ const LogoutDialog: React.FC<LogoutDialogProps> = ({ isOpen, onClose }) => {
       await new Promise((resolve) => setTimeout(resolve, 100));
 
       await logout();
+
+      resetStore();
 
       // Redirect to home page after successful logout
       if (pathname.startsWith("/account/")) {
