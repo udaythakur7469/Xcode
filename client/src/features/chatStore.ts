@@ -127,6 +127,11 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
   deleteChat: async (chatId) => {
     set({ isDeletingChat: true, chatDeletionError: null });
 
+    // ✅ Optimistically remove from UI
+    set((state) => ({
+      userChats: state.userChats.filter((chat) => chat.id !== chatId),
+    }));
+
     try {
       const response = await axios.delete(`${API_URL}/chat/deleteChat`, {
         params: { chatId },
@@ -141,6 +146,15 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
         error.response?.data?.message ||
         "An error occurred during deleting chat";
       set({ isDeletingChat: false, chatDeletionError: errMsg });
+
+      // ✅ On error, refetch to get correct state
+      try {
+        const response = await axios.get(`${API_URL}/chat/getUserChats`);
+        set({ userChats: response.data.chats });
+      } catch (refetchError) {
+        console.error("Failed to refetch after delete error:", refetchError);
+      }
+
       throw new Error(errMsg);
     }
   },
@@ -166,15 +180,11 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
     // to work with the pinning system
 
     try {
-
-      console.log("📤 Sending message to backend, chatId:", chatId);
       const response = await axios.post(
         `${API_URL}/chat/sendMessage`,
         { message },
         { params: { chatId } }
       );
-
-      console.log("✅ Backend response:", response.data);
 
       set((state) => {
         const messagesWithoutTemp = state.chatMessage.filter(
@@ -234,18 +244,13 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
     set({ isLoadingUserChats: true, UserChatsError: null });
 
     try {
-      console.log("🔄 Fetching user chats from backend...");
       const response = await axios.get(`${API_URL}/chat/getUserChats`);
-
-      console.log("📦 Backend returned chats:", response.data.chats);
 
       set({
         userChats: response.data.chats,
         isLoadingUserChats: false,
         UserChatsError: null,
       });
-
-      console.log("✅ Store updated with", response.data.chats.length, "chats");
     } catch (error: any) {
       const errMsg =
         error.response?.data?.message ||

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import { MessageCirclePlus, Trash2 } from "lucide-react";
 import { getChatsResponse } from "@/features/chatStore";
 import { MoonLoader } from "react-spinners";
@@ -12,7 +12,7 @@ type ChatSidebarProps = {
   onNewChat: () => void;
   isLoading?: boolean;
   onDeleteChat: (chatId: string) => void;
-  gettingChatsError : string | null;
+  gettingChatsError: string | null;
 };
 
 const ChatSidebar: React.FC<ChatSidebarProps> = ({
@@ -24,10 +24,6 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onDeleteChat,
   gettingChatsError,
 }) => {
-  // In ChatSidebar
-  useEffect(() => {
-    console.log("📊 ChatSidebar received chats:", chats);
-  }, [chats]);
   return (
     <div className="h-full w-full flex flex-col">
       <div
@@ -35,7 +31,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         onClick={onNewChat}
       >
         <MessageCirclePlus />
-        <span className="truncate">New Chat</span>
+        New Chat
       </div>
       {/* Chat List */}
       <div className="flex-1 overflow-y-auto px-2">
@@ -48,7 +44,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             <MoonLoader color="#ffffff" />
           </div>
         ) : chats?.length === 0 ? (
-          <div className="flex h-full justify-center pb-10 items-center text-gray-400 text-sm">
+          <div className="p-4 text-center text-gray-400 text-sm">
             No chats yet
           </div>
         ) : (
@@ -70,11 +66,19 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 }
               `}
             >
+              {/* ✅ Always render the current title from the chat object */}
               <div className="truncate flex-1" title={chat.title}>
                 {chat.title || "New Chat"}
               </div>
               {activeChatId === chat.id ? (
-                <Trash2 size={16} onClick={() => onDeleteChat(activeChatId)} />
+                <Trash2
+                  size={16}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteChat(chat.id);
+                  }}
+                  className="flex-shrink-0 ml-2 hover:text-red-500 transition-colors cursor-pointer"
+                />
               ) : null}
             </div>
           ))
@@ -83,4 +87,5 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
     </div>
   );
 };
+
 export default ChatSidebar;
