@@ -410,7 +410,7 @@ export const abortMessage = async (req, res, next) => {
         where: { id: messageId },
         data: {
           status: "aborted",
-          text: "Generation aborted by user",
+          text: "Generation aborted",
           updatedAt: new Date(),
         },
       });

@@ -490,10 +490,12 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       return;
     }
 
-    const newSessions = new Map(activePollingSessions);
-    newSessions.delete(messageId);
-
+    // 🔥 CRITICAL: Update UI state FIRST, then cancel polling
+    // This ensures UI shows "aborted" before polling loop checks cancellation
     set((state) => {
+      const newSessions = new Map(state.activePollingSessions);
+      newSessions.delete(messageId);
+
       const currentMessages = state.chatMessageMap[chatId] || [];
       const newMessageMap = {
         ...state.chatMessageMap,
@@ -520,6 +522,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       };
     });
 
+    // Call backend to persist abort (non-blocking)
     try {
       await axios.post(`${API_URL}/chat/abortMessage`, null, {
         params: { messageId },
@@ -616,6 +619,23 @@ const startPollingForSingleMessage = async (
       }
 
       const updatedMessage: Message = response.data.message;
+
+      // 🔥 CRITICAL: Check if message was aborted while we were fetching
+      const stateAfterFetch2 = get();
+      if (!stateAfterFetch2.activePollingSessions.has(messageId)) {
+        console.log(
+          `Message ${messageId} was aborted during fetch, not updating`
+        );
+        return;
+      }
+
+      // Also check the current state - if already aborted, don't overwrite
+      const currentMessages = stateAfterFetch2.chatMessageMap[chatId] || [];
+      const existingMessage = currentMessages.find((m) => m.id === messageId);
+      if (existingMessage?.status === "aborted") {
+        console.log(`Message ${messageId} is already aborted, not updating`);
+        return;
+      }
 
       // 🔥 UPDATE ONLY THIS ONE MESSAGE (never replace entire array)
       set((state: any) => {
