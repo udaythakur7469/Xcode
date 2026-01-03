@@ -350,7 +350,7 @@ export const abortMessage = async (req, res, next) => {
                 where: { id: messageId },
                 data: {
                     status: "aborted",
-                    text: "Generation aborted",
+                    text: "AI generation aborted",
                     updatedAt: new Date(),
                 },
             });

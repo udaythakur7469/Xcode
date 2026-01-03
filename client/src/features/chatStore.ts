@@ -504,7 +504,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
             ? {
                 ...msg,
                 status: "aborted" as const,
-                text: "Generation aborted by user",
+                text: "AI generation aborted",
               }
             : msg
         ),
