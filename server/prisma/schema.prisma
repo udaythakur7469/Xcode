@@ -548,8 +548,6 @@ model Chat {
   // Chat metadata
   title String @default("New Chat")
 
-  isGuest Boolean @default(true)
-
   // Relations
   messages Message[]
 
@@ -603,6 +601,8 @@ enum MessageRole {
 
 enum MessageStatus {
   sending
+  thinking
   sent
   error
+  aborted
 }
