@@ -6,6 +6,7 @@ import {
   getChats,
   getMessages,
   sendMessage,
+  abortMessage,
 } from "../controllers/chatController.js";
 
 const router = express.Router();
@@ -15,5 +16,6 @@ router.route("/deleteChat").delete(optionalAuthMiddleware, deleteChat);
 router.route("/sendMessage").post(optionalAuthMiddleware, sendMessage);
 router.route("/getMessages").get(optionalAuthMiddleware, getMessages);
 router.route("/getUserChats").get(optionalAuthMiddleware, getChats);
+router.route("/abortMessage").post(optionalAuthMiddleware, abortMessage); 
 
 export default router;

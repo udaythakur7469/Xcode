@@ -66,7 +66,7 @@ const FloatingActionButtons = () => {
     resetStore,
   } = useChatStore();
 
-  // ✅ FIX 1: Deterministic Active Chat Resolver
+  // Deterministic Active Chat Resolver
   const resolveActiveChat = (
     currentActiveChatId: string | null,
     chatsList: typeof userChats
@@ -88,17 +88,16 @@ const FloatingActionButtons = () => {
   // Clear chat data when dialog closes
   useEffect(() => {
     if (!aiChatDialogOpen) {
-      // Small delay to let dialog close animation complete
       const timer = setTimeout(() => {
         resetStore();
         setActiveChatId(null);
-      }, 300); // Adjust delay to match your dialog animation duration
+      }, 300);
 
       return () => clearTimeout(timer);
     }
   }, [aiChatDialogOpen, resetStore]);
 
-  // ✅ FIX 2: Master State Synchronization Effect
+  // Master State Synchronization Effect
   useEffect(() => {
     const resolvedChatId = resolveActiveChat(activeChatId, userChats);
 
@@ -106,7 +105,6 @@ const FloatingActionButtons = () => {
       setActiveChatId(resolvedChatId);
 
       if (resolvedChatId) {
-        // ✅ GUARD: Don't try to load messages for temporary chat IDs
         if (!resolvedChatId.startsWith("temp-")) {
           getChatMessages(resolvedChatId);
         }
@@ -116,7 +114,7 @@ const FloatingActionButtons = () => {
     }
   }, [userChats, activeChatId, getChatMessages, clearMessages]);
 
-  // ✅ FIX 3: Dialog Open Lifecycle Guard
+  // Dialog Open Lifecycle Guard
   useEffect(() => {
     const dialogJustOpened = aiChatDialogOpen && !prevDialogOpenRef.current;
 
@@ -139,17 +137,17 @@ const FloatingActionButtons = () => {
     clearMessages,
   ]);
 
-  // ✅ FIX 4: First chat auto-selection
+  // First chat auto-selection (only for authenticated users)
   useEffect(() => {
     if (
       aiChatDialogOpen &&
+      isUserAuthenticated &&
       userChats.length > 0 &&
       !activeChatId &&
       !isLoadingUserChats
     ) {
       const firstChatId = userChats[0].id;
 
-      // ✅ GUARD: Only set as active and load messages if it's a real chat ID
       if (!firstChatId.startsWith("temp-")) {
         setActiveChatId(firstChatId);
         getChatMessages(firstChatId);
@@ -157,6 +155,7 @@ const FloatingActionButtons = () => {
     }
   }, [
     aiChatDialogOpen,
+    isUserAuthenticated,
     userChats,
     activeChatId,
     isLoadingUserChats,
@@ -170,7 +169,6 @@ const FloatingActionButtons = () => {
       if (newChatId) {
         setActiveChatId(newChatId);
 
-        // ✅ GUARD: Only load messages if not a temp ID
         if (!newChatId.startsWith("temp-")) {
           await getChatMessages(newChatId);
         }
@@ -181,11 +179,12 @@ const FloatingActionButtons = () => {
   };
 
   const handleSelectChat = async (chatId: string) => {
-    // ✅ GUARD: Don't allow selecting temporary chats
     if (chatId.startsWith("temp-")) {
       return;
     }
 
+    // ✅ Clear messages first to prevent glitching
+    clearMessages();
     setActiveChatId(chatId);
     await getChatMessages(chatId);
   };
@@ -195,16 +194,16 @@ const FloatingActionButtons = () => {
     const currentChatIndex = userChats.findIndex((chat) => chat.id === chatId);
 
     try {
-      // Delete from backend (this also removes optimistically from store)
-      await deleteChat(chatId);
+      // ✅ Clear messages immediately if deleting active chat
+      if (isActiveChat) {
+        clearMessages();
+      }
 
-      // Wait a tick for state to update
+      await deleteChat(chatId);
       await new Promise((resolve) => setTimeout(resolve, 0));
 
-      // Get the updated chats from store
       const { userChats: updatedChats } = useChatStore.getState();
 
-      // If we deleted the active chat, select another one
       if (isActiveChat) {
         if (updatedChats.length > 0) {
           const nextIndex = Math.min(currentChatIndex, updatedChats.length - 1);
@@ -212,12 +211,10 @@ const FloatingActionButtons = () => {
 
           setActiveChatId(nextChatId);
 
-          // ✅ GUARD: Only load messages if not a temp ID
           if (!nextChatId.startsWith("temp-")) {
             await getChatMessages(nextChatId);
           }
         } else {
-          // No more chats
           setActiveChatId(null);
           clearMessages();
         }
@@ -228,17 +225,19 @@ const FloatingActionButtons = () => {
   };
 
   const handleSendMessage = async (text: string) => {
+    if (!isUserAuthenticated) {
+      console.log("User must be authenticated to send messages");
+      return;
+    }
+
     if (!activeChatId) {
       try {
         const newChatId = await createChat();
 
         if (newChatId) {
           setActiveChatId(newChatId);
-
-          // Send message
           await sendMessage(newChatId, text);
 
-          // ✅ ONLY refresh for first message (to get title update)
           if (isUserAuthenticated) {
             await getUserChats();
           }
@@ -252,19 +251,13 @@ const FloatingActionButtons = () => {
     try {
       const isFirstMessage = chatMessage.length === 0;
 
-      // Move to top optimistically (immediate UI feedback)
       moveChatToTop(activeChatId);
-
-      // Send message to backend
       await sendMessage(activeChatId, text);
 
-      // ✅ OPTIMIZED: Only refetch if first message (for title update)
       if (isFirstMessage && isUserAuthenticated) {
         await getUserChats();
-        // Re-apply ordering after backend refresh
         moveChatToTop(activeChatId);
       }
-      // Otherwise, chat is already at top from first moveChatToTop
     } catch (error) {
       console.error("Failed to send message:", error);
     }
@@ -287,13 +280,22 @@ const FloatingActionButtons = () => {
     setCommandPaletteSearchQuery("");
   };
 
+  const openLoginDialogForGuestUsers = () => {
+    setAiChatDialogOpen(false);
+    setIsLoginOpen(true);
+  };
+
+  const openSignupDialogForGuestUsers = () => {
+    setAiChatDialogOpen(false);
+    setIsSignupOpen(true);
+  };
+
   if (!isMounted) {
     return null;
   }
 
   return (
     <>
-      {/* AI Chat FAB */}
       {aiChatVisible && (
         <FAB
           icon={<MessageSquare size={24} />}
@@ -308,7 +310,6 @@ const FloatingActionButtons = () => {
         />
       )}
 
-      {/* Command Palette FAB */}
       {commandPaletteVisible && (
         <FAB
           icon={<Terminal size={24} />}
@@ -323,7 +324,6 @@ const FloatingActionButtons = () => {
         />
       )}
 
-      {/* AI Chat Dialog */}
       <FloatingDialog
         open={aiChatDialogOpen}
         onOpenChange={setAiChatDialogOpen}
@@ -332,17 +332,19 @@ const FloatingActionButtons = () => {
         defaultSize={{ width: 700, height: 500 }}
         enableReset={true}
         enableMaximize={true}
-        enableSidebar={true}
+        enableSidebar={isUserAuthenticated}
         sidebarContent={
-          <ChatSidebar
-            chats={userChats || []}
-            activeChatId={activeChatId}
-            onSelectChat={handleSelectChat}
-            onNewChat={handleNewChat}
-            isLoading={isLoadingUserChats}
-            onDeleteChat={handleDeleteChat}
-            gettingChatsError={UserChatsError}
-          />
+          isUserAuthenticated ? (
+            <ChatSidebar
+              chats={userChats || []}
+              activeChatId={activeChatId}
+              onSelectChat={handleSelectChat}
+              onNewChat={handleNewChat}
+              isLoading={isLoadingUserChats}
+              onDeleteChat={handleDeleteChat}
+              gettingChatsError={UserChatsError}
+            />
+          ) : undefined
         }
       >
         <ChatWindow
@@ -352,10 +354,11 @@ const FloatingActionButtons = () => {
           gettingMessage={isGettingChatMessages}
           gettingMessagesError={chatMessagesError}
           activeChatId={activeChatId}
+          onOpenLogin={openLoginDialogForGuestUsers}
+          onOpenSignup={openSignupDialogForGuestUsers}
         />
       </FloatingDialog>
 
-      {/* Command Palette Dialog */}
       <FloatingDialog
         open={commandPaletteDialogOpen}
         onOpenChange={setCommandPaletteDialogOpen}
@@ -380,7 +383,6 @@ const FloatingActionButtons = () => {
         />
       </FloatingDialog>
 
-      {/* Login Dialog */}
       <LoginDialog
         isOpen={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
@@ -391,7 +393,6 @@ const FloatingActionButtons = () => {
         onSuccessfulAuth={checkAuth}
       />
 
-      {/* Signup Dialog */}
       <SignupDialog
         isOpen={isSignupOpen}
         onClose={() => setIsSignupOpen(false)}
@@ -402,7 +403,6 @@ const FloatingActionButtons = () => {
         onSuccessfulAuth={checkAuth}
       />
 
-      {/* Logout Dialog */}
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
         <LogoutDialog
           isOpen={isLogoutOpen}

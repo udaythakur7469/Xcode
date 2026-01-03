@@ -9,7 +9,6 @@ interface ChatCreationResponse {
   success: boolean;
   message: string;
   chatId: string;
-  isGuest: boolean;
 }
 
 interface ChatDeletionResponse {
@@ -21,14 +20,13 @@ interface SendMessageResponse {
   success: boolean;
   userMessage: Message;
   aiMessage: Message;
-  isGuest: boolean;
 }
 
 export interface Message {
   id: string;
   text: string;
   role: "user" | "assistant";
-  status: "sent" | "sending" | "error";
+  status: "sent" | "sending" | "thinking" | "error" | "aborted";
   updatedAt: string;
 }
 
@@ -53,6 +51,8 @@ interface ChatDetails {
   userChats: getChatsResponse[];
   isLoadingUserChats: boolean;
   UserChatsError: string | null;
+  activePollingSessions: Set<string>;
+  isAIGenerating: boolean;
 
   createChat: () => Promise<string | null>;
   deleteChat: (chatId: string) => Promise<void>;
@@ -62,6 +62,7 @@ interface ChatDetails {
   moveChatToTop: (chatId: string) => void;
   clearMessages: () => void;
   resetStore: () => void;
+  abortAIGeneration: (messageId: string) => void;
 }
 
 export const useChatStore = create<ChatDetails>()((set, get) => ({
@@ -80,6 +81,8 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
   userChats: [],
   isLoadingUserChats: false,
   UserChatsError: null,
+  activePollingSessions: new Set(),
+  isAIGenerating: false,
 
   createChat: async () => {
     const tempId = `temp-chat-${Date.now()}`;
@@ -128,6 +131,21 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
   deleteChat: async (chatId) => {
     set({ isDeletingChat: true, chatDeletionError: null });
 
+    // ✅ Stop all polling sessions for this chat
+    const { activePollingSessions } = get();
+    const sessionsToCancel = Array.from(activePollingSessions).filter(
+      (session) => session.startsWith(`${chatId}-`)
+    );
+
+    sessionsToCancel.forEach((session) => {
+      activePollingSessions.delete(session);
+    });
+
+    set({
+      activePollingSessions: new Set(activePollingSessions),
+      isAIGenerating: activePollingSessions.size > 0,
+    });
+
     // ✅ Optimistically remove from UI
     set((state) => ({
       userChats: state.userChats.filter((chat) => chat.id !== chatId),
@@ -171,9 +189,6 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       updatedAt: new Date().toISOString(),
     };
 
-    // ✅ Check if this is the first message BEFORE updating state
-    const isFirstMessage = get().chatMessage.length === 0;
-
     set((state) => ({
       isSendingMessage: true,
       messageSendingError: null,
@@ -192,17 +207,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
           (m) => m.id !== tempId
         );
 
-        // ✅ For guest users: Update chat title if this is the first message
-        let updatedChats = state.userChats;
-        if (response.data.isGuest && isFirstMessage) {
-          // Generate title from first message (first 50 chars or less)
-          const title =
-            message.length > 50 ? message.substring(0, 50) + "..." : message;
-
-          updatedChats = state.userChats.map((chat) =>
-            chat.id === chatId ? { ...chat, title } : chat
-          );
-        }
+        const updatedChats = state.userChats;
 
         return {
           sentMessage: response.data,
@@ -214,8 +219,15 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
             response.data.aiMessage,
           ],
           userChats: updatedChats,
+          isAIGenerating: true,
         };
       });
+
+      // 4️⃣ START POLLING FOR AI MESSAGE UPDATES (For logged-in users only)
+      if (!response.data.isGuest) {
+        const aiMessageId = response.data.aiMessage.id;
+        startPollingForMessage(chatId, aiMessageId, set, get);
+      }
     } catch (error: any) {
       const errMsg =
         error.response?.data?.message ||
@@ -224,6 +236,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       set((state) => ({
         isSendingMessage: false,
         messageSendingError: errMsg,
+        isAIGenerating: false,
         chatMessage: state.chatMessage.map((msg) =>
           msg.id === tempId ? { ...msg, status: "error" as const } : msg
         ),
@@ -240,11 +253,30 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       const response = await axios.get(`${API_URL}/chat/getMessages`, {
         params: { chatId },
       });
+
+      const messages: Message[] = response.data;
+
       set({
         chatMessage: response.data,
         isGettingChatMessages: false,
         chatMessagesError: null,
       });
+
+      const thinkingMessages = messages.filter(
+        (msg) => msg.status === "thinking" && msg.role === "assistant"
+      );
+
+      if (thinkingMessages.length > 0) {
+        console.log(
+          `Found ${thinkingMessages.length} thinking message(s), resuming polling...`
+        );
+
+        set({ isAIGenerating: true });
+
+        thinkingMessages.forEach((msg) => {
+          startPollingForMessage(chatId, msg.id, set, get);
+        });
+      }
     } catch (error: any) {
       const errMsg =
         error.response?.data?.message ||
@@ -292,6 +324,9 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
   },
 
   resetStore: () => {
+    const { activePollingSessions } = get();
+    activePollingSessions.clear();
+
     set({
       chatCreation: null,
       isCreatingChat: false,
@@ -310,4 +345,182 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
       UserChatsError: null,
     });
   },
+
+  abortAIGeneration: async (messageId: string) => {
+    const { activePollingSessions } = get();
+
+    // Find and remove the polling session for this message
+    const sessionToRemove = Array.from(activePollingSessions).find((session) =>
+      session.endsWith(`-${messageId}`)
+    );
+
+    if (sessionToRemove) {
+      // Remove the polling session (this will stop the polling loop)
+      set((state) => {
+        const newSessions = new Set(state.activePollingSessions);
+        newSessions.delete(sessionToRemove);
+
+        return {
+          activePollingSessions: newSessions,
+          isAIGenerating: newSessions.size > 0,
+          chatMessage: state.chatMessage.map((msg) =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  status: "aborted" as const,
+                  text: "Generation aborted by user",
+                }
+              : msg
+          ),
+        };
+      });
+
+      // ✅ Call backend to mark message as aborted in database
+      try {
+        await axios.post(`${API_URL}/chat/abortMessage`, null, {
+          params: { messageId },
+        });
+        console.log(`Aborted AI generation for message ${messageId}`);
+      } catch (error) {
+        console.error("Failed to abort message on server:", error);
+      }
+    }
+  },
 }));
+
+const startPollingForMessage = async (
+  chatId: string,
+  aiMessageId: string,
+  set: any,
+  get: any
+) => {
+  // Prevent duplicate polling sessions for the same message
+  const { activePollingSessions } = get();
+  const sessionKey = `${chatId}-${aiMessageId}`;
+
+  if (activePollingSessions.has(sessionKey)) {
+    console.log(
+      `Polling already active for message ${aiMessageId}, skipping...`
+    );
+    return;
+  }
+
+  // Mark this session as active
+  set((state: any) => ({
+    activePollingSessions: new Set(state.activePollingSessions).add(sessionKey),
+    isAIGenerating: true,
+  }));
+
+  const maxAttempts = 60;
+  const pollInterval = 1000;
+  let attempts = 0;
+
+  const poll = async () => {
+    try {
+      attempts++;
+
+      // ✅ Check if polling session is still active (abort check)
+      const currentState = get();
+      if (!currentState.activePollingSessions.has(sessionKey)) {
+        console.log(`Polling session ${sessionKey} was cancelled`);
+        set((state: any) => ({
+          isAIGenerating: state.activePollingSessions.size > 0,
+        }));
+        return;
+      }
+
+      // Fetch updated messages
+      const response = await axios.get(`${API_URL}/chat/getMessages`, {
+        params: { chatId },
+      });
+
+      const messages: Message[] = response.data;
+      const aiMessage = messages.find((m) => m.id === aiMessageId);
+
+      // ✅ If AI message not found, it might have been deleted with the chat
+      if (!aiMessage) {
+        console.log(
+          `AI message ${aiMessageId} not found - chat may have been deleted`
+        );
+
+        set((state: any) => {
+          const newSessions = new Set(state.activePollingSessions);
+          newSessions.delete(sessionKey);
+          return {
+            activePollingSessions: newSessions,
+            isAIGenerating: newSessions.size > 0,
+          };
+        });
+        return;
+      }
+
+      // Update the AI message in state
+      set((state: any) => ({
+        chatMessage: state.chatMessage.map((msg: Message) =>
+          msg.id === aiMessageId ? aiMessage : msg
+        ),
+      }));
+
+      // Stop polling if AI message is complete or aborted
+      if (
+        aiMessage.status === "sent" ||
+        aiMessage.status === "error" ||
+        aiMessage.status === "aborted"
+      ) {
+        console.log(
+          `AI message ${aiMessageId} completed with status: ${aiMessage.status}`
+        );
+
+        set((state: any) => {
+          const newSessions = new Set(state.activePollingSessions);
+          newSessions.delete(sessionKey);
+          return {
+            activePollingSessions: newSessions,
+            isAIGenerating: newSessions.size > 0,
+          };
+        });
+        return;
+      }
+
+      // Continue polling if still thinking and under max attempts
+      if (attempts < maxAttempts && aiMessage.status === "thinking") {
+        setTimeout(poll, pollInterval);
+      } else if (attempts >= maxAttempts) {
+        console.warn(`Polling timeout for message ${aiMessageId}`);
+
+        set((state: any) => {
+          const newSessions = new Set(state.activePollingSessions);
+          newSessions.delete(sessionKey);
+
+          return {
+            chatMessage: state.chatMessage.map((msg: Message) =>
+              msg.id === aiMessageId
+                ? { ...msg, status: "error" as const, text: "Response timeout" }
+                : msg
+            ),
+            activePollingSessions: newSessions,
+            isAIGenerating: newSessions.size > 0,
+          };
+        });
+      }
+    } catch (error) {
+      console.error("Error polling for AI message update:", error);
+
+      // On error, retry a few times before giving up
+      if (attempts < 3) {
+        setTimeout(poll, pollInterval * 2);
+      } else {
+        set((state: any) => {
+          const newSessions = new Set(state.activePollingSessions);
+          newSessions.delete(sessionKey);
+          return {
+            activePollingSessions: newSessions,
+            isAIGenerating: newSessions.size > 0,
+          };
+        });
+      }
+    }
+  };
+
+  setTimeout(poll, pollInterval);
+};
