@@ -158,18 +158,18 @@ const FeedbackPage: React.FC<FeedbackPageProps> = ({ feedback, interview }) => {
         </div>
         <div className="flex flex-row justify-evenly mx-16 mb-16 text-lg mt-5">
           <button
-            className="bg-blue-600 rounded-full text-4xl px-12 py-2 border hover:bg-blue-800 hover:text-accent-foreground flex flex-row items-center justify-center"
+            className="bg-blue-600 rounded-full cursor-pointer text-4xl px-12 py-2 border hover:bg-blue-800 hover:text-accent-foreground flex flex-row items-center justify-center"
             onClick={() => goToHomePage()}
           >
-            <House size={30} className="mr-4" />
-            <p>Go to Home page</p>
+            <House size={30} className="mr-4 cursor-pointer" />
+            <p className="cursor-pointer">Go to Home page</p>
           </button>
           <button
-            className="bg-green-600 rounded-full text-4xl px-12 py-2 border hover:bg-green-800 hover:text-accent-foreground flex flex-row items-center justify-center"
+            className="bg-green-600 rounded-full cursor-pointer text-4xl px-12 py-2 border hover:bg-green-800 hover:text-accent-foreground flex flex-row items-center justify-center"
             onClick={() => goToInterviewPage()}
           >
-            <RotateCcw size={30} className="mr-4" />
-            <p>Retake Interview</p>
+            <RotateCcw size={30} className="mr-4 cursor-pointer" />
+            <p className="cursor-pointer">Retake Interview</p>
           </button>
         </div>
       </div>
