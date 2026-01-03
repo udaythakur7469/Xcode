@@ -45,7 +45,6 @@ const FloatingActionButtons = () => {
 
   const { checkAuth, isUserAuthenticated } = useUserStore();
 
-  const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const prevDialogOpenRef = useRef(false);
 
   const {
@@ -61,60 +60,24 @@ const FloatingActionButtons = () => {
     isGettingChatMessages,
     chatMessagesError,
     UserChatsError,
-    clearMessages,
     moveChatToTop,
     resetStore,
+    activeChatId,
+    setActiveChatId,
   } = useChatStore();
 
-  // Deterministic Active Chat Resolver
-  const resolveActiveChat = (
-    currentActiveChatId: string | null,
-    chatsList: typeof userChats
-  ): string | null => {
-    if (chatsList.length === 0) {
-      return null;
-    }
-
-    if (
-      currentActiveChatId &&
-      chatsList.some((chat) => chat.id === currentActiveChatId)
-    ) {
-      return currentActiveChatId;
-    }
-
-    return chatsList[0].id;
-  };
-
-  // Clear chat data when dialog closes
+  // Clear store when dialog closes
   useEffect(() => {
     if (!aiChatDialogOpen) {
       const timer = setTimeout(() => {
         resetStore();
-        setActiveChatId(null);
       }, 300);
 
       return () => clearTimeout(timer);
     }
   }, [aiChatDialogOpen, resetStore]);
 
-  // Master State Synchronization Effect
-  useEffect(() => {
-    const resolvedChatId = resolveActiveChat(activeChatId, userChats);
-
-    if (resolvedChatId !== activeChatId) {
-      setActiveChatId(resolvedChatId);
-
-      if (resolvedChatId) {
-        if (!resolvedChatId.startsWith("temp-")) {
-          getChatMessages(resolvedChatId);
-        }
-      } else {
-        clearMessages();
-      }
-    }
-  }, [userChats, activeChatId, getChatMessages, clearMessages]);
-
-  // Dialog Open Lifecycle Guard
+  // Load chats when dialog opens
   useEffect(() => {
     const dialogJustOpened = aiChatDialogOpen && !prevDialogOpenRef.current;
 
@@ -123,21 +86,13 @@ const FloatingActionButtons = () => {
         getUserChats();
       } else {
         resetStore();
-        setActiveChatId(null);
-        clearMessages();
       }
     }
 
     prevDialogOpenRef.current = aiChatDialogOpen;
-  }, [
-    aiChatDialogOpen,
-    getUserChats,
-    isUserAuthenticated,
-    resetStore,
-    clearMessages,
-  ]);
+  }, [aiChatDialogOpen, getUserChats, isUserAuthenticated, resetStore]);
 
-  // First chat auto-selection (only for authenticated users)
+  // Auto-select first chat when chats load
   useEffect(() => {
     if (
       aiChatDialogOpen &&
@@ -160,6 +115,7 @@ const FloatingActionButtons = () => {
     activeChatId,
     isLoadingUserChats,
     getChatMessages,
+    setActiveChatId,
   ]);
 
   const handleNewChat = async () => {
@@ -183,8 +139,7 @@ const FloatingActionButtons = () => {
       return;
     }
 
-    // ✅ Clear messages first to prevent glitching
-    clearMessages();
+    // Just switch the view - polling continues in background
     setActiveChatId(chatId);
     await getChatMessages(chatId);
   };
@@ -194,16 +149,15 @@ const FloatingActionButtons = () => {
     const currentChatIndex = userChats.findIndex((chat) => chat.id === chatId);
 
     try {
-      // ✅ Clear messages immediately if deleting active chat
-      if (isActiveChat) {
-        clearMessages();
-      }
-
+      // Delete chat (this kills polling and removes data)
       await deleteChat(chatId);
+
+      // Wait for state update
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       const { userChats: updatedChats } = useChatStore.getState();
 
+      // If we deleted the active chat, select next available
       if (isActiveChat) {
         if (updatedChats.length > 0) {
           const nextIndex = Math.min(currentChatIndex, updatedChats.length - 1);
@@ -216,7 +170,6 @@ const FloatingActionButtons = () => {
           }
         } else {
           setActiveChatId(null);
-          clearMessages();
         }
       }
     } catch (error) {

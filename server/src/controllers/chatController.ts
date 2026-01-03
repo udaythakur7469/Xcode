@@ -3,6 +3,67 @@ import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
 import { generateAIResponse } from "../services/rag/aiService.js";
 
+export const getMessageById = async (req, res, next) => {
+  const { messageId } = req.params;
+  const userId = req.user?.Id || req.user?.userId;
+
+  try {
+    if (!messageId || typeof messageId !== "string") {
+      throw createHttpError.BadRequest("Please provide messageId");
+    }
+
+    // Fetch the single message with its chat
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      include: {
+        Chat: {
+          select: {
+            id: true,
+            userId: true,
+          },
+        },
+      },
+    });
+
+    // Message doesn't exist
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: "Message not found",
+      });
+    }
+
+    // Chat was deleted (message exists but chat doesn't)
+    if (!message.Chat) {
+      return res.status(410).json({
+        success: false,
+        message: "Chat has been deleted",
+      });
+    }
+
+    // Verify ownership
+    if (message.Chat.userId !== userId) {
+      throw createHttpError.Forbidden("Access denied");
+    }
+
+    // Return ONLY this message
+    return res.status(200).json({
+      success: true,
+      message: {
+        id: message.id,
+        chatId: message.ChatId,
+        text: message.text,
+        role: message.role,
+        status: message.status,
+        updatedAt: message.updatedAt,
+      },
+    });
+  } catch (error) {
+    logger.error("Error in getMessageById controller", error);
+    next(error);
+  }
+};
+
 export const createChat = async (req, res, next) => {
   const userId = req.user?.Id || req.user?.userId;
 
@@ -26,7 +87,6 @@ export const createChat = async (req, res, next) => {
 
 export const deleteChat = async (req, res, next) => {
   const { chatId } = req.query;
-
   const userId = req.user?.id || req.user?.userId;
 
   try {
@@ -58,7 +118,7 @@ export const sendMessage = async (req, res, next) => {
   const userId = req.user?.Id || req.user?.userId;
 
   try {
-    // 1️⃣ VALIDATE INPUTS
+    // Validate inputs
     if (!chatId || typeof chatId !== "string") {
       throw createHttpError.BadRequest("Please provide chatId");
     }
@@ -79,7 +139,7 @@ export const sendMessage = async (req, res, next) => {
 
     const isFirstMessage = chat.messages.length === 0;
 
-    // 2️⃣ PERSIST USER MESSAGE IMMEDIATELY
+    // Persist user message
     const userMessage = await prisma.message.create({
       data: {
         ChatId: chatId,
@@ -89,7 +149,7 @@ export const sendMessage = async (req, res, next) => {
       },
     });
 
-    // 3️⃣ CREATE AI PLACEHOLDER MESSAGE IMMEDIATELY
+    // Create AI placeholder
     const aiPlaceholder = await prisma.message.create({
       data: {
         ChatId: chatId,
@@ -118,7 +178,7 @@ export const sendMessage = async (req, res, next) => {
       });
     }
 
-    // 4️⃣ RESPOND IMMEDIATELY TO FRONTEND (DO NOT WAIT)
+    // Respond immediately
     res.status(200).json({
       success: true,
       userMessage: {
@@ -137,34 +197,32 @@ export const sendMessage = async (req, res, next) => {
       },
     });
 
-    // 5️⃣ GENERATE AI RESPONSE ASYNCHRONOUSLY (Fire-and-Forget)
+    // Generate AI response asynchronously
     (async () => {
       try {
-        // ✅ Check if message still exists before generating (in case it was aborted/deleted)
+        // Check if message still exists
         const messageCheck = await prisma.message.findUnique({
           where: { id: aiPlaceholder.id },
           include: { Chat: true },
         });
 
-        // If message or chat was deleted, stop generation
         if (!messageCheck || !messageCheck.Chat) {
           logger.info(
-            `Message ${aiPlaceholder.id} or its chat was deleted before AI generation completed`
+            `Message ${aiPlaceholder.id} or its chat was deleted before generation`
           );
           return;
         }
 
-        // If message is already aborted, don't generate
         if (messageCheck.status === "aborted") {
           logger.info(
-            `Message ${aiPlaceholder.id} was aborted before generation started`
+            `Message ${aiPlaceholder.id} was aborted before generation`
           );
           return;
         }
 
         const aiResponse = await generateAIResponse(message);
 
-        // ✅ Final check before updating - ensure message wasn't aborted/deleted during generation
+        // Final check before updating
         const finalCheck = await prisma.message.findUnique({
           where: { id: aiPlaceholder.id },
           include: { Chat: true },
@@ -172,7 +230,7 @@ export const sendMessage = async (req, res, next) => {
 
         if (!finalCheck || !finalCheck.Chat) {
           logger.info(
-            `Message ${aiPlaceholder.id} or its chat was deleted during AI generation`
+            `Message ${aiPlaceholder.id} or its chat was deleted during generation`
           );
           return;
         }
@@ -184,7 +242,7 @@ export const sendMessage = async (req, res, next) => {
           return;
         }
 
-        // Update the existing AI placeholder message
+        // Update the message
         await prisma.message.update({
           where: { id: aiPlaceholder.id },
           data: {
@@ -198,7 +256,6 @@ export const sendMessage = async (req, res, next) => {
       } catch (error) {
         logger.error("Error generating AI response:", error);
 
-        // ✅ Only mark as error if message still exists
         try {
           const errorCheck = await prisma.message.findUnique({
             where: { id: aiPlaceholder.id },
@@ -215,10 +272,7 @@ export const sendMessage = async (req, res, next) => {
             });
           }
         } catch (updateError) {
-          logger.error(
-            "Failed to update error status (message may have been deleted):",
-            updateError
-          );
+          logger.error("Failed to update error status:", updateError);
         }
       }
     })();
@@ -260,18 +314,16 @@ export const getMessages = async (req, res, next) => {
       throw createHttpError.NotFound("Chat not found");
     }
 
-    // 🔧 Check for stale "thinking" messages
+    // Check for stale "thinking" messages
     const now = new Date();
     const THINKING_TIMEOUT_MS = 120000; // 2 minutes
 
     const processedMessages = chat.messages.map((msg) => {
-      // If message is stuck in "thinking" for too long, mark as error
       if (msg.status === "thinking" && msg.role === "assistant") {
         const timeSinceCreation =
           now.getTime() - new Date(msg.createdAt).getTime();
 
         if (timeSinceCreation > THINKING_TIMEOUT_MS) {
-          // Update in DB asynchronously
           prisma.message
             .update({
               where: { id: msg.id },
@@ -333,7 +385,6 @@ export const getChats = async (req, res, next) => {
   }
 };
 
-// ✅ NEW ENDPOINT: Abort AI Message Generation
 export const abortMessage = async (req, res, next) => {
   const { messageId } = req.query;
   const userId = req.user?.Id || req.user?.userId;
@@ -349,7 +400,7 @@ export const abortMessage = async (req, res, next) => {
       include: { Chat: true },
     });
 
-    if (!message || message.Chat.userId !== userId) {
+    if (!message || !message.Chat || message.Chat.userId !== userId) {
       throw createHttpError.NotFound("Message not found");
     }
 

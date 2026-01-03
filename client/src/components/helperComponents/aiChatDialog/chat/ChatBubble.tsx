@@ -3,7 +3,7 @@
 import React from "react";
 import { Message } from "@/features/chatStore";
 import { formatDate } from "@/services/dateService";
-import { Loader2, StopCircle } from "lucide-react";
+import { Loader2, CirclePause } from "lucide-react";
 
 type ChatBubbleProps = {
   message: Message;
@@ -51,8 +51,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
                 className="flex items-center gap-1 px-2 py-1 text-xs bg-red-600 hover:bg-red-700 rounded-md transition-colors"
                 title="Stop generation"
               >
-                <StopCircle size={14} />
-                Stop
+                <CirclePause size={14} />
               </button>
             )}
           </div>

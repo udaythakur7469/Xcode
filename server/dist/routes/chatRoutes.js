@@ -1,6 +1,6 @@
 import express from "express";
 import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js";
-import { createChat, deleteChat, getChats, getMessages, sendMessage, abortMessage, } from "../controllers/chatController.js";
+import { createChat, deleteChat, getChats, getMessages, sendMessage, abortMessage, getMessageById, } from "../controllers/chatController.js";
 const router = express.Router();
 router.route("/createChat").post(optionalAuthMiddleware, createChat);
 router.route("/deleteChat").delete(optionalAuthMiddleware, deleteChat);
@@ -8,4 +8,5 @@ router.route("/sendMessage").post(optionalAuthMiddleware, sendMessage);
 router.route("/getMessages").get(optionalAuthMiddleware, getMessages);
 router.route("/getUserChats").get(optionalAuthMiddleware, getChats);
 router.route("/abortMessage").post(optionalAuthMiddleware, abortMessage);
+router.route("/message/:messageId").get(optionalAuthMiddleware, getMessageById);
 export default router;
