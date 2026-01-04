@@ -574,8 +574,9 @@ model Message {
   text String @db.Text // Use Text type for longer messages
 
   // Message metadata
-  role   MessageRole // 'user' or 'assistant'
-  status MessageStatus @default(sent)
+  role    MessageRole // 'user' or 'assistant'
+  status  MessageStatus @default(sent)
+  aiModel String?       @default("gpt-4")
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -605,4 +606,16 @@ enum MessageStatus {
   sent
   error
   aborted
+}
+
+model RegenerateState {
+  id              String   @id @default(cuid())
+  chatId          String
+  userMessageId   String   @unique  // Track by USER message ID
+  regenerateCount Int      @default(0)
+  lastUsedModel   String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([chatId, userMessageId])
 }
