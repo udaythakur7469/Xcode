@@ -71,7 +71,12 @@ interface ChatDetails {
   // Actions
   createChat: () => Promise<string | null>;
   deleteChat: (chatId: string) => Promise<void>;
-  sendMessage: (chatId: string, message: string) => Promise<void>;
+  sendMessage: (
+    chatId: string,
+    message: string,
+    regenerate: boolean,
+    aiModel: string
+  ) => Promise<void>;
   getChatMessages: (chatId: string) => Promise<void>;
   getUserChats: () => Promise<void>;
   moveChatToTop: (chatId: string) => void;
@@ -223,7 +228,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
     }
   },
 
-  sendMessage: async (chatId, message) => {
+  sendMessage: async (chatId, message, regenerate, aiModel) => {
     const { deletedChatIds, chatMessageMap } = get();
 
     if (deletedChatIds.has(chatId)) {
@@ -263,7 +268,7 @@ export const useChatStore = create<ChatDetails>()((set, get) => ({
     try {
       const response = await axios.post(
         `${API_URL}/chat/sendMessage`,
-        { message },
+        { message, regenerate, aiModel},
         { params: { chatId } }
       );
 
