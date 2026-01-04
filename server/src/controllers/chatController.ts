@@ -114,7 +114,7 @@ export const deleteChat = async (req, res, next) => {
 
 export const sendMessage = async (req, res, next) => {
   const { chatId } = req.query;
-  const { message } = req.body;
+  const { message, regenerate = false, aiModel, userMessageId } = req.body;
   const userId = req.user?.Id || req.user?.userId;
 
   try {
@@ -127,10 +127,32 @@ export const sendMessage = async (req, res, next) => {
       throw createHttpError.BadRequest("Please provide message");
     }
 
+    if (!aiModel || typeof aiModel !== "string") {
+      throw createHttpError.BadRequest("Please provide aiModel");
+    }
+
+    if (typeof regenerate !== "boolean") {
+      throw createHttpError.BadRequest("regenerate must be a boolean");
+    }
+
+    // If regenerating, userMessageId is required
+    if (regenerate && (!userMessageId || typeof userMessageId !== "string")) {
+      throw createHttpError.BadRequest(
+        "userMessageId is required when regenerate is true"
+      );
+    }
+
     // Verify chat exists and belongs to user
     const chat = await prisma.chat.findUnique({
       where: { id: chatId },
-      include: { messages: { select: { id: true } } },
+      include: {
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          where: { role: "assistant" },
+          select: { aiModel: true },
+        },
+      },
     });
 
     if (!chat || chat.userId !== userId) {
@@ -139,15 +161,59 @@ export const sendMessage = async (req, res, next) => {
 
     const isFirstMessage = chat.messages.length === 0;
 
-    // Persist user message
-    const userMessage = await prisma.message.create({
-      data: {
-        ChatId: chatId,
-        role: "user",
-        text: message,
-        status: "sent",
-      },
-    });
+    const lastMessageModel = chat.messages[0]?.aiModel || "gpt-4";
+
+    let finalUserMessageId: string;
+    let userMessageData: any;
+
+    // Handle user message based on regenerate flag
+    if (regenerate) {
+      // Regenerate: verify the user message exists and belongs to this chat
+      const existingUserMessage = await prisma.message.findUnique({
+        where: { id: userMessageId },
+        select: {
+          id: true,
+          ChatId: true,
+          role: true,
+          text: true,
+          status: true,
+          updatedAt: true,
+        },
+      });
+
+      if (!existingUserMessage) {
+        throw createHttpError.NotFound("User message not found");
+      }
+
+      if (existingUserMessage.ChatId !== chatId) {
+        throw createHttpError.BadRequest(
+          "User message does not belong to this chat"
+        );
+      }
+
+      if (existingUserMessage.role !== "user") {
+        throw createHttpError.BadRequest(
+          "Provided messageId is not a user message"
+        );
+      }
+
+      finalUserMessageId = existingUserMessage.id;
+      userMessageData = existingUserMessage;
+    } else {
+      // New message: create user message
+      const userMessage = await prisma.message.create({
+        data: {
+          ChatId: chatId,
+          role: "user",
+          text: message,
+          status: "sent",
+          aiModel: null, // User messages don't have aiModel
+        },
+      });
+
+      finalUserMessageId = userMessage.id;
+      userMessageData = userMessage;
+    }
 
     // Create AI placeholder
     const aiPlaceholder = await prisma.message.create({
@@ -156,11 +222,12 @@ export const sendMessage = async (req, res, next) => {
         role: "assistant",
         text: "",
         status: "thinking",
+        aiModel: aiModel,
       },
     });
 
     // Update chat title if first message
-    if (isFirstMessage) {
+    if (isFirstMessage && !regenerate) {
       const title =
         message.length > 50 ? message.substring(0, 50) + "..." : message;
 
@@ -182,11 +249,11 @@ export const sendMessage = async (req, res, next) => {
     res.status(200).json({
       success: true,
       userMessage: {
-        id: userMessage.id,
-        role: userMessage.role,
-        text: userMessage.text,
-        status: userMessage.status,
-        updatedAt: userMessage.updatedAt,
+        id: userMessageData.id,
+        role: userMessageData.role,
+        text: userMessageData.text,
+        status: userMessageData.status,
+        updatedAt: userMessageData.updatedAt,
       },
       aiMessage: {
         id: aiPlaceholder.id,
@@ -220,7 +287,14 @@ export const sendMessage = async (req, res, next) => {
           return;
         }
 
-        const aiResponse = await generateAIResponse(message);
+        const aiResponse = await generateAIResponse({
+          chatId,
+          userMessageId: finalUserMessageId,
+          currentUserMessage: message,
+          regenerate,
+          aiModel,
+          lastMessageModel,
+        });
 
         // Final check before updating
         const finalCheck = await prisma.message.findUnique({
