@@ -1,13 +1,87 @@
 import logger from "../../configs/loggerConfig.js";
+import { calculateContextSize } from "./contextSizeCalculation.js";
+import { generateEmbedding } from "./embeddings.js";
+import { filterDocuments } from "./filter.js";
+import { normalizeAiResponse } from "./normalize.js";
+import { searchChatKnowledge } from "./pineconeService.js";
+import { getOrUpdateRegenerateState } from "./setRegenerateState.js";
+import {
+  FilterResult,
+  GenerateAIResponseParams,
+  RetrievedKnowledge,
+} from "./types.js";
+import { fetchPreviousUserMessages } from "./userMessages.js";
 
+export const generateAIResponse = async (
+  params: GenerateAIResponseParams
+): Promise<string> => {
+  const {
+    chatId,
+    userMessageId,
+    currentUserMessage,
+    regenerate,
+    aiModel,
+    lastMessageModel,
+  } = params;
 
-export const generateAIResponse = async (message: string) => {
-  logger.info("AI generation started");
+  // Step 1: Get or update regenerate state
+  const { regenerateCount, aiModelChanged } = await getOrUpdateRegenerateState(
+    chatId,
+    userMessageId,
+    regenerate,
+    aiModel,
+    lastMessageModel
+  );
 
-  // ⏳ Simulate 10 seconds delay
-  await new Promise((resolve) => setTimeout(resolve, 10000));
+  // Step 2: Calculate context size
+  const contextSize = calculateContextSize(regenerateCount, aiModelChanged);
 
-  logger.info("AI generation finished");
+  // Step 3: Fetch previous user messages for context
+  const previousUserMessages = await fetchPreviousUserMessages(
+    chatId,
+    contextSize
+  );
 
-  return "AI message";
+  console.log(`[generateAIResponse] Debug info:`, {
+    regenerateCount,
+    aiModelChanged,
+    contextSize,
+    previousMessagesCount: previousUserMessages.length,
+  });
+
+  // Step 4: Normalize the message
+  const normalizedMessage = await normalizeAiResponse({
+    currentUserMessage,
+    previousUserMessages,
+    regenerate,
+    aiModelChanged,
+  });
+
+  // Step 5: Embed the normalized message
+  const embeddedNormalizedMessage: number[] = await generateEmbedding(
+    normalizedMessage
+  );
+
+  // Step 6: Search Pinecone for relevant past knowledge
+  const retrievedKnowledge: RetrievedKnowledge[] = await searchChatKnowledge(
+    embeddedNormalizedMessage,
+    contextSize,
+    chatId
+  );
+
+  console.log("[generateAIResponse] Retrieved knowledge:", retrievedKnowledge);
+
+  // Step 7: Filter retrieved documents
+  const filteredDocuments: FilterResult = await filterDocuments(
+    retrievedKnowledge,
+    0.75
+  );
+
+  
+
+  console.log("[generateAIResponse] filtered documents:", filteredDocuments);
+
+  const response = `AI Response (using ${aiModel}) to normalized message: "${normalizedMessage}"`;
+
+  return response;
 };
