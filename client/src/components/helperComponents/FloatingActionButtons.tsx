@@ -297,7 +297,7 @@ const FloatingActionButtons = () => {
               onDeleteChat={handleDeleteChat}
               gettingChatsError={UserChatsError}
             />
-          ) : undefined
+          ) : null
         }
       >
         <ChatWindow

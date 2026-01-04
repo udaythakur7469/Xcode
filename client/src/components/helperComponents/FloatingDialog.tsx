@@ -81,8 +81,15 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
   // Motion value for sidebar width (in percentage)
   const motionSidebarWidthPercent = useMotionValue(
-    isSidebarOpen ? sidebarWidthPercent : 0
+    enableSidebar && isSidebarOpen ? sidebarWidthPercent : 0
   );
+
+  // Sync motion value when sidebar should be open initially
+  useEffect(() => {
+    if (enableSidebar) {
+      motionSidebarWidthPercent.set(sidebarWidthPercent);
+    }
+  }, [enableSidebar, motionSidebarWidthPercent, sidebarWidthPercent]);
 
   // Spring configuration for smooth animation
   const springConfig = { stiffness: 300, damping: 30 };
