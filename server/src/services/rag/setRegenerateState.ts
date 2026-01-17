@@ -26,7 +26,7 @@ export const getOrUpdateRegenerateState = async (
       await prisma.regenerateState.update({
         where: { userMessageId },
         data: {
-          regenerateCount: 1,
+          regenerateCount: 0,
           lastUsedModel: aiModel,
           updatedAt: new Date(),
         },
@@ -36,12 +36,12 @@ export const getOrUpdateRegenerateState = async (
         data: {
           chatId,
           userMessageId,
-          regenerateCount: 1,
+          regenerateCount: 0,
           lastUsedModel: aiModel,
         },
       });
     }
-    return { regenerateCount: 1, aiModelChanged: true };
+    return { regenerateCount: 0, aiModelChanged: true };
   }
 
   if (regenerate) {
