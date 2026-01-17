@@ -35,7 +35,6 @@ export interface ChatKnowledgeMetadata {
   createdAt: number;
 }
 
-
 export interface RetrievedKnowledge {
   id: string;
   score: number;
@@ -47,3 +46,31 @@ export interface FilterResult {
   retrievalConfidence: number;
 }
 
+export interface TopicShiftDetectionInput {
+  userMessage: string;
+  previousMessages: string[];
+}
+
+export interface TopicShiftDetectionResult {
+  isNewTopic: boolean;
+  similarityScore: number;
+  strategy: "RESET" | "PARTIAL" | "FULL";
+}
+/* 
+export interface TopicShiftDetectionPromptBuilderInput {
+  userMessage: string;
+  previousMessages: string[];
+  similarityScore: number;
+}
+*/
+
+export interface NormalizeUserMessagePromptBuilderInput {
+  userMessage: string;
+  previousMessages: string[] | string;
+  regenerate: boolean;
+  aiModelChanged: boolean;
+}
+
+export interface StyleClassificationOutput {
+  result: "SAME_TOPIC_STYLE_CHANGE" | "SAME_TOPIC_DEEPER" | "NEW_TOPIC";
+}
