@@ -29,7 +29,11 @@ const UnsavedChangesDialog: React.FC<UnsavedChangesDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex flex-row justify-center gap-2 sm:justify-center">
-          <Button className="bg-green-800 text-white" onClick={onClose}>
+          <Button
+            variant="secondary"
+            className="bg-green-700 text-white"
+            onClick={onClose}
+          >
             Continue Editing
           </Button>
           <Button variant="destructive" onClick={onConfirmCancel}>
