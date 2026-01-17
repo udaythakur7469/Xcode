@@ -255,8 +255,8 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
                     <p className="text-md mr-8">Results</p>
                   </div>
                   <X
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer hover:bg-gray-200 rounded-sm p-0.5"
-                    size={18}
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 cursor-pointer hover:text-red-500 rounded-sm p-0.5"
+                    size={24}
                     onClick={onResultsClose}
                   />
                 </TabsTrigger>
