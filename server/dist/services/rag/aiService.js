@@ -4,13 +4,28 @@ import { filterDocuments } from "./filter.js";
 import { normalizeAiResponse } from "./normalize.js";
 import { searchChatKnowledge } from "./pineconeService.js";
 import { getOrUpdateRegenerateState } from "./setRegenerateState.js";
+import { topicShiftDetection } from "./topicShiftDetection.js";
 import { fetchPreviousUserMessages } from "./userMessages.js";
 export const generateAIResponse = async (params) => {
     const { chatId, userMessageId, currentUserMessage, regenerate, aiModel, lastMessageModel, } = params;
+    const PROBE_CONTEXT_SIZE = 5;
+    let contextSize = 0;
     // Step 1: Get or update regenerate state
     const { regenerateCount, aiModelChanged } = await getOrUpdateRegenerateState(chatId, userMessageId, regenerate, aiModel, lastMessageModel);
-    // Step 2: Calculate context size
-    const contextSize = calculateContextSize(regenerateCount, aiModelChanged);
+    const probeUserMessages = await fetchPreviousUserMessages(chatId, PROBE_CONTEXT_SIZE);
+    const topicShiftDetected = await topicShiftDetection({
+        userMessage: currentUserMessage,
+        previousMessages: probeUserMessages,
+    });
+    if (topicShiftDetected.strategy === "RESET") {
+        contextSize = 0;
+    }
+    if (topicShiftDetected.strategy === "FULL") {
+        contextSize = calculateContextSize(regenerateCount, aiModelChanged);
+    }
+    if (topicShiftDetected.strategy === "PARTIAL") {
+        contextSize = Math.max(0, calculateContextSize(regenerateCount, aiModelChanged) - 2);
+    }
     // Step 3: Fetch previous user messages for context
     const previousUserMessages = await fetchPreviousUserMessages(chatId, contextSize);
     console.log(`[generateAIResponse] Debug info:`, {
