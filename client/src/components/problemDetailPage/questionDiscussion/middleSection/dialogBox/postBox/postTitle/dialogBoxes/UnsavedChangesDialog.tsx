@@ -25,12 +25,12 @@ const UnsavedChangesDialog: React.FC<UnsavedChangesDialogProps> = ({
         <DialogHeader className="flex items-center justify-center">
           <DialogTitle className="text-3xl">Unsaved Changes</DialogTitle>
           <DialogDescription className="py-3 text-lg">
-            Your changes will be lost if you press cancel.
+            All your unsaved changes will be lost.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex flex-row justify-center gap-2 sm:justify-center">
           <Button className="bg-green-800 text-white" onClick={onClose}>
-            Keep Editing
+            Continue Editing
           </Button>
           <Button variant="destructive" onClick={onConfirmCancel}>
             Discard Changes
