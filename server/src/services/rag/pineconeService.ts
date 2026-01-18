@@ -28,7 +28,7 @@ export const storeAiChatKnowledge = async ({
   ]);
 };
 
-export const searchChatKnowledge = async (
+export const searchAiChatKnowledge = async (
   embedding: number[],
   limit: number,
   chatId: string

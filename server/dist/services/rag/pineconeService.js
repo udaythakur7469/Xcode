@@ -16,7 +16,7 @@ export const storeAiChatKnowledge = async ({ id, normalizedQuery, normalizedQuer
         },
     ]);
 };
-export const searchChatKnowledge = async (embedding, limit, chatId) => {
+export const searchAiChatKnowledge = async (embedding, limit, chatId) => {
     const result = await pineconeIndex.query({
         vector: embedding,
         topK: limit,
