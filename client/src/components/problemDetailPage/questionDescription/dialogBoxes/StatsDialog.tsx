@@ -7,7 +7,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ChartNoAxesCombined } from "lucide-react";
 import { SelectSeparator } from "@/components/ui/select";
-import { number } from "zod";
+import { toTwoDecimals } from "@/services/acceptanceRateService";
+import { formatCount } from "@/services/countService";
 
 type StatsDialogProps = {
   stats: {
@@ -30,11 +31,11 @@ const StatsDialog: React.FC<StatsDialogProps> = ({ stats }) => {
       </HoverCardTrigger>
       <HoverCardContent side="right">
         <div className="flex flex-col p-2">
-          <div>Accuracy : {stats.acceptanceRate}%</div>
+          <div>Accuracy : {toTwoDecimals(stats.acceptanceRate)}%</div>
           <SelectSeparator />
-          <div>Attempts : {stats.totalAttempts}</div>
+          <div>Attempts : {formatCount(stats.totalAttempts)}</div>
           <SelectSeparator />
-          <div>Accepted : {stats.totalSolved}</div>
+          <div>Accepted : {formatCount(stats.totalSolved)}</div>
         </div>
       </HoverCardContent>
     </HoverCard>
