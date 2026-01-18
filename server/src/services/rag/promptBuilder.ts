@@ -1,6 +1,7 @@
 import createHttpError from "http-errors";
 import {
   NormalizeUserMessagePromptBuilderInput,
+  SolutionIntent,
 } from "./types.js";
 
 export const loadPromptFromEnv = (envKey: string): string => {
@@ -15,7 +16,7 @@ export const loadPromptFromEnv = (envKey: string): string => {
 
 export const injectValuesIntoPrompt = (
   template: string,
-  values: Record<string, any>
+  values: Record<string, any>,
 ): string => {
   let result = template;
 
@@ -27,7 +28,7 @@ export const injectValuesIntoPrompt = (
   // Safety: ensure no unresolved placeholders remain
   if (/{{\s*[^}]+\s*}}|\$\{\s*[^}]+\s*}/.test(result)) {
     throw createHttpError.InternalServerError(
-      "Unresolved placeholders found in prompt template"
+      "Unresolved placeholders found in prompt template",
     );
   }
 
@@ -81,6 +82,50 @@ export const styleClassificationPromptBuilder = ({
   const finalPrompt = injectValuesIntoPrompt(template, {
     topicSummary,
     userMessage,
+  });
+
+  return finalPrompt;
+};
+
+export const solutionIntentClassificationPromptBuilder = (
+  userMessage: string,
+  previousUserMessages: string[],
+  hasSolved: boolean,
+  problemTitle?: string,
+  difficulty?: string,
+): string => {
+  const template = loadPromptFromEnv("INTENT_DETECTION_PROMPT");
+
+  const finalPrompt = injectValuesIntoPrompt(template, {
+    userMessage,
+    previousUserMessages,
+    hasSolved,
+    problemTitle,
+    difficulty,
+  });
+
+  return finalPrompt;
+};
+
+export const llmBasedArtifactsDetectionPromptBuilder = (
+  userMessage: string,
+  normalizedQuery: string,
+  intent: SolutionIntent,
+  hasCode: Boolean,
+  hasErrorLog: Boolean,
+  hasTestCase: Boolean,
+  hasIO: Boolean,
+): string => {
+  const template = loadPromptFromEnv("MISSING_ARTIFACT_DETECTION_PROMPT");
+
+  const finalPrompt = injectValuesIntoPrompt(template, {
+    currentUserMessage: userMessage,
+    normalizedQuery: normalizedQuery,
+    detectedIntent: intent,
+    hasCode,
+    hasErrorLog,
+    hasTestCase,
+    hasIO,
   });
 
   return finalPrompt;

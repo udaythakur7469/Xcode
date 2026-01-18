@@ -53,3 +53,27 @@ export const styleClassificationPromptBuilder = ({ topicSummary, userMessage, })
     });
     return finalPrompt;
 };
+export const solutionIntentClassificationPromptBuilder = (userMessage, previousUserMessages, hasSolved, problemTitle, difficulty) => {
+    const template = loadPromptFromEnv("INTENT_DETECTION_PROMPT");
+    const finalPrompt = injectValuesIntoPrompt(template, {
+        userMessage,
+        previousUserMessages,
+        hasSolved,
+        problemTitle,
+        difficulty,
+    });
+    return finalPrompt;
+};
+export const llmBasedArtifactsDetectionPromptBuilder = (userMessage, normalizedQuery, intent, hasCode, hasErrorLog, hasTestCase, hasIO) => {
+    const template = loadPromptFromEnv("MISSING_ARTIFACT_DETECTION_PROMPT");
+    const finalPrompt = injectValuesIntoPrompt(template, {
+        currentUserMessage: userMessage,
+        normalizedQuery: normalizedQuery,
+        detectedIntent: intent,
+        hasCode,
+        hasErrorLog,
+        hasTestCase,
+        hasIO,
+    });
+    return finalPrompt;
+};
