@@ -1,6 +1,5 @@
 import React from "react";
 import {
-  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
@@ -13,34 +12,33 @@ import { motion } from "framer-motion";
 import { useChatStore } from "@/features/chatStore";
 
 type LogoutDialogProps = {
-  isOpen?: boolean;
-  onClose?: () => void;
+  onClose: () => void;
 };
 
-const LogoutDialog: React.FC<LogoutDialogProps> = ({ isOpen, onClose }) => {
+const LogoutDialog: React.FC<LogoutDialogProps> = ({ onClose }) => {
   const router = useRouter();
   const pathname = usePathname();
+
   const { logout, isLoading, error } = useAuthStore();
   const { resetStore } = useChatStore();
 
   const handleLogout = async () => {
     try {
-      // Close dialog first
-      onClose?.();
-
-      // Small delay to let dialog close animation complete
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
+      // 1️⃣ Logout
       await logout();
 
+      // 2️⃣ Reset chat/global state
       resetStore();
 
-      // Redirect to home page after successful logout
-      if (pathname.startsWith("/account/")) {
-        router.push("/");
+      // 3️⃣ Close dialog AFTER everything is done
+      onClose();
+
+      // 4️⃣ Redirect safely
+      if (pathname.startsWith("/account")) {
+        router.replace("/");
       }
-    } catch (error) {
-      console.log(error);
+    } catch (err) {
+      console.error("Logout failed:", err);
     }
   };
 
@@ -53,21 +51,22 @@ const LogoutDialog: React.FC<LogoutDialogProps> = ({ isOpen, onClose }) => {
         transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
       >
         <DialogHeader className="flex items-center justify-center">
-          <DialogTitle className="text-2xl">
-            Are you sure you want to Logout!
+          <DialogTitle className="text-2xl text-center">
+            Are you sure you want to logout?
           </DialogTitle>
         </DialogHeader>
-        <DialogClose asChild>
-          <Button
-            variant="destructive"
-            onClick={handleLogout}
-            className="w-full flex mt-4"
-          >
-            {isLoading ? <PropagateLoader /> : error ? error : "Logout"}
-          </Button>
-        </DialogClose>
+
+        <Button
+          variant="destructive"
+          onClick={handleLogout}
+          disabled={isLoading}
+          className="w-full mt-6 flex justify-center items-center"
+        >
+          {isLoading ? <PropagateLoader size={8} /> : error ? error : "Logout"}
+        </Button>
       </motion.div>
     </DialogContent>
   );
 };
+
 export default LogoutDialog;
