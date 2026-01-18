@@ -114,7 +114,13 @@ export const deleteChat = async (req, res, next) => {
 
 export const sendMessage = async (req, res, next) => {
   const { chatId } = req.query;
-  const { message, regenerate = false, aiModel, userMessageId } = req.body;
+  const {
+    message,
+    regenerate = false,
+    aiModel,
+    userMessageId,
+    problemTitle,
+  } = req.body;
   const userId = req.user?.Id || req.user?.userId;
 
   try {
@@ -138,7 +144,7 @@ export const sendMessage = async (req, res, next) => {
     // If regenerating, userMessageId is required
     if (regenerate && (!userMessageId || typeof userMessageId !== "string")) {
       throw createHttpError.BadRequest(
-        "userMessageId is required when regenerate is true"
+        "userMessageId is required when regenerate is true",
       );
     }
 
@@ -187,13 +193,13 @@ export const sendMessage = async (req, res, next) => {
 
       if (existingUserMessage.ChatId !== chatId) {
         throw createHttpError.BadRequest(
-          "User message does not belong to this chat"
+          "User message does not belong to this chat",
         );
       }
 
       if (existingUserMessage.role !== "user") {
         throw createHttpError.BadRequest(
-          "Provided messageId is not a user message"
+          "Provided messageId is not a user message",
         );
       }
 
@@ -275,14 +281,14 @@ export const sendMessage = async (req, res, next) => {
 
         if (!messageCheck || !messageCheck.Chat) {
           logger.info(
-            `Message ${aiPlaceholder.id} or its chat was deleted before generation`
+            `Message ${aiPlaceholder.id} or its chat was deleted before generation`,
           );
           return;
         }
 
         if (messageCheck.status === "aborted") {
           logger.info(
-            `Message ${aiPlaceholder.id} was aborted before generation`
+            `Message ${aiPlaceholder.id} was aborted before generation`,
           );
           return;
         }
@@ -294,6 +300,8 @@ export const sendMessage = async (req, res, next) => {
           regenerate,
           aiModel,
           lastMessageModel,
+          userId,
+          problemTitle,
         });
 
         // Final check before updating
@@ -304,14 +312,14 @@ export const sendMessage = async (req, res, next) => {
 
         if (!finalCheck || !finalCheck.Chat) {
           logger.info(
-            `Message ${aiPlaceholder.id} or its chat was deleted during generation`
+            `Message ${aiPlaceholder.id} or its chat was deleted during generation`,
           );
           return;
         }
 
         if (finalCheck.status === "aborted") {
           logger.info(
-            `Message ${aiPlaceholder.id} was aborted during generation`
+            `Message ${aiPlaceholder.id} was aborted during generation`,
           );
           return;
         }
@@ -407,7 +415,7 @@ export const getMessages = async (req, res, next) => {
               },
             })
             .catch((err) =>
-              logger.error("Failed to update stale message:", err)
+              logger.error("Failed to update stale message:", err),
             );
 
           return {

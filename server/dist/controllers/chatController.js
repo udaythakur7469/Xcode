@@ -100,7 +100,7 @@ export const deleteChat = async (req, res, next) => {
 };
 export const sendMessage = async (req, res, next) => {
     const { chatId } = req.query;
-    const { message, regenerate = false, aiModel, userMessageId } = req.body;
+    const { message, regenerate = false, aiModel, userMessageId, problemTitle, } = req.body;
     const userId = req.user?.Id || req.user?.userId;
     try {
         // Validate inputs
@@ -247,6 +247,8 @@ export const sendMessage = async (req, res, next) => {
                     regenerate,
                     aiModel,
                     lastMessageModel,
+                    userId,
+                    problemTitle,
                 });
                 // Final check before updating
                 const finalCheck = await prisma.message.findUnique({
