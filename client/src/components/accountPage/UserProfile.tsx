@@ -15,7 +15,7 @@ const UserProfile: React.FC<UserProfileProps> = () => {
       <div className="w-full h-screen flex flex-col overflow-hidden">
         <div className="flex-1 overflow-y-auto">
           {/* Scrollable area */}
-          <div className="h-full w-full flex flex-row space-x-3 min-h-0">
+          <div className="h-full w-full flex flex-row gap-3">
             {/* Prevent height inflation */}
             <Sidebar />
             <div className="flex-1 flex flex-col min-h-0">
