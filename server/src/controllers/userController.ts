@@ -1,6 +1,7 @@
-import createHttpError from "http-errors";
 import prisma from "../configs/db.js";
 import logger from "../configs/loggerConfig.js";
+import { Readable } from "stream";
+import cloudinary from "../services/uploadService.js";
 
 export const authenticatedUser = async (req, res) => {
   try {
@@ -58,7 +59,7 @@ export const authenticatedUser = async (req, res) => {
 
     // Process languages
     const allLanguages = solvedProblems.flatMap((sp) =>
-      sp.user.submissions.map((sub) => sub.language)
+      sp.user.submissions.map((sub) => sub.language),
     );
     const languageFrequency = allLanguages.reduce((acc, lang) => {
       acc[lang] = (acc[lang] || 0) + 1;
@@ -89,16 +90,19 @@ export const authenticatedUser = async (req, res) => {
         }
         return acc;
       },
-      { totalSolved: 0, easySolved: 0, mediumSolved: 0, hardSolved: 0 }
+      { totalSolved: 0, easySolved: 0, mediumSolved: 0, hardSolved: 0 },
     );
 
     // Format the links
-    const formattedLinks = user.links.reduce((acc, link) => {
-      if (link.key && link.value) {
-        acc[link.key] = link.value;
-      }
-      return acc;
-    }, {} as Record<string, string>);
+    const formattedLinks = user.links.reduce(
+      (acc, link) => {
+        if (link.key && link.value) {
+          acc[link.key] = link.value;
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
 
     // Destructure the user object
     const { links, ...userData } = user;
@@ -115,7 +119,7 @@ export const authenticatedUser = async (req, res) => {
             ([language, count]) => ({
               language,
               count,
-            })
+            }),
           ),
           tags: Object.entries(tagFrequency).map(([tag, count]) => ({
             tag,
@@ -130,63 +134,130 @@ export const authenticatedUser = async (req, res) => {
   }
 };
 
-export const updateProfile = async (req, res) => {
+export const updateProfilePicture = async (req, res) => {
   try {
-    const userId = req.user.id || req.user.userId;
-    const { description, links, institution } = req.body;
+    const userId = req.user.userId; 
 
-    // Update description if provided
-    if (description !== undefined) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { description },
+    // Check if file exists
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No image file provided",
       });
     }
 
-    // Update institution if provided
-    if (institution !== undefined) {
-      await prisma.user.update({
-        where: { id: userId },
-        data: { institution },
-      });
-    }
+    // Get current user to potentially delete old image
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { picture: true },
+    });
 
-    // Update links if provided
-    if (links !== undefined) {
-      // Get existing links for the user
-      const existingLinks = await prisma.userLink.findMany({
-        where: { userId },
-      });
+    // Upload to Cloudinary
+    const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        {
+          folder: "profile_pictures",
+          resource_type: "image",
+          transformation: [
+            { width: 500, height: 500, crop: "fill", gravity: "face" },
+            { quality: "auto" },
+            { fetch_format: "auto" },
+          ],
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        },
+      );
 
-      // Process each link in the request
-      for (const [key, value] of Object.entries(links)) {
-        const existingLink = existingLinks.find((link) => link.key === key);
+      // Convert buffer to stream and pipe to Cloudinary
+      const bufferStream = Readable.from(req.file.buffer);
+      bufferStream.pipe(uploadStream);
+    });
 
-        if (existingLink) {
-          // Update existing link if value changed
-          if (existingLink.value !== value) {
-            await prisma.userLink.update({
-              where: { id: existingLink.id },
-              data: { value: value as string },
-            });
-          }
-        } else {
-          // Create new link if it doesn't exist
-          await prisma.userLink.create({
-            data: {
-              key,
-              value: value as string,
-              userId,
-            },
-          });
-        }
+    // Optional: Delete old image from Cloudinary if it exists and is not the default
+    if (
+      currentUser?.picture &&
+      !currentUser.picture.includes("encrypted-tbn0")
+    ) {
+      try {
+        // Extract public_id from the old Cloudinary URL
+        const urlParts = currentUser.picture.split("/");
+        const publicIdWithExtension = urlParts[urlParts.length - 1];
+        const publicId = `profile_pictures/${publicIdWithExtension.split(".")[0]}`;
+        await cloudinary.uploader.destroy(publicId);
+      } catch (deleteError) {
+        console.error("Error deleting old image:", deleteError);
+        // Don't fail the request if old image deletion fails
       }
     }
 
-    res.status(200).json({ message: "Profile updated successfully" });
+    // Update user in database
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { picture: uploadResult.secure_url },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        picture: true,
+        description: true,
+        institution: true,
+        links: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Profile picture updated successfully",
+      user: updatedUser,
+      imageUrl: uploadResult.secure_url,
+    });
+  } catch (error) {
+    console.error("Error uploading profile picture:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to upload profile picture",
+    });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { description, links, institution } = req.body;
+
+    const updateData: Record<string, any> = {};
+
+    if (description !== undefined) updateData.description = description;
+    if (links !== undefined) updateData.links = links;
+    if (institution !== undefined) updateData.institution = institution;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        picture: true,
+        description: true,
+        institution: true,
+        links: true,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      user: updatedUser,
+    });
   } catch (error) {
     console.error("Error updating profile:", error);
-    res.status(500).json({ message: "Failed to update profile" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to update profile",
+    });
   }
 };
 
@@ -215,17 +286,20 @@ export const getUserSolvedLanguages = async (req, res) => {
     });
 
     // Count occurrences of each language
-    const languageCounts = solvedSubmissions.reduce((acc, submission) => {
-      acc[submission.language] = (acc[submission.language] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const languageCounts = solvedSubmissions.reduce(
+      (acc, submission) => {
+        acc[submission.language] = (acc[submission.language] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
 
     // Format the response
     const languages = Object.entries(languageCounts).map(
       ([language, count]) => ({
         language,
         count,
-      })
+      }),
     );
 
     res.status(200).json({
