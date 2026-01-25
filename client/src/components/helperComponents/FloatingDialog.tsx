@@ -46,6 +46,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(enableSidebar);
   const [sidebarWidthPercent, setSidebarWidthPercent] = useState(31.1);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
+  const [isBlinking, setIsBlinking] = useState(false);
   const [preMaximizeState, setPreMaximizeState] = useState<{
     size: { width: number; height: number };
     position: { x: number; y: number };
@@ -81,7 +82,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
   // Motion value for sidebar width (in percentage)
   const motionSidebarWidthPercent = useMotionValue(
-    enableSidebar && isSidebarOpen ? sidebarWidthPercent : 0
+    enableSidebar && isSidebarOpen ? sidebarWidthPercent : 0,
   );
 
   // Sync motion value when sidebar should be open initially
@@ -99,13 +100,13 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   const springHeight = useSpring(motionHeight, springConfig);
   const springSidebarWidthPercent = useSpring(
     motionSidebarWidthPercent,
-    springConfig
+    springConfig,
   );
 
   // Calculate actual sidebar width in pixels from percentage
   const springSidebarWidthPx = useTransform(
     [springWidth, springSidebarWidthPercent],
-    ([w, p]) => (w * p) / 100
+    ([w, p]) => (w * p) / 100,
   );
 
   // Update motion values when position or size changes
@@ -135,33 +136,29 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
         y: Math.max(0, Math.min(newPos.y, maxY)),
       });
     },
-    [size.width, size.height]
+    [size.width, size.height],
   );
 
-  // Reposition dialog when window is resized
+  // Reposition dialog when window is resized - AUTO RECENTER
   const repositionOnResize = useCallback(() => {
     if (typeof window === "undefined") return;
 
     // Constrain size to fit within window
-    setSize((prevSize) => ({
-      width: Math.min(prevSize.width, window.innerWidth - 100),
-      height: Math.min(prevSize.height, window.innerHeight - 100),
-    }));
+    const newSize = {
+      width: Math.min(size.width, window.innerWidth - 100),
+      height: Math.min(size.height, window.innerHeight - 100),
+    };
+    setSize(newSize);
 
-    // Reposition to stay within bounds
-    setPosition((prevPos) => {
-      const constrainedWidth = Math.min(size.width, window.innerWidth - 100);
-      const constrainedHeight = Math.min(size.height, window.innerHeight - 100);
+    // Recenter the dialog based on dialogType
+    const yOffset = dialogType === "CommandPalette" ? -100 : 0;
+    const centeredPosition = {
+      x: Math.max(0, window.innerWidth / 2 - newSize.width / 2),
+      y: Math.max(0, window.innerHeight / 2 - newSize.height / 2 + yOffset),
+    };
 
-      const maxX = Math.max(50, window.innerWidth - constrainedWidth);
-      const maxY = Math.max(50, window.innerHeight - constrainedHeight);
-
-      return {
-        x: Math.max(0, Math.min(prevPos.x, maxX)),
-        y: Math.max(0, Math.min(prevPos.y, maxY)),
-      };
-    });
-  }, [size.width, size.height]);
+    setPosition(centeredPosition);
+  }, [size.width, size.height, dialogType]);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
@@ -170,7 +167,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
         const deltaPercent = (deltaX / size.width) * 100;
         const newPercent = Math.max(
           15,
-          Math.min(100, sidebarResizeStart.current.widthPercent + deltaPercent)
+          Math.min(100, sidebarResizeStart.current.widthPercent + deltaPercent),
         );
 
         // During manual resize, update both motion value and state instantly (no spring)
@@ -222,7 +219,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
       setBoundaryPosition,
       size.width,
       motionSidebarWidthPercent,
-    ]
+    ],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -277,7 +274,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
         x: Math.max(0, window.innerWidth / 2 - defaultSize.width / 2),
         y: Math.max(
           0,
-          window.innerHeight / 2 - defaultSize.height / 2 + yOffset
+          window.innerHeight / 2 - defaultSize.height / 2 + yOffset,
         ),
       };
 
@@ -390,6 +387,16 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onOpenChange]);
 
+  // Handle click outside to trigger blink effect
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    // Only trigger if clicking directly on the overlay (not on dialog)
+    if (e.target === e.currentTarget) {
+      setIsBlinking(true);
+      // Remove blinking class after animation completes
+      setTimeout(() => setIsBlinking(false), 1800);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -401,6 +408,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center"
+          onClick={handleOverlayClick}
         >
           <motion.div
             ref={dialogRef}
@@ -408,7 +416,9 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="bg-background border rounded-lg shadow-lg relative flex flex-col"
+            className={`bg-background border rounded-lg shadow-lg relative flex flex-col ${
+              isBlinking ? "animate-blink-green" : ""
+            }`}
             style={{
               width: springWidth,
               height: springHeight,
@@ -422,6 +432,31 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
               if (isResizing) e.stopPropagation();
             }}
           >
+            <style>{`
+              @keyframes blinkBlue {
+                0%, 100% { 
+                  outline-color: transparent; 
+                  outline-offset: 0px;
+                }
+                16.6%, 83.3% { 
+                  outline-color: rgb(37, 99, 235); 
+                  outline-offset: 0px;
+                }
+                33.3%, 66.6% { 
+                  outline-color: transparent; 
+                  outline-offset: 0px;
+                }
+                50% { 
+                  outline-color: rgb(37, 99, 235); 
+                  outline-offset: 0px;
+                }
+              }
+              .animate-blink-green {
+                animation: blinkBlue 1.8s ease-in-out;
+                outline: 3px solid transparent;
+                outline-offset: 0px;
+              }
+            `}</style>
             {/* Edge Handles - Extended 20px on each side */}
             {/* Left */}
             <div
