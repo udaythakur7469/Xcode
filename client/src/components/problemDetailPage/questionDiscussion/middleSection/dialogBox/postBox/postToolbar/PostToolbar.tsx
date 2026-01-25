@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Bold,
   Italic,
@@ -20,6 +20,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import MarkdownGuideDialog from "./markdownGuide/MarkdownGuideDialog";
 
 type PostToolbarProps = {
   onInsertText: (before: string, after?: string) => void;
@@ -35,225 +36,236 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
     onInsertText(before, after);
   };
 
+  const [isMarkdownGuideOpen, setIsMarkdownGuideOpen] = useState(false);
+
   return (
-    <div className="flex flex-row items-center justify-between w-full px-5 py-2">
-      {/* Left side - Markdown formatting buttons */}
-      <div className="flex flex-row items-center gap-2">
-        {/* Bold */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("**", "**")}
-            >
-              <Bold />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Bold
-          </HoverCardContent>
-        </HoverCard>
+    <>
+      <div className="flex flex-row items-center justify-between w-full px-5 py-2">
+        {/* Left side - Markdown formatting buttons */}
+        <div className="flex flex-row items-center gap-2">
+          {/* Bold */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("**", "**")}
+              >
+                <Bold />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Bold
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Italic */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("*", "*")}
-            >
-              <Italic />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Italic
-          </HoverCardContent>
-        </HoverCard>
+          {/* Italic */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("*", "*")}
+              >
+                <Italic />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Italic
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Heading 1 */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("# ", "")}
-            >
-              <Heading1 />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Heading 1
-          </HoverCardContent>
-        </HoverCard>
+          {/* Heading 1 */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("# ", "")}
+              >
+                <Heading1 />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Heading 1
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Heading 2 */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("## ", "")}
-            >
-              <Heading2 />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Heading 2
-          </HoverCardContent>
-        </HoverCard>
+          {/* Heading 2 */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("## ", "")}
+              >
+                <Heading2 />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Heading 2
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Heading 3 */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("### ", "")}
-            >
-              <Heading3 />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Heading 3
-          </HoverCardContent>
-        </HoverCard>
+          {/* Heading 3 */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("### ", "")}
+              >
+                <Heading3 />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Heading 3
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Separator */}
-        <div className="w-0.5 h-8 bg-border mx-1" />
+          {/* Separator */}
+          <div className="w-0.5 h-8 bg-border mx-1" />
 
-        {/* Bullet List */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("* ", "")}
-            >
-              <List />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Bullet List
-          </HoverCardContent>
-        </HoverCard>
+          {/* Bullet List */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("* ", "")}
+              >
+                <List />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Bullet List
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Numbered List */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("1. ", "")}
-            >
-              <ListOrdered />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Numbered List
-          </HoverCardContent>
-        </HoverCard>
+          {/* Numbered List */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("1. ", "")}
+              >
+                <ListOrdered />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Numbered List
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Separator */}
-        <div className="w-[3px] h-8 bg-border mx-1" />
+          {/* Separator */}
+          <div className="w-[3px] h-8 bg-border mx-1" />
 
-        {/* Inline Code */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("`", "`")}
-            >
-              <CodeXml />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Inline Code
-          </HoverCardContent>
-        </HoverCard>
+          {/* Inline Code */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("`", "`")}
+              >
+                <CodeXml />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Inline Code
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Code Block */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("```\n", "\n```")}
-            >
-              <FolderCode />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Code Block
-          </HoverCardContent>
-        </HoverCard>
+          {/* Code Block */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("```\n", "\n```")}
+              >
+                <FolderCode />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Code Block
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Quote */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("> ", "")}
-            >
-              <Quote />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Quote
-          </HoverCardContent>
-        </HoverCard>
+          {/* Quote */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("> ", "")}
+              >
+                <Quote />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Quote
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Link */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("[", "](url)")}
-            >
-              <Link />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Link
-          </HoverCardContent>
-        </HoverCard>
+          {/* Link */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("[", "](url)")}
+              >
+                <Link />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Link
+            </HoverCardContent>
+          </HoverCard>
 
-        {/* Image */}
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => handleInsert("![alt](", ")")}
-            >
-              <Image />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1">
-            Image
-          </HoverCardContent>
-        </HoverCard>
+          {/* Image */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("![alt](", ")")}
+              >
+                <Image />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Image
+            </HoverCardContent>
+          </HoverCard>
+        </div>
+
+        {/* Right side - Reset Layout button */}
+        <div className="flex items-center gap-2">
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => onReset?.()}
+                disabled={!onReset}
+              >
+                <History />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="left" className="p-1">
+              Reset post
+            </HoverCardContent>
+          </HoverCard>
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => setIsMarkdownGuideOpen(true)}
+              >
+                <Lightbulb />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1 mr-10">
+              Markdown guide
+            </HoverCardContent>
+          </HoverCard>
+        </div>
       </div>
-
-      {/* Right side - Reset Layout button */}
-      <div className="flex items-center gap-2">
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button
-              className={buttonClasses}
-              onClick={() => onReset?.()}
-              disabled={!onReset}
-            >
-              <History />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="left" className="p-1">
-            Reset post
-          </HoverCardContent>
-        </HoverCard>
-        <HoverCard>
-          <HoverCardTrigger asChild>
-            <button className={buttonClasses}>
-              <Lightbulb />
-            </button>
-          </HoverCardTrigger>
-          <HoverCardContent side="top" className="p-1 mr-10">
-            Markdown guide
-          </HoverCardContent>
-        </HoverCard>
-      </div>
-    </div>
+      <MarkdownGuideDialog
+        isOpen={isMarkdownGuideOpen}
+        onClose={() => setIsMarkdownGuideOpen(false)}
+      />
+    </>
   );
 };
 
