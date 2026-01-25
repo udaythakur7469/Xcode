@@ -2,19 +2,9 @@ import createHttpError from "http-errors";
 import prisma from "../configs/db.js";
 import { getLatestSubmissionByUserId } from "../services/postService.js";
 import { getPostTemplate } from "../utils/postBaseFormat.js";
-import { v2 as cloudinary } from "cloudinary";
-import dotenv from "dotenv";
 import logger from "../configs/loggerConfig.js";
 import { addTagToCloudinary, validateTagUsingAI, } from "../services/postTagsService.js";
-// Load environment variables
-dotenv.config();
-// Configure Cloudinary
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-});
+import cloudinary from "../services/uploadService.js";
 export const fetchCommentTagsFromS3 = (req, res, next) => { };
 export const uploadTagsToCloudinary = async (req, res) => {
     try {
