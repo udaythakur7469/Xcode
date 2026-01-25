@@ -29,6 +29,7 @@ interface authData {
   updateInstitution: (institution: string) => Promise<void>;
   heatmapData: Record<string, number> | null;
   fetchHeatmapData: () => Promise<void>;
+  updateProfilePicture: (file: File) => Promise<void>;
 }
 
 export const useUserStore = create<authData>()((set) => ({
@@ -199,6 +200,41 @@ export const useUserStore = create<authData>()((set) => ({
         error: errMsg,
         isLoading: false,
         heatmapData: null,
+      });
+      throw error;
+    }
+  },
+  updateProfilePicture: async (file: File) => {
+    try {
+      set({ isDataUpdating: true });
+
+      // Create FormData
+      const formData = new FormData();
+      formData.append("picture", file);
+
+      // Upload to backend
+      const response = await axios.patch(
+        `${API_URL}/user/profile/picture`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        },
+      );
+
+      // Update local state with new user data
+      set((state) => ({
+        userData: state.userData
+          ? { ...state.userData, picture: response.data.imageUrl }
+          : null,
+        isDataUpdating: false,
+      }));
+    } catch (error: any) {
+      set({
+        error:
+          error.response?.data?.message || "Failed to update profile picture",
+        isDataUpdating: false,
       });
       throw error;
     }
