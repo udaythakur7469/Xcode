@@ -275,13 +275,6 @@ export const getFeedbackByInterviewId = async (req, res, next) => {
     const whereCondition = {
         interviewId: numericId,
     };
-    // Add user filter based on source
-    if (source === "user") {
-        whereCondition.userId = userId;
-    }
-    else {
-        whereCondition.userId = { not: userId };
-    }
     const latestFeedback = await prisma.feedback.findFirst({
         where: whereCondition,
         include: {
