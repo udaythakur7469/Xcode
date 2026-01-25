@@ -26,11 +26,11 @@ const PasswordCriteria: React.FC<PasswordCriteriaProps> = ({ password }) => {
           {item.met ? (
             <Check className="size-4 text-green-600 mr-2" />
           ) : (
-            <X className="size-4 text-gray-600 mr-2" />
+            <X className="size-4 text-[#a3a3b3] mr-2" />
           )}
           <span
             className={
-              item.met ? "text-green-600 text-md" : "text-gray-600 text-md"
+              item.met ? "text-green-600 text-md" : "text-[#a3a3b3] text-md"
             }
           >
             {item.label}
@@ -91,7 +91,7 @@ const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({
           <div
             key={index}
             className={`h-1 w-1/4 rounded-full transition-colors duration-300 
-                ${index < strength ? getColor(strength) : "bg-gray-600"}
+                ${index < strength ? getColor(strength) : "bg-muted-foreground"}
               `}
           />
         ))}

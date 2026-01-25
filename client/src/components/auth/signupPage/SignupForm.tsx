@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -20,6 +21,7 @@ import { useAuthStore } from "@/features/authStore";
 import { PropagateLoader } from "react-spinners";
 import { useRouter } from "next/navigation";
 import PasswordStrengthMeter from "../passwordStrength/PasswordStrengthMeter";
+import { Eye, EyeOff } from "lucide-react";
 
 interface SignupFormProps {
   onSuccess?: () => void; // Add this line
@@ -53,6 +55,12 @@ export const SignupForm = ({
     } catch (error) {
       console.log(error);
     }
+  };
+
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleShowPassword = () => {
+    setShowPassword((prev) => !prev);
   };
 
   return (
@@ -95,11 +103,29 @@ export const SignupForm = ({
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input
-                  type="password"
-                  placeholder="Enter your password"
-                  {...field}
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    {...field}
+                    className="pr-10"
+                  />
+
+                  <Button
+                    title={showPassword ? "Hide password" : "Show password"}
+                    type="button"
+                    variant="password"
+                    size="icon"
+                    onClick={handleShowPassword}
+                    className="absolute right-2 top-1/2 -translate-y-1/2"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
