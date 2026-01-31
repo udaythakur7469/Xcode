@@ -1,19 +1,20 @@
-import jwt from "jsonwebtoken";
+import { verifyAccessToken } from "../utils/tokenAndCookie.js";
 
 export const optionalAuthMiddleware = (req, res, next) => {
-  const token = req.cookies.token;
+  const accessToken = req.cookies.accessToken;
 
-  if (!token) {
+  if (!accessToken) {
     req.user = null;
     return next();
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
-    if (err) {
-      req.user = null;
-      return next();
-    }
-    req.user = payload;
-    next();
-  });
+  const payload = verifyAccessToken(accessToken);
+
+  if (!payload) {
+    req.user = null;
+    return next();
+  }
+
+  req.user = { userId: payload.userId };
+  next();
 };

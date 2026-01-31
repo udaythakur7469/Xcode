@@ -105,7 +105,7 @@ export const authenticatedUser = async (req, res) => {
     );
 
     // Destructure the user object
-    const { links, ...userData } = user;
+    const { links, refreshToken, password, ...userData } = user;
 
     res.status(200).json({
       success: true,

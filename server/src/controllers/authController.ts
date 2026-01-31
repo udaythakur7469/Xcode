@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import logger from "../configs/loggerConfig.js";
 import { createUser, verifyUser } from "../services/authService.js";
-import { generateTokenAndSetCookie } from "../utils/tokenAndCookie.js";
+import { generateAccessTokenAndSetCookie, generateRefreshTokenAndSetCookie } from "../utils/tokenAndCookie.js";
 import prisma from "../configs/db.js";
 
 interface authUserInput {
@@ -16,19 +16,21 @@ interface CreateUserInput extends authUserInput {
 export const register = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   const { name, email, password }: CreateUserInput = req.body;
   try {
     const User = await createUser({ name, email, password });
 
-    const jwtToken = generateTokenAndSetCookie(res, User.id);
+    const accessToken = generateAccessTokenAndSetCookie(res, User.id);
+
+    const refreshToken = generateRefreshTokenAndSetCookie(res, User.id);
 
     await prisma.user.update({
       where: {
         email: email,
       },
-      data: { token: jwtToken },
+      data: { refreshToken: refreshToken },
     });
 
     res.status(201).json({
@@ -36,7 +38,7 @@ export const register = async (
       message: "User created successfully",
       user: {
         ...User,
-        token: jwtToken,
+        token: undefined,
         password: undefined,
       },
     });
@@ -49,14 +51,16 @@ export const register = async (
 export const login = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     const { email, password }: authUserInput = req.body;
 
     const checkUser = await verifyUser({ email, password });
 
-    generateTokenAndSetCookie(res, checkUser.id);
+    generateAccessTokenAndSetCookie(res, checkUser.id);
+
+    generateRefreshTokenAndSetCookie(res, checkUser.id);
 
     res.status(200).json({
       success: true,
@@ -75,13 +79,19 @@ export const login = async (
 export const logout = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
-    res.clearCookie("token", {
+    res.clearCookie("accessToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    });
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     });
     res.status(200).json({ success: true, message: "Logged out successfully" });
   } catch (error) {

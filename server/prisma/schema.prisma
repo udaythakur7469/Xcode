@@ -35,7 +35,7 @@ model User {
   picture String? @default("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM3FwFWSj9qohGE7FhrwJ-PlcK4-tLdWSlGg&s")
 
   // User's token
-  token String?
+  refreshToken String?
 
   description String?
 

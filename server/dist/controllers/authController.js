@@ -1,24 +1,25 @@
 import logger from "../configs/loggerConfig.js";
 import { createUser, verifyUser } from "../services/authService.js";
-import { generateTokenAndSetCookie } from "../utils/tokenAndCookie.js";
+import { generateAccessTokenAndSetCookie, generateRefreshTokenAndSetCookie } from "../utils/tokenAndCookie.js";
 import prisma from "../configs/db.js";
 export const register = async (req, res, next) => {
     const { name, email, password } = req.body;
     try {
         const User = await createUser({ name, email, password });
-        const jwtToken = generateTokenAndSetCookie(res, User.id);
+        const accessToken = generateAccessTokenAndSetCookie(res, User.id);
+        const refreshToken = generateRefreshTokenAndSetCookie(res, User.id);
         await prisma.user.update({
             where: {
                 email: email,
             },
-            data: { token: jwtToken },
+            data: { refreshToken: refreshToken },
         });
         res.status(201).json({
             success: true,
             message: "User created successfully",
             user: {
                 ...User,
-                token: jwtToken,
+                token: undefined,
                 password: undefined,
             },
         });
@@ -32,7 +33,8 @@ export const login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
         const checkUser = await verifyUser({ email, password });
-        generateTokenAndSetCookie(res, checkUser.id);
+        generateAccessTokenAndSetCookie(res, checkUser.id);
+        generateRefreshTokenAndSetCookie(res, checkUser.id);
         res.status(200).json({
             success: true,
             message: "Logged in successfully",
@@ -49,10 +51,15 @@ export const login = async (req, res, next) => {
 };
 export const logout = async (req, res, next) => {
     try {
-        res.clearCookie("token", {
+        res.clearCookie("accessToken", {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+        });
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
         });
         res.status(200).json({ success: true, message: "Logged out successfully" });
     }

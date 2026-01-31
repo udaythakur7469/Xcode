@@ -16,7 +16,7 @@ export interface User {
   email: string;
   password: string;
   picture: string | null;
-  token: string | null;
+  refreshToken: string | null;
   lastLogin: Date;
   createdAt: Date;
   updatedAt: Date;
