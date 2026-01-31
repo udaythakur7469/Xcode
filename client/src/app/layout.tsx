@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/sonner";
 import ClientFABWrapper from "@/components/helperComponents/ClientFABWrapper";
 
 export const metadata: Metadata = {
-  title: "codex",
-  description: "codex",
+  title: "Xcode",
+  description: "Xcode",
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
       <body>
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >

@@ -390,7 +390,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   // Handle click outside to trigger blink effect
   const handleOverlayClick = (e: React.MouseEvent) => {
     // Only trigger if clicking directly on the overlay (not on dialog)
-    if (e.target === e.currentTarget) {
+    if (e.target === e.currentTarget && !isResizing && !isDragging && !isResizingSidebar) {
       setIsBlinking(true);
       // Remove blinking class after animation completes
       setTimeout(() => setIsBlinking(false), 1800);
@@ -408,7 +408,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
           className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center"
-          onClick={handleOverlayClick}
+          onMouseDown={handleOverlayClick}
         >
           <motion.div
             ref={dialogRef}
