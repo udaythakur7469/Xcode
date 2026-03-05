@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Bold,
   Italic,
+  Strikethrough,
   Heading1,
   Heading2,
   Heading3,
@@ -12,8 +13,11 @@ import {
   Image,
   CodeXml,
   FolderCode,
+  Table,
+  Minus,
   Lightbulb,
   History,
+  Loader2,
 } from "lucide-react";
 import {
   HoverCard,
@@ -27,23 +31,84 @@ type PostToolbarProps = {
   onReset?: (() => void) | null;
 };
 
+const UPLOAD_PLACEHOLDER = "![uploading...](placeholder)";
+
+const TABLE_TEMPLATE = `| Column 1 | Column 2 | Column 3 |
+| -------- | -------- | -------- |
+| Cell     | Cell     | Cell     |
+| Cell     | Cell     | Cell     |`;
+
 const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
   const buttonClasses =
     "flex items-center justify-center rounded-lg p-1 border";
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isMarkdownGuideOpen, setIsMarkdownGuideOpen] = useState(false);
+
   const handleInsert = (before: string, after: string = "") => {
-    // console.log("Inserting:", { before, after });
     onInsertText(before, after);
   };
 
-  const [isMarkdownGuideOpen, setIsMarkdownGuideOpen] = useState(false);
+  const handleImageButtonClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    e.target.value = "";
+    onInsertText(UPLOAD_PLACEHOLDER, "");
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch("/api/post/upload-image", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Upload failed");
+      }
+
+      const imageMarkdown = `![image](${data.url})`;
+      const event = new CustomEvent("replaceMarkdownText", {
+        detail: { find: UPLOAD_PLACEHOLDER, replace: imageMarkdown },
+      });
+      window.dispatchEvent(event);
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      const event = new CustomEvent("replaceMarkdownText", {
+        detail: { find: UPLOAD_PLACEHOLDER, replace: "" },
+      });
+      window.dispatchEvent(event);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <>
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       <div className="flex flex-row items-center justify-between w-full px-5 py-2">
-        {/* Left side - Markdown formatting buttons */}
+        {/* Left side - formatting buttons */}
         <div className="flex flex-row items-center gap-2">
-          {/* Bold */}
+          {/* Bold — wraps selection or inserts placeholder */}
           <HoverCard>
             <HoverCardTrigger asChild>
               <button
@@ -73,12 +138,30 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
             </HoverCardContent>
           </HoverCard>
 
+          {/* Strikethrough */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("~~", "~~")}
+              >
+                <Strikethrough />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Strikethrough
+            </HoverCardContent>
+          </HoverCard>
+
+          {/* Separator */}
+          <div className="w-0.5 h-8 bg-border mx-1" />
+
           {/* Heading 1 */}
           <HoverCard>
             <HoverCardTrigger asChild>
               <button
                 className={buttonClasses}
-                onClick={() => handleInsert("# ", "")}
+                onClick={() => handleInsert("# Heading 1", "")}
               >
                 <Heading1 />
               </button>
@@ -93,7 +176,7 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
             <HoverCardTrigger asChild>
               <button
                 className={buttonClasses}
-                onClick={() => handleInsert("## ", "")}
+                onClick={() => handleInsert("## Heading 2", "")}
               >
                 <Heading2 />
               </button>
@@ -108,7 +191,7 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
             <HoverCardTrigger asChild>
               <button
                 className={buttonClasses}
-                onClick={() => handleInsert("### ", "")}
+                onClick={() => handleInsert("### Heading 3", "")}
               >
                 <Heading3 />
               </button>
@@ -126,7 +209,7 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
             <HoverCardTrigger asChild>
               <button
                 className={buttonClasses}
-                onClick={() => handleInsert("* ", "")}
+                onClick={() => handleInsert("* List item", "")}
               >
                 <List />
               </button>
@@ -141,7 +224,7 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
             <HoverCardTrigger asChild>
               <button
                 className={buttonClasses}
-                onClick={() => handleInsert("1. ", "")}
+                onClick={() => handleInsert("1. List item", "")}
               >
                 <ListOrdered />
               </button>
@@ -152,7 +235,7 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
           </HoverCard>
 
           {/* Separator */}
-          <div className="w-[3px] h-8 bg-border mx-1" />
+          <div className="w-0.5 h-8 bg-border mx-1" />
 
           {/* Inline Code */}
           <HoverCard>
@@ -189,7 +272,7 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
             <HoverCardTrigger asChild>
               <button
                 className={buttonClasses}
-                onClick={() => handleInsert("> ", "")}
+                onClick={() => handleInsert("> Add quote", "")}
               >
                 <Quote />
               </button>
@@ -199,12 +282,45 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
             </HoverCardContent>
           </HoverCard>
 
+          {/* Table */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert(TABLE_TEMPLATE, "")}
+              >
+                <Table />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Table
+            </HoverCardContent>
+          </HoverCard>
+
+          {/* Horizontal Rule */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
+                onClick={() => handleInsert("\n---\n", "")}
+              >
+                <Minus />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Horizontal Rule
+            </HoverCardContent>
+          </HoverCard>
+
+          {/* Separator */}
+          <div className="w-0.5 h-8 bg-border mx-1" />
+
           {/* Link */}
           <HoverCard>
             <HoverCardTrigger asChild>
               <button
                 className={buttonClasses}
-                onClick={() => handleInsert("[", "](url)")}
+                onClick={() => handleInsert("[Link text](url)", "")}
               >
                 <Link />
               </button>
@@ -214,23 +330,28 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
             </HoverCardContent>
           </HoverCard>
 
-          {/* Image */}
+          {/* Image upload */}
           <HoverCard>
             <HoverCardTrigger asChild>
               <button
                 className={buttonClasses}
-                onClick={() => handleInsert("![alt](", ")")}
+                onClick={handleImageButtonClick}
+                disabled={isUploading}
               >
-                <Image />
+                {isUploading ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <Image />
+                )}
               </button>
             </HoverCardTrigger>
             <HoverCardContent side="top" className="p-1">
-              Image
+              {isUploading ? "Uploading..." : "Upload Image"}
             </HoverCardContent>
           </HoverCard>
         </div>
 
-        {/* Right side - Reset Layout button */}
+        {/* Right side */}
         <div className="flex items-center gap-2">
           <HoverCard>
             <HoverCardTrigger asChild>
@@ -246,6 +367,7 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
               Reset post
             </HoverCardContent>
           </HoverCard>
+
           <HoverCard>
             <HoverCardTrigger asChild>
               <button
@@ -261,6 +383,7 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
           </HoverCard>
         </div>
       </div>
+
       <MarkdownGuideDialog
         isOpen={isMarkdownGuideOpen}
         onClose={() => setIsMarkdownGuideOpen(false)}
