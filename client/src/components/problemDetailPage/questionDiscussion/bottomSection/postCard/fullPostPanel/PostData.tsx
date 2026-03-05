@@ -28,10 +28,17 @@ const PostData: React.FC<PostDataProps> = ({ fullPostData }) => {
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM3FwFWSj9qohGE7FhrwJ-PlcK4-tLdWSlGg&s";
 
   return (
-    <div className="h-full w-full flex flex-col justify-start p-4 border font-sans overflow-x-hidden">
+    /*
+      ✅ No h-full here — this div grows to fit its content naturally.
+      The parent scroll container in FullPostPanel handles all scrolling.
+    */
+    <div className="w-full flex flex-col justify-start p-4 font-sans overflow-x-hidden">
+      {/* Title */}
       <div className="text-3xl pb-3 font-bold overflow-x-hidden whitespace-normal break-words">
         {formatTitle(fullPostData.title)}
       </div>
+
+      {/* Author + meta */}
       <div className="flex flex-row items-center">
         <Avatar className="rounded-full w-11 h-11 mt-3">
           <AvatarImage src={picture || defaultPicture} />
@@ -55,6 +62,8 @@ const PostData: React.FC<PostDataProps> = ({ fullPostData }) => {
           </div>
         </div>
       </div>
+
+      {/* Tags */}
       <div className="flex flex-row justify-start gap-2 mt-5 ml-1">
         {fullPostData.tags.map((tag, index) => (
           <div
@@ -65,10 +74,16 @@ const PostData: React.FC<PostDataProps> = ({ fullPostData }) => {
           </div>
         ))}
       </div>
-      <div className="mt-4 flex-1 overflow-x-hidden whitespace-normal break-words">
+
+      {/* 
+        ✅ No flex-1, no overflow here — just a normal div that grows
+        with its content and feeds into the parent scroll container.
+      */}
+      <div className="mt-4 overflow-x-hidden whitespace-normal break-words">
         <PostDataContent markdown={fullPostData.content} />
       </div>
     </div>
   );
 };
+
 export default PostData;

@@ -18,14 +18,51 @@ interface PostDataContentProps {
   markdown: string;
 }
 
-// ✅ Configure marked renderer
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const renderListItem = (item: any, parser: any): string => {
+  let html = "";
+  for (const token of item.tokens || []) {
+    if (token.type === "list") {
+      html += renderList(token, parser);
+    } else if (token.type === "text") {
+      if (token.tokens && token.tokens.length > 0) {
+        html += parser.parseInline(token.tokens);
+      } else {
+        html += escapeHtml(token.text || "");
+      }
+    } else {
+      html += parser.parseInline([token]);
+    }
+  }
+  return html;
+};
+
+const renderList = (token: any, parser: any): string => {
+  const ordered = token.ordered || false;
+  const tag = ordered ? "ol" : "ul";
+  const className = ordered
+    ? "list-decimal list-outside ml-5 my-1"
+    : "list-disc list-outside ml-5 my-1";
+
+  const body = (token.items || [])
+    .map((item: any) => {
+      const inner = renderListItem(item, parser);
+      return `<li class="text-foreground my-0.5">${inner}</li>`;
+    })
+    .join("");
+
+  return `<${tag} class="${className}">${body}</${tag}>`;
+};
+
+// ─── Renderer config ─────────────────────────────────────────────────────────
+
 const configureMarked = () => {
   marked.use({
     renderer: {
       code(token: any) {
         const code = token.text || "";
         const lang = token.lang || "text";
-
         let highlighted = "";
         try {
           if (lang && hljs.getLanguage(lang)) {
@@ -36,12 +73,11 @@ const configureMarked = () => {
         } catch {
           highlighted = escapeHtml(code);
         }
-
         return `<div class="code-block-container my-4 rounded-lg border" style="width: 700px; max-width: 100%; overflow: hidden;">
     <div class="bg-muted px-4 py-3 text-xs text-muted-foreground border-b flex justify-between items-center">
       <span>${lang}</span>
       <button class="hover:text-foreground transition-colors copy-btn" onclick="copyCodeToClipboard(this, \`${String(
-        code || ""
+        code || "",
       ).replace(/`/g, "\\`")}\`)">
         <svg class="copy-icon w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
@@ -62,12 +98,11 @@ const configureMarked = () => {
         const text = token.text || "";
         let highlighted = "";
         try {
-          // Inline code usually lacks language hints; use auto highlighting
           highlighted = hljs.highlightAuto(text).value;
         } catch {
           highlighted = escapeHtml(text);
         }
-        return `<code class="hljs px-2 py-1 rounded text-sm font-sans">${highlighted}</code>`;
+        return `<code class="hljs px-2 py-1 rounded text-sm font-mono">${highlighted}</code>`;
       },
 
       heading(token: any) {
@@ -82,69 +117,76 @@ const configureMarked = () => {
           "text-sm",
         ];
         const size = sizes[level - 1] || "text-base";
-        return `<h${level} class="${size} font-bold text-foreground mt-1 mb-1">${String(
-          text
-        )}</h${level}>`;
+        return `<h${level} class="${size} font-bold text-foreground mt-1 mb-1">${String(text)}</h${level}>`;
       },
 
       list(token: any) {
-        const ordered = token.ordered || false;
-        const tag = ordered ? "ol" : "ul";
-        const className = ordered
-          ? "list-decimal list-inside"
-          : "list-disc list-inside";
-
-        let body = "";
-        if (token.items && Array.isArray(token.items)) {
-          body = token.items
-            .map((item: any) => {
-              // Parse item tokens to support inline markdown inside list items
-              const itemHtml = this.parser.parseInline(item.tokens || []);
-              return `<li class="text-foreground">${String(itemHtml)}</li>`;
-            })
-            .join("");
-        }
-
-        return `<${tag} class="${className} ">${body}</${tag}>`;
+        return renderList(token, this.parser);
       },
 
       listitem(token: any) {
-        const text = this.parser.parseInline(token.tokens || []);
-        return `<li class="text-foreground">${String(text)}</li>`;
+        const inner = renderListItem(token, this.parser);
+        return `<li class="text-foreground my-0.5">${inner}</li>`;
+      },
+
+      table(token: any) {
+        const headerCells = (token.header || [])
+          .map((cell: any) => {
+            const text = this.parser.parseInline(cell.tokens || []);
+            const align = cell.align ? `text-${cell.align}` : "text-left";
+            return `<th class="px-4 py-2 border border-border font-semibold text-foreground ${align}">${String(text)}</th>`;
+          })
+          .join("");
+
+        const bodyRows = (token.rows || [])
+          .map((row: any) => {
+            const cells = row
+              .map((cell: any) => {
+                const text = this.parser.parseInline(cell.tokens || []);
+                const align = cell.align ? `text-${cell.align}` : "text-left";
+                return `<td class="px-4 py-2 border border-border text-muted-foreground ${align}">${String(text)}</td>`;
+              })
+              .join("");
+            return `<tr class="even:bg-muted/30">${cells}</tr>`;
+          })
+          .join("");
+
+        return `<div class="overflow-x-auto my-4">
+  <table class="w-full border-collapse border border-border text-sm rounded-lg overflow-hidden">
+    <thead class="bg-muted">
+      <tr>${headerCells}</tr>
+    </thead>
+    <tbody>${bodyRows}</tbody>
+  </table>
+</div>`;
       },
 
       blockquote(token: any) {
         const quote = this.parser.parse(token.tokens || []);
-        return `<blockquote class="border-l-4 border-primary pl-4 my-4 italic text-muted-foreground">${String(
-          quote
-        )}</blockquote>`;
+        return `<blockquote class="border-l-4 border-primary pl-4 my-4 italic text-muted-foreground">${String(quote)}</blockquote>`;
       },
 
       link(token: any) {
         const href = token.href || "#";
         const title = token.title || "";
         const text = this.parser.parseInline(token.tokens || []);
-        return `<a href="${String(href)}" title="${String(
-          title
-        )}" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:text-primary/80">${String(
-          text
-        )}</a>`;
+        return `<a href="${String(href)}" title="${String(title)}" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:text-primary/80">${String(text)}</a>`;
       },
 
       image(token: any) {
         const href = token.href || "";
         const title = token.title || "";
         const text = token.text || "Image";
-        return `<img src="${String(href)}" alt="${String(
-          text
-        )}" title="${String(
-          title
-        )}" class="max-w-full h-auto my-4 rounded border">`;
+        return `<img src="${String(href)}" alt="${String(text)}" title="${String(title)}" class="max-w-full h-auto my-4 rounded border">`;
       },
 
       paragraph(token: any) {
         const text = this.parser.parseInline(token.tokens || []);
         return `<p class="my-2">${String(text)}</p>`;
+      },
+
+      hr() {
+        return `<hr class="my-6 border-border" />`;
       },
     },
     gfm: true,
@@ -152,74 +194,45 @@ const configureMarked = () => {
   });
 };
 
-// ✅ Preprocess markdown to preserve extra blank lines (with a bit more space)
+// ✅ Module-level call — renderer is ready before first render
+configureMarked();
+
+// ✅ Every blank line → &nbsp; for consistent visible spacing
 const preprocessMarkdown = (markdown: string): string => {
   let inCodeBlock = false;
-  let consecutiveBlankLines = 0;
   const lines = markdown.split("\n");
   const result: string[] = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    // Toggle code block state on fenced lines
+  for (const line of lines) {
     if (line.trim().startsWith("```")) {
       inCodeBlock = !inCodeBlock;
-      consecutiveBlankLines = 0;
       result.push(line);
       continue;
     }
-
     if (inCodeBlock) {
       result.push(line);
       continue;
     }
-
-    if (line.trim() === "") {
-      // Special-case: a single blank line at the very start of the document
-      if (i === 0) {
-        result.push("&nbsp;");
-        consecutiveBlankLines = 1;
-        continue;
-      }
-      consecutiveBlankLines += 1;
-      // Keep the first blank line as real blank (paragraph break)
-      if (consecutiveBlankLines === 1) {
-        result.push("");
-      } else {
-        // For each extra blank line, insert a non-breaking space line.
-        // This creates visual spacing without triggering HTML block parsing in marked.
-        result.push("&nbsp;");
-      }
-      continue;
-    }
-
-    // Non-empty line resets the counter
-    consecutiveBlankLines = 0;
-    result.push(line);
+    result.push(line.trim() === "" ? "&nbsp;" : line);
   }
 
   return result.join("\n");
 };
 
-// ✅ Main component
+// ─── Component ───────────────────────────────────────────────────────────────
+
 const PostDataContent: React.FC<PostDataContentProps> = ({ markdown }) => {
   useEffect(() => {
-    configureMarked();
-
-    // Add global copy function
     (window as any).copyCodeToClipboard = async (
       button: HTMLButtonElement,
-      text: string
+      text: string,
     ) => {
       try {
         await navigator.clipboard.writeText(text);
         const copyIcon = button.querySelector(".copy-icon");
         const checkIcon = button.querySelector(".check-icon");
-
         copyIcon?.classList.add("hidden");
         checkIcon?.classList.remove("hidden");
-
         setTimeout(() => {
           copyIcon?.classList.remove("hidden");
           checkIcon?.classList.add("hidden");
@@ -232,7 +245,6 @@ const PostDataContent: React.FC<PostDataContentProps> = ({ markdown }) => {
 
   const getPreviewHTML = () => {
     try {
-      // Preprocess markdown to preserve extra blank lines
       const processedMarkdown = preprocessMarkdown(markdown);
       const html = marked.parse(processedMarkdown);
       return { __html: html };
@@ -243,18 +255,18 @@ const PostDataContent: React.FC<PostDataContentProps> = ({ markdown }) => {
   };
 
   return (
-    <div className="h-full w-full bg-background text-foreground overflow-auto text-lg">
+    /*
+      ✅ No h-full, no overflow-auto here.
+      This component just renders its content and grows naturally.
+      Scrolling is handled entirely by FullPostPanel's scroll container.
+    */
+    <div className="w-full bg-background text-foreground text-lg">
       <div
         className="prose prose-invert max-w-none prose-pre:p-0 prose-pre:m-0 leading-6 pl-3 pr-2 pt-0 break-words text-lg font-sans"
         style={{
           wordWrap: "break-word",
           overflowWrap: "break-word",
           maxWidth: "100%",
-          // Ensure theme backgrounds never bleed through
-          // (Highlight.js themes sometimes set a background on .hljs)
-          // We keep it transparent here across the preview container
-          // and override common selectors via inline style scope
-          // without needing global CSS.
           // @ts-expect-error: inline CSS custom property for potential theme overrides
           "--hljs-bg": "transparent",
         }}

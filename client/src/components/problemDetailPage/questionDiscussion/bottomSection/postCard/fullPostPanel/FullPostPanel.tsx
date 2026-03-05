@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { ArrowLeft, MoveLeft, X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
 import { motion } from "framer-motion";
@@ -44,7 +44,7 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
         }}
         className="absolute right-0 top-0 h-full w-full bg-background shadow-2xl flex flex-col pointer-events-auto overflow-x-hidden"
       >
-        {/* Header with close button */}
+        {/* Header — fixed, never scrolls */}
         <div className="flex items-center justify-start pb-1 border-b shrink-0">
           <button
             onClick={onClose}
@@ -56,8 +56,12 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        {/* 
+          ✅ THE ONE AND ONLY scroll container for the entire panel.
+          Everything inside — title, meta, tags, markdown, comments — 
+          scrolls together as one unified page.
+        */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {isGettingFullPost && (
             <div className="flex justify-center items-center h-full">
               <MoonLoader size={50} color="#ffffff" />
@@ -65,20 +69,19 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
           )}
 
           {fullPostError && (
-            <div className="text-red-500 text-center">
+            <div className="text-red-500 text-center p-4">
               Error: {fullPostError}
             </div>
           )}
 
           {fullPostData && !isGettingFullPost && (
-            <motion.pre
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.4 }}
-              className="h-full w-full flex"
             >
               <PostData fullPostData={fullPostData} />
-            </motion.pre>
+            </motion.div>
           )}
         </div>
       </motion.div>
