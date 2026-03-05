@@ -15,23 +15,32 @@ const PostMarkdownEditor: React.FC<PostMarkdownEditorProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [lineNumbers, setLineNumbers] = useState<number[]>([]);
 
-  // Update line numbers when content changes
   useEffect(() => {
     const lines = content.split("\n");
     setLineNumbers(Array.from({ length: lines.length }, (_, i) => i + 1));
   }, [content]);
 
-  // Handle scroll synchronization
+  useEffect(() => {
+    const handleReplace = (e: Event) => {
+      const { find, replace } = (
+        e as CustomEvent<{ find: string; replace: string }>
+      ).detail;
+      setContent((prev: string) => prev.replace(find, replace));
+    };
+    window.addEventListener("replaceMarkdownText", handleReplace);
+    return () =>
+      window.removeEventListener("replaceMarkdownText", handleReplace);
+  }, [setContent]);
+
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     const lineNumbersEl = e.currentTarget.parentElement?.querySelector(
-      ".line-numbers"
+      ".line-numbers",
     ) as HTMLElement;
     if (lineNumbersEl) {
       lineNumbersEl.scrollTop = e.currentTarget.scrollTop;
     }
   };
 
-  // Track selection changes
   const handleSelection = useCallback(() => {
     if (textareaRef.current && onSelectionChange) {
       const { selectionStart, selectionEnd } = textareaRef.current;
@@ -39,64 +48,124 @@ const PostMarkdownEditor: React.FC<PostMarkdownEditorProps> = ({
     }
   }, [onSelectionChange]);
 
-  // Handle tab key for indentation and Enter for list continuation
+  // Returns the indent size to use for the current line.
+  // Numbered list lines need 3 spaces (to clear "1. " marker width).
+  // Everything else uses 2 spaces.
+  const getIndentSize = (lineContent: string): number => {
+    return /^\s*\d+\.\s/.test(lineContent) ? 3 : 2;
+  };
+
+  // Returns how many leading spaces to remove on Shift+Tab.
+  // Checks for 3-space then 2-space then 1-space indent.
+  const getOutdentSize = (lineContent: string): number => {
+    if (lineContent.startsWith("   ")) return 3;
+    if (lineContent.startsWith("  ")) return 2;
+    if (lineContent.startsWith(" ")) return 1;
+    return 0;
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Tab") {
+    const target = e.currentTarget;
+    const start = target.selectionStart;
+    const end = target.selectionEnd;
+    const lineStart = content.lastIndexOf("\n", start - 1) + 1;
+    const lineContent = content.substring(lineStart);
+
+    // ── Tab: indent current line ──────────────────────────────────────────
+    if (e.key === "Tab" && !e.shiftKey) {
       e.preventDefault();
-      const target = e.currentTarget;
-      const start = target.selectionStart;
-      const end = target.selectionEnd;
 
-      const newValue =
-        content.substring(0, start) + "  " + content.substring(end);
-      setContent(newValue);
+      const spaces = " ".repeat(getIndentSize(lineContent));
+      const newContent =
+        content.substring(0, lineStart) + spaces + content.substring(lineStart);
 
-      // Set cursor position after tab
+      setContent(newContent);
       setTimeout(() => {
-        target.selectionStart = target.selectionEnd = start + 2;
+        target.selectionStart = start + spaces.length;
+        target.selectionEnd = end + spaces.length;
       }, 0);
-    } else if (e.key === "Enter") {
-      const target = e.currentTarget;
-      const start = target.selectionStart;
+      return;
+    }
+
+    // ── Shift+Tab: outdent current line ───────────────────────────────────
+    if (e.key === "Tab" && e.shiftKey) {
+      e.preventDefault();
+
+      const spacesToRemove = getOutdentSize(lineContent);
+      if (spacesToRemove === 0) return;
+
+      const newContent =
+        content.substring(0, lineStart) +
+        content.substring(lineStart + spacesToRemove);
+
+      setContent(newContent);
+      setTimeout(() => {
+        target.selectionStart = Math.max(lineStart, start - spacesToRemove);
+        target.selectionEnd = Math.max(lineStart, end - spacesToRemove);
+      }, 0);
+      return;
+    }
+
+    // ── Enter: smart list continuation ────────────────────────────────────
+    if (e.key === "Enter") {
       const currentLine = content.substring(0, start).split("\n").pop() || "";
 
-      // Check if current line is a list item
-      const bulletMatch = currentLine.match(/^(\s*)(\* )/);
-      const numberedMatch = currentLine.match(/^(\s*)(\d+\. )/);
+      const bulletMatch = currentLine.match(/^(\s*)(\* )(.*)/);
+      const numberedMatch = currentLine.match(/^(\s*)(\d+)\. (.*)/);
 
       if (bulletMatch) {
-        e.preventDefault();
         const indent = bulletMatch[1];
-        const newContent =
-          content.substring(0, start) +
-          "\n" +
-          indent +
-          "* " +
-          content.substring(start);
-        setContent(newContent);
+        const itemText = bulletMatch[3];
 
+        if (!itemText.trim()) {
+          e.preventDefault();
+          const newContent =
+            content.substring(0, lineStart) + "\n" + content.substring(start);
+          setContent(newContent);
+          setTimeout(() => {
+            target.selectionStart = target.selectionEnd = lineStart + 1;
+          }, 0);
+          return;
+        }
+
+        e.preventDefault();
+        const continuation = "\n" + indent + "* ";
+        const newContent =
+          content.substring(0, start) + continuation + content.substring(start);
+        setContent(newContent);
         setTimeout(() => {
           target.selectionStart = target.selectionEnd =
-            start + 1 + indent.length + 2;
+            start + continuation.length;
         }, 0);
-      } else if (numberedMatch) {
-        e.preventDefault();
+        return;
+      }
+
+      if (numberedMatch) {
         const indent = numberedMatch[1];
         const currentNumber = parseInt(numberedMatch[2]);
-        const nextNumber = currentNumber + 1;
-        const newContent =
-          content.substring(0, start) +
-          "\n" +
-          indent +
-          nextNumber +
-          ". " +
-          content.substring(start);
-        setContent(newContent);
+        const itemText = numberedMatch[3];
 
+        if (!itemText.trim()) {
+          e.preventDefault();
+          const newContent =
+            content.substring(0, lineStart) + "\n" + content.substring(start);
+          setContent(newContent);
+          setTimeout(() => {
+            target.selectionStart = target.selectionEnd = lineStart + 1;
+          }, 0);
+          return;
+        }
+
+        e.preventDefault();
+        const continuation = "\n" + indent + (currentNumber + 1) + ". ";
+        const newContent =
+          content.substring(0, start) + continuation + content.substring(start);
+        setContent(newContent);
         setTimeout(() => {
           target.selectionStart = target.selectionEnd =
-            start + 1 + indent.length + String(nextNumber).length + 2;
+            start + continuation.length;
         }, 0);
+        return;
       }
     }
   };

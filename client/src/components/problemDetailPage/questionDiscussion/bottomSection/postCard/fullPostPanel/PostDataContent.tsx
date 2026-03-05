@@ -5,7 +5,6 @@ import hljs from "highlight.js";
 import "highlight.js/styles/github-dark.min.css";
 import PostDataComments from "./PostDataComments";
 
-// Minimal HTML escaper for fallback paths
 const escapeHtml = (raw: string): string =>
   raw
     .replace(/&/g, "&amp;")
@@ -18,7 +17,9 @@ interface PostDataContentProps {
   markdown: string;
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── List helpers ────────────────────────────────────────────────────────────
+// All list styles use inline style — prose resets list-style/margin/padding
+// to 0 on ol/ul so Tailwind classes like ml-5 get wiped out.
 
 const renderListItem = (item: any, parser: any): string => {
   let html = "";
@@ -26,11 +27,9 @@ const renderListItem = (item: any, parser: any): string => {
     if (token.type === "list") {
       html += renderList(token, parser);
     } else if (token.type === "text") {
-      if (token.tokens && token.tokens.length > 0) {
-        html += parser.parseInline(token.tokens);
-      } else {
-        html += escapeHtml(token.text || "");
-      }
+      html += token.tokens?.length
+        ? parser.parseInline(token.tokens)
+        : escapeHtml(token.text || "");
     } else {
       html += parser.parseInline([token]);
     }
@@ -41,21 +40,17 @@ const renderListItem = (item: any, parser: any): string => {
 const renderList = (token: any, parser: any): string => {
   const ordered = token.ordered || false;
   const tag = ordered ? "ol" : "ul";
-  const className = ordered
-    ? "list-decimal list-outside ml-5 my-1"
-    : "list-disc list-outside ml-5 my-1";
-
+  const listStyle = ordered ? "decimal" : "disc";
   const body = (token.items || [])
     .map((item: any) => {
       const inner = renderListItem(item, parser);
-      return `<li class="text-foreground my-0.5">${inner}</li>`;
+      return `<li style="display: list-item; margin: 2px 0;">${inner}</li>`;
     })
     .join("");
-
-  return `<${tag} class="${className}">${body}</${tag}>`;
+  return `<${tag} style="list-style-type: ${listStyle}; list-style-position: outside; margin: 4px 0 4px 20px; padding: 0;">${body}</${tag}>`;
 };
 
-// ─── Renderer config ─────────────────────────────────────────────────────────
+// ─── Renderer ────────────────────────────────────────────────────────────────
 
 const configureMarked = () => {
   marked.use({
@@ -65,20 +60,17 @@ const configureMarked = () => {
         const lang = token.lang || "text";
         let highlighted = "";
         try {
-          if (lang && hljs.getLanguage(lang)) {
-            highlighted = hljs.highlight(code, { language: lang }).value;
-          } else {
-            highlighted = hljs.highlightAuto(code).value;
-          }
+          highlighted =
+            lang && hljs.getLanguage(lang)
+              ? hljs.highlight(code, { language: lang }).value
+              : hljs.highlightAuto(code).value;
         } catch {
           highlighted = escapeHtml(code);
         }
         return `<div class="code-block-container my-4 rounded-lg border" style="width: 700px; max-width: 100%; overflow: hidden;">
     <div class="bg-muted px-4 py-3 text-xs text-muted-foreground border-b flex justify-between items-center">
       <span>${lang}</span>
-      <button class="hover:text-foreground transition-colors copy-btn" onclick="copyCodeToClipboard(this, \`${String(
-        code || "",
-      ).replace(/`/g, "\\`")}\`)">
+      <button class="hover:text-foreground transition-colors copy-btn" onclick="copyCodeToClipboard(this, \`${String(code || "").replace(/`/g, "\\`")}\`)">
         <svg class="copy-icon w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
           <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
@@ -88,9 +80,7 @@ const configureMarked = () => {
         </svg>
       </button>
     </div>
-    <pre class="p-0 text-foreground text-sm"><code class="hljs ${
-      lang ? `language-${lang}` : ""
-    }" style="white-space: pre-wrap; line-height: 1.4; word-break: break-all; overflow-wrap: anywhere; width: 100%;">${highlighted}</code></pre>
+    <pre class="p-0 text-foreground text-sm"><code class="hljs ${lang ? `language-${lang}` : ""}" style="white-space: pre-wrap; line-height: 1.4; word-break: break-all; overflow-wrap: anywhere; width: 100%;">${highlighted}</code></pre>
   </div>`;
       },
 
@@ -116,46 +106,45 @@ const configureMarked = () => {
           "text-base",
           "text-sm",
         ];
-        const size = sizes[level - 1] || "text-base";
-        return `<h${level} class="${size} font-bold text-foreground mt-1 mb-1">${String(text)}</h${level}>`;
+        return `<h${level} class="${sizes[level - 1] || "text-base"} font-bold text-foreground mt-1 mb-1">${String(text)}</h${level}>`;
       },
 
       list(token: any) {
         return renderList(token, this.parser);
       },
-
       listitem(token: any) {
         const inner = renderListItem(token, this.parser);
-        return `<li class="text-foreground my-0.5">${inner}</li>`;
+        return `<li style="display: list-item; margin: 2px 0;">${inner}</li>`;
       },
 
       table(token: any) {
+        const borderStyle = "border: 1px solid rgba(128,128,128,0.4);";
         const headerCells = (token.header || [])
           .map((cell: any) => {
             const text = this.parser.parseInline(cell.tokens || []);
-            const align = cell.align ? `text-${cell.align}` : "text-left";
-            return `<th class="px-4 py-2 border border-border font-semibold text-foreground ${align}">${String(text)}</th>`;
+            const align = cell.align ? `text-align: ${cell.align};` : "";
+            return `<th class="font-semibold text-foreground" style="${borderStyle} ${align} padding: 8px 16px;">${String(text)}</th>`;
           })
           .join("");
 
         const bodyRows = (token.rows || [])
-          .map((row: any) => {
+          .map((row: any, rowIndex: number) => {
+            const bg =
+              rowIndex % 2 === 1 ? "background: rgba(128,128,128,0.08);" : "";
             const cells = row
               .map((cell: any) => {
                 const text = this.parser.parseInline(cell.tokens || []);
-                const align = cell.align ? `text-${cell.align}` : "text-left";
-                return `<td class="px-4 py-2 border border-border text-muted-foreground ${align}">${String(text)}</td>`;
+                const align = cell.align ? `text-align: ${cell.align};` : "";
+                return `<td class="text-muted-foreground" style="${borderStyle} ${align} padding: 8px 16px;">${String(text)}</td>`;
               })
               .join("");
-            return `<tr class="even:bg-muted/30">${cells}</tr>`;
+            return `<tr style="${bg}">${cells}</tr>`;
           })
           .join("");
 
         return `<div class="overflow-x-auto my-4">
-  <table class="w-full border-collapse border border-border text-sm rounded-lg overflow-hidden">
-    <thead class="bg-muted">
-      <tr>${headerCells}</tr>
-    </thead>
+  <table class="w-full text-sm" style="border-spacing: 0; border: 2px solid rgba(128,128,128,0.4); border-radius: 8px; overflow: hidden;">
+    <thead style="background: rgba(128,128,128,0.15);"><tr>${headerCells}</tr></thead>
     <tbody>${bodyRows}</tbody>
   </table>
 </div>`;
@@ -174,10 +163,7 @@ const configureMarked = () => {
       },
 
       image(token: any) {
-        const href = token.href || "";
-        const title = token.title || "";
-        const text = token.text || "Image";
-        return `<img src="${String(href)}" alt="${String(text)}" title="${String(title)}" class="max-w-full h-auto my-4 rounded border">`;
+        return `<img src="${String(token.href || "")}" alt="${String(token.text || "Image")}" title="${String(token.title || "")}" class="max-w-full h-auto my-4 rounded border">`;
       },
 
       paragraph(token: any) {
@@ -188,22 +174,44 @@ const configureMarked = () => {
       hr() {
         return `<hr class="my-6 border-border" />`;
       },
+
+      del(token: any) {
+        const text = this.parser.parseInline(token.tokens || []);
+        return `<del style="text-decoration-line: line-through; text-decoration-thickness: 2px; text-decoration-color: currentColor;">${String(text)}</del>`;
+      },
     },
     gfm: true,
     breaks: true,
   });
 };
 
-// ✅ Module-level call — renderer is ready before first render
 configureMarked();
 
-// ✅ Every blank line → &nbsp; for consistent visible spacing
+// ─── preprocessMarkdown ──────────────────────────────────────────────────────
+
+const normaliseListIndent = (line: string): string => {
+  const match = line.match(/^(\s+)([*\-]|\d+\.)\s/);
+  if (!match) return line;
+  const indentLevel = Math.round(match[1].length / 2);
+  return " ".repeat(indentLevel * 3) + line.trimStart();
+};
+
 const preprocessMarkdown = (markdown: string): string => {
   let inCodeBlock = false;
   const lines = markdown.split("\n");
+
+  const hrIndices = new Set<number>();
+  for (let i = 0; i < lines.length; i++) {
+    if (!inCodeBlock && lines[i].trim() === "---") hrIndices.add(i);
+    if (lines[i].trim().startsWith("```")) inCodeBlock = !inCodeBlock;
+  }
+
+  inCodeBlock = false;
   const result: string[] = [];
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
     if (line.trim().startsWith("```")) {
       inCodeBlock = !inCodeBlock;
       result.push(line);
@@ -213,7 +221,15 @@ const preprocessMarkdown = (markdown: string): string => {
       result.push(line);
       continue;
     }
-    result.push(line.trim() === "" ? "&nbsp;" : line);
+    if (line.trim() === "---") {
+      result.push(line);
+      continue;
+    }
+    if (line.trim() === "") {
+      result.push(hrIndices.has(i - 1) || hrIndices.has(i + 1) ? "" : "&nbsp;");
+      continue;
+    }
+    result.push(normaliseListIndent(line));
   }
 
   return result.join("\n");
@@ -245,8 +261,7 @@ const PostDataContent: React.FC<PostDataContentProps> = ({ markdown }) => {
 
   const getPreviewHTML = () => {
     try {
-      const processedMarkdown = preprocessMarkdown(markdown);
-      const html = marked.parse(processedMarkdown);
+      const html = marked.parse(preprocessMarkdown(markdown));
       return { __html: html };
     } catch (error) {
       console.error("Markdown parsing error:", error);
@@ -255,11 +270,6 @@ const PostDataContent: React.FC<PostDataContentProps> = ({ markdown }) => {
   };
 
   return (
-    /*
-      ✅ No h-full, no overflow-auto here.
-      This component just renders its content and grows naturally.
-      Scrolling is handled entirely by FullPostPanel's scroll container.
-    */
     <div className="w-full bg-background text-foreground text-lg">
       <div
         className="prose prose-invert max-w-none prose-pre:p-0 prose-pre:m-0 leading-6 pl-3 pr-2 pt-0 break-words text-lg font-sans"
@@ -267,7 +277,7 @@ const PostDataContent: React.FC<PostDataContentProps> = ({ markdown }) => {
           wordWrap: "break-word",
           overflowWrap: "break-word",
           maxWidth: "100%",
-          // @ts-expect-error: inline CSS custom property for potential theme overrides
+          // @ts-expect-error: CSS custom property
           "--hljs-bg": "transparent",
         }}
         dangerouslySetInnerHTML={getPreviewHTML()}
