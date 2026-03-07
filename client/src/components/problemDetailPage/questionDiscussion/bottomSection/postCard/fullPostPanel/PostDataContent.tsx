@@ -181,8 +181,8 @@ const configureMarked = () => {
           })
           .join("");
 
-        return `<div class="overflow-x-auto my-4">
-  <table class="w-full text-sm" style="border-spacing: 0; border: 2px solid rgba(128,128,128,0.4); border-radius: 8px; overflow: hidden;">
+        return `<div class="overflow-x-auto my-4" style="border: 2px solid currentColor; border-radius: 8px; overflow: hidden;">
+  <table class="w-full text-sm" style="border-spacing: 0;">
     <thead style="background: rgba(128,128,128,0.15);"><tr>${headerCells}</tr></thead>
     <tbody>${bodyRows}</tbody>
   </table>
