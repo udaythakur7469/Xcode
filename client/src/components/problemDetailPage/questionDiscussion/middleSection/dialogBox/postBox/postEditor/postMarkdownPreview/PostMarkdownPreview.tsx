@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import * as marked from "marked";
 import hljs from "highlight.js";
 import "highlight.js/styles/github-dark.min.css";
@@ -239,6 +239,11 @@ const preprocessMarkdown = (markdown: string): string => {
 const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
   markdown,
 }) => {
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isTypingRef = useRef(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     (window as any).copyCodeToClipboard = async (
       button: HTMLButtonElement,
@@ -260,6 +265,24 @@ const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    const handleTyping = () => {
+      isTypingRef.current = true;
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        isTypingRef.current = false;
+      }, 1000);
+    };
+    window.addEventListener("editorTyping", handleTyping);
+    return () => window.removeEventListener("editorTyping", handleTyping);
+  }, []);
+
+  useEffect(() => {
+    if (isTypingRef.current && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [markdown]);
+
   const getPreviewHTML = () => {
     try {
       const html = marked.parse(preprocessMarkdown(markdown));
@@ -271,7 +294,7 @@ const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
   };
 
   return (
-    <div className="h-full w-full bg-background text-foreground overflow-auto text-lg">
+    <div ref={scrollRef} className="h-full w-full bg-background text-foreground overflow-auto text-lg">
       <div
         className="prose prose-invert max-w-none prose-pre:p-0 prose-pre:m-0 leading-6 pl-3 pr-2 pt-0 break-words text-lg font-sans"
         style={{

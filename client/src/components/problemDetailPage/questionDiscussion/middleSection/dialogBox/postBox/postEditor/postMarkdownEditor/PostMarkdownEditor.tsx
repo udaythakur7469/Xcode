@@ -65,6 +65,7 @@ const PostMarkdownEditor: React.FC<PostMarkdownEditorProps> = ({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    window.dispatchEvent(new CustomEvent("editorTyping"));
     const target = e.currentTarget;
     const start = target.selectionStart;
     const end = target.selectionEnd;
