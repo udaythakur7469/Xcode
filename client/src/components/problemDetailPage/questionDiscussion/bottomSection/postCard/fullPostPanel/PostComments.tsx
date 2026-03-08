@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   HoverCard,
   HoverCardContent,
@@ -7,6 +7,9 @@ import {
 import { ArrowLeft, Maximize, Minimize } from "lucide-react";
 import { useCommentPanel } from "@/context/commentPanelContext";
 import { useUserStore } from "@/features/userStore";
+import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
+import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
+import CommentSystem from "./commentSystem/CommentSystem";
 
 type PostCommentsProps = {
   isMaximized: boolean;
@@ -17,14 +20,17 @@ const PostComments: React.FC<PostCommentsProps> = ({
   isMaximized,
   handleMaximizeMinimize,
 }) => {
-  const {userData} = useUserStore();
+  const { userData, checkAuth } = useUserStore();
   const { setIsOpen, postId } = useCommentPanel();
+
+  const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
+  const [isSignupOpen, setIsSignupOpen] = useState<boolean>(false);
 
   const userId = userData?.id;
   return (
-    <div className="h-full w-full bg-background">
+    <div className="h-full w-full bg-background flex flex-col">
       {/* Toolbar */}
-      <div className="h-[40px] bg-secondary rounded-t-md flex flex-row justify-end px-1 items-center">
+      <div className="h-[40px] bg-secondary rounded-t-md flex flex-row justify-end px-1 items-center shrink-0">
         <div className="flex justify-end mr-2 items-center">
           {/* Toggle between Maximize and Minimize icons */}
           {isMaximized ? (
@@ -64,7 +70,34 @@ const PostComments: React.FC<PostCommentsProps> = ({
           Back to editor
         </button>
       </div>
-      <div>comments for post with id {postId} opened by the user with userId {userId}</div>
+      {/* ── Scrollable comment area ──────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3">
+        <CommentSystem
+          postId={postId}
+          currentUserId={userId ?? null}
+          onOpenLogin={() => setIsLoginOpen(true)}
+        />
+      </div>
+      {/* ── Auth dialogs — owned here, opened from anywhere in the tree ── */}
+      <LoginDialog
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        openSignup={() => {
+          setIsLoginOpen(false);
+          setIsSignupOpen(true);
+        }}
+        onSuccessfulAuth={checkAuth}
+      />
+
+      <SignupDialog
+        isOpen={isSignupOpen}
+        onClose={() => setIsSignupOpen(false)}
+        openLogin={() => {
+          setIsSignupOpen(false);
+          setIsLoginOpen(true);
+        }}
+        onSuccessfulAuth={checkAuth}
+      />
     </div>
   );
 };
