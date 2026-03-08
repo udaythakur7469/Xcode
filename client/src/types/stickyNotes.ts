@@ -84,4 +84,5 @@ export interface StickyNoteStore {
   setSaveStatus: (id: string, status: SaveStatus) => void;
   migrateGuestNotes: () => Promise<number>;
   setNotes: (notes: StickyNote[]) => void;
+  _randomPosition: (noteW: number, noteH: number) => { x: number; y: number };
 }

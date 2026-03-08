@@ -170,6 +170,62 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
     }));
   },
 
+  // ── randomPosition ──────────────────────────────────────────
+  // Picks a random (x, y) that:
+  //   • keeps the note fully inside the visible viewport
+  //   • does not completely overlap any currently open note
+  //     (centres must be at least 50% of note width/height apart)
+  // Falls back to a pure random position after 20 attempts so it
+  // never blocks note creation.
+  // Called only at creation time — after that notes can be dragged anywhere.
+  _randomPosition: (noteW: number, noteH: number): { x: number; y: number } => {
+    const { notes, openNoteIds } = get();
+    const openNotes = notes.filter((n) => openNoteIds.includes(n.id));
+
+    // Safe viewport area: leave a 20px margin on every edge
+    const margin = 20;
+    const vw =
+      typeof document !== "undefined"
+        ? document.documentElement.clientWidth
+        : 1280;
+    const vh =
+      typeof document !== "undefined"
+        ? document.documentElement.clientHeight
+        : 800;
+
+    const minX = margin;
+    const minY = margin;
+    const maxX = Math.max(minX, vw - noteW - margin);
+    const maxY = Math.max(minY, vh - noteH - margin);
+
+    // Minimum distance between centres to avoid complete overlap
+    // (50% of the note dimension = centres must differ by at least half the size)
+    const minDx = noteW * 0.5;
+    const minDy = noteH * 0.5;
+
+    for (let attempt = 0; attempt < 20; attempt++) {
+      const x = minX + Math.random() * (maxX - minX);
+      const y = minY + Math.random() * (maxY - minY);
+
+      const cx = x + noteW / 2;
+      const cy = y + noteH / 2;
+
+      const tooClose = openNotes.some((n) => {
+        const ncx = n.x + (n.width ?? noteW) / 2;
+        const ncy = n.y + (n.height ?? noteH) / 2;
+        return Math.abs(cx - ncx) < minDx && Math.abs(cy - ncy) < minDy;
+      });
+
+      if (!tooClose) return { x, y };
+    }
+
+    // Fallback: just random within safe area
+    return {
+      x: minX + Math.random() * (maxX - minX),
+      y: minY + Math.random() * (maxY - minY),
+    };
+  },
+
   // ── createNote ──────────────────────────────────────────
   createNote: async (isAuthenticated: boolean) => {
     const { highestZIndex, openNoteIds } = get();
@@ -189,18 +245,29 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
         const randomColor =
           NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)];
 
+        const { x: randX, y: randY } = get()._randomPosition(420, 300);
+
         const newNote: StickyNote = {
           ...response.data.note,
           zIndex: newZ,
           color: randomColor,
           width: 420,
           height: 300,
+          x: randX,
+          y: randY,
         };
 
-        // Immediately update zIndex + random color in DB
+        // Immediately persist all overrides to DB
         await axios.put(
           `${API_URL}/stickyNotes/${newNote.id}`,
-          { zIndex: newZ, color: randomColor, width: 420, height: 300 },
+          {
+            zIndex: newZ,
+            color: randomColor,
+            width: 420,
+            height: 300,
+            x: randX,
+            y: randY,
+          },
           { withCredentials: true },
         );
 
@@ -222,8 +289,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
         title: "Untitled Note",
         content: "",
         color: NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)],
-        x: 100 + Math.random() * 50,
-        y: 100 + Math.random() * 50,
+        ...get()._randomPosition(420, 300),
         width: 420,
         height: 300,
         zIndex: newZ,
