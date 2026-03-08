@@ -72,6 +72,8 @@ model User {
 
   problemHelpStates ProblemHelpState[]
 
+  stickyNotes StickyNote[]
+
   // Timestamp fields.
   lastLogin DateTime @default(now())
   createdAt DateTime @default(now())
@@ -642,4 +644,20 @@ model ProblemHelpState {
   createdAt   DateTime @default(now())
 
   @@unique([userId, problemId])
+}
+
+model StickyNote {
+  id        String   @id @default(uuid())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?  @default("Untitled Note")
+  content   String   @default("")
+  color     String   @default("yellow")
+  x         Float    @default(100)
+  y         Float    @default(100)
+  width     Float    @default(320)
+  height    Float    @default(240)
+  zIndex    Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
