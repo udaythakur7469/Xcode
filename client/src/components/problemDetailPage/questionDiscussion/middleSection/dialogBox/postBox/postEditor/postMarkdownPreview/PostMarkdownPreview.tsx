@@ -231,10 +231,8 @@ const preprocessMarkdown = (markdown: string): string => {
     result.push(normaliseListIndent(line));
   }
 
-  return result.join("\n");
+  return result.join("\n").replace(/!\[uploading\.\.\.\]\(placeholder\)/g, "");
 };
-
-// ─── Component ───────────────────────────────────────────────────────────────
 
 const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
   markdown,

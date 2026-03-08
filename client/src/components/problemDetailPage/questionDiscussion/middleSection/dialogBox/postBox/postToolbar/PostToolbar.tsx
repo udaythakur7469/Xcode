@@ -25,6 +25,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import MarkdownGuideDialog from "./markdownGuide/MarkdownGuideDialog";
+import { usePostEditorStore } from "@/features/postEditorStore";
 
 type PostToolbarProps = {
   onInsertText: (before: string, after?: string) => void;
@@ -43,8 +44,8 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
     "flex items-center justify-center rounded-lg p-1 border";
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
   const [isMarkdownGuideOpen, setIsMarkdownGuideOpen] = useState(false);
+  const { uploadPostImage, isUploadingImage } = usePostEditorStore();
 
   const handleInsert = (before: string, after: string = "") => {
     onInsertText(before, after);
@@ -60,24 +61,8 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
 
     e.target.value = "";
     onInsertText(UPLOAD_PLACEHOLDER, "");
-    setIsUploading(true);
-
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await fetch("/api/post/upload-image", {
-        method: "POST",
-        body: formData,
-        credentials: "include",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.message || "Upload failed");
-      }
-
+      const data = await uploadPostImage(file);
       const imageMarkdown = `![image](${data.url})`;
       const event = new CustomEvent("replaceMarkdownText", {
         detail: { find: UPLOAD_PLACEHOLDER, replace: imageMarkdown },
@@ -90,7 +75,6 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
       });
       window.dispatchEvent(event);
     } finally {
-      setIsUploading(false);
     }
   };
 
@@ -336,9 +320,9 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
               <button
                 className={buttonClasses}
                 onClick={handleImageButtonClick}
-                disabled={isUploading}
+                disabled={isUploadingImage}
               >
-                {isUploading ? (
+                {isUploadingImage ? (
                   <Loader2 className="animate-spin" size={20} />
                 ) : (
                   <Image />
@@ -346,7 +330,7 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
               </button>
             </HoverCardTrigger>
             <HoverCardContent side="top" className="p-1">
-              {isUploading ? "Uploading..." : "Upload Image"}
+              {isUploadingImage ? "Uploading..." : "Upload Image"}
             </HoverCardContent>
           </HoverCard>
         </div>
