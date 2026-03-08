@@ -22,6 +22,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import DiscussionSection from "../questionDiscussion/DiscussionSection";
 import QuestionCodeResults from "../questionResults/QuestionResults";
 import { useSubmissionStore } from "@/features/submissionStore";
+import { useCommentPanel } from "@/context/commentPanelContext";
 
 type QuestionTabsProps = {
   showResultsTab?: boolean;
@@ -41,6 +42,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   const [activeTab, setActiveTab] = useState("description");
   const [previousTab, setPreviousTab] = useState("description");
   const { clearSubmitCodeResult } = useSubmissionStore();
+  const { setIsOpen } = useCommentPanel();
 
   const handleMaximizeMinimize = useCallback(() => {
     if (onMaximize) {
@@ -66,6 +68,9 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   const handleTabChange = (newTab: string) => {
     setPreviousTab(activeTab);
     setActiveTab(newTab);
+    if (activeTab == "discussion") {
+      setIsOpen(false);
+    }
   };
 
   useEffect(() => {
