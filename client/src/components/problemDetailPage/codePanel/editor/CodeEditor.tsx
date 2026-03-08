@@ -314,7 +314,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "tween", duration: 0.3, ease: "easeInOut" }}
-            className="absolute inset-0 z-[1000]"
+            className="absolute inset-0 z-[40]"
           >
             <PostComments
               isMaximized={isMaximized}

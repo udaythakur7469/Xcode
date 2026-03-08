@@ -29,7 +29,7 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
   };
 
   return (
-    <div className="absolute inset-0 z-[1000] pointer-events-none">
+    <div className="absolute inset-0 z-[40] pointer-events-none">
       {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
