@@ -3,6 +3,7 @@ import { Heart, HeartOff, MessagesSquare } from "lucide-react";
 import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
 import { formatCount } from "@/services/countService";
+import { useCommentPanel } from "@/context/commentPanelContext";
 
 type PostFooterProps = {
   postId: string;
@@ -62,6 +63,7 @@ const PostFooter: React.FC<PostFooterProps> = ({
   // Check if currently showing spinner for this specific button
   const isLikeLoading = isReactingToPost && clickedAction === "like";
   const isDislikeLoading = isReactingToPost && clickedAction === "dislike";
+  const {setIsOpen} = useCommentPanel();
 
   return (
     <div className="flex flex-row items-center pb-1 mt-2 gap-x-3">
@@ -118,7 +120,10 @@ const PostFooter: React.FC<PostFooterProps> = ({
       </div>
 
       {/* Comments */}
-      <div className="gap-x-2 flex flex-row items-center px-2 py-0.5 bg-background text-gray-300 rounded cursor-pointer transition-colors">
+      <div
+        className="gap-x-2 flex flex-row items-center px-2 py-0.5 bg-background text-gray-300 rounded cursor-pointer transition-colors"
+        onClick={() => setIsOpen(true)}
+      >
         <MessagesSquare size={16} className="text-blue-500" />
         {formatCount(comments)}
       </div>
