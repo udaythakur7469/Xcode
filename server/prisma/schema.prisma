@@ -177,13 +177,12 @@ model Problem {
   // - One-to-one relation with problem statistics (optional).
   problemStats ProblemStats?
 
-  Comment Comment[]
-
   problemHelpStates ProblemHelpState[]
 
   // Timestamp for problem creation.
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  Comment   Comment[]
 }
 
 // =========================================================
@@ -477,12 +476,13 @@ model Comment {
   parentId  Int?
   parent    Comment?          @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
   replies   Comment[]         @relation("CommentToComment")
+  votes     CommentReaction[]
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
-  votes     CommentReaction[]
-  Problem   Problem?          @relation(fields: [problemId], references: [id])
+  problem   Problem?          @relation(fields: [problemId], references: [id])
   problemId Int?
 
+  @@index([postId, parentId, createdAt])
   @@index([parentId])
 }
 
