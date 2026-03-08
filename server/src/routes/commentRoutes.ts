@@ -7,23 +7,23 @@ import {
   getRepliesForComment,
   reactToComment,
 } from "../controllers/commentController.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
+import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js";
 
 const router = express.Router();
 
 // ─── Comment CRUD ───────────────────────────────────────────────
-router.route("/create").post(authMiddleware, createComment);
-router.route("/:commentId").patch(authMiddleware, editComment);
-router.route("/:commentId").delete(authMiddleware, deleteComment);
+router.route("/create").post(optionalAuthMiddleware, createComment);
+router.route("/:commentId").patch(optionalAuthMiddleware, editComment);
+router.route("/:commentId").delete(optionalAuthMiddleware, deleteComment);
 
 // ─── Fetch comments + replies ────────────────────────────────────
-// authMiddleware is optional here (used for userReaction lookup)
-// If your authMiddleware throws when no token is present,
-// create an optionalAuthMiddleware variant that calls next() on missing token.
-router.route("/post/:postId").get(authMiddleware, getCommentsByPost);
-router.route("/:commentId/replies").get(authMiddleware, getRepliesForComment);
+// OptionalAuthMiddleware is optional here (used for userReaction lookup)
+// If your OptionalAuthMiddleware throws when no token is present,
+// create an OptionalAuthMiddleware variant that calls next() on missing token.
+router.route("/post/:postId").get(optionalAuthMiddleware, getCommentsByPost);
+router.route("/:commentId/replies").get(optionalAuthMiddleware, getRepliesForComment);
 
 // ─── Reactions ───────────────────────────────────────────────────
-router.route("/:commentId/react").post(authMiddleware, reactToComment);
+router.route("/:commentId/react").post(optionalAuthMiddleware, reactToComment);
 
 export default router;
