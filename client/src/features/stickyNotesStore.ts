@@ -16,6 +16,7 @@ import {
   saveNoteToLocalStorage,
   updateNoteInLocalStorage,
 } from "@/services/stickyNotesService";
+import { NOTE_COLORS } from "@/components/problemDetailPage/navbar/stickyNotesSystem/ColorConfig";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -88,7 +89,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
         }
 
         // Fetch from DB and merge
-        const response = await axios.get(`${API_URL}/sticky-notes`, {
+        const response = await axios.get(`${API_URL}/stickyNotes`, {
           withCredentials: true,
         });
 
@@ -180,20 +181,24 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
     if (isAuthenticated) {
       try {
         const response = await axios.post(
-          `${API_URL}/sticky-notes`,
+          `${API_URL}/stickyNotes`,
           {},
           { withCredentials: true },
         );
 
+        const randomColor =
+          NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)];
+
         const newNote: StickyNote = {
           ...response.data.note,
           zIndex: newZ,
+          color: randomColor,
         };
 
-        // Immediately update zIndex in DB as well
+        // Immediately update zIndex + random color in DB
         await axios.put(
-          `${API_URL}/sticky-notes/${newNote.id}`,
-          { zIndex: newZ },
+          `${API_URL}/stickyNotes/${newNote.id}`,
+          { zIndex: newZ, color: randomColor },
           { withCredentials: true },
         );
 
@@ -214,7 +219,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
         id: uuidv4(),
         title: "Untitled Note",
         content: "",
-        color: "yellow",
+        color: NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)],
         x: 100 + Math.random() * 50,
         y: 100 + Math.random() * 50,
         width: 320,
@@ -286,7 +291,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
             if (!latestNote) return;
 
             await axios.put(
-              `${API_URL}/sticky-notes/${id}`,
+              `${API_URL}/stickyNotes/${id}`,
               {
                 title: latestNote.title,
                 content: latestNote.content,
@@ -343,7 +348,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
     // Delete from DB if authenticated
     if (isAuthenticated) {
       try {
-        await axios.delete(`${API_URL}/sticky-notes/${id}`, {
+        await axios.delete(`${API_URL}/stickyNotes/${id}`, {
           withCredentials: true,
         });
       } catch (error) {
@@ -361,7 +366,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
 
     try {
       // Fetch existing DB notes to avoid duplicates
-      const response = await axios.get(`${API_URL}/sticky-notes`, {
+      const response = await axios.get(`${API_URL}/stickyNotes`, {
         withCredentials: true,
       });
       const dbNotes: StickyNote[] = response.data.notes;
@@ -373,7 +378,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
       if (notesToMigrate.length === 0) return 0;
 
       const bulkResponse = await axios.post(
-        `${API_URL}/sticky-notes/bulk`,
+        `${API_URL}/stickyNotes/bulk`,
         { notes: notesToMigrate },
         { withCredentials: true },
       );
