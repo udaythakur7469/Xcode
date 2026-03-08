@@ -193,12 +193,14 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
           ...response.data.note,
           zIndex: newZ,
           color: randomColor,
+          width: 420,
+          height: 300,
         };
 
         // Immediately update zIndex + random color in DB
         await axios.put(
           `${API_URL}/stickyNotes/${newNote.id}`,
-          { zIndex: newZ, color: randomColor },
+          { zIndex: newZ, color: randomColor, width: 420, height: 300 },
           { withCredentials: true },
         );
 
@@ -222,8 +224,8 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
         color: NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)],
         x: 100 + Math.random() * 50,
         y: 100 + Math.random() * 50,
-        width: 320,
-        height: 240,
+        width: 420,
+        height: 300,
         zIndex: newZ,
         lastModified: Date.now(),
       };
