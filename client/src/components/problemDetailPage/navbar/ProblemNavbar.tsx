@@ -14,7 +14,6 @@ import {
   LayoutDashboard,
   List,
   Play,
-  StickyNote,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/themes/themeToggle";
 import {
@@ -37,6 +36,7 @@ import { toast } from "sonner";
 import { useSubmissionStore } from "@/features/submissionStore";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import ShortcutDialog from "./shortcuts/ShortcutDialog";
+import NotesButton from "./stickyNotesSystem/StickyNotesButton";
 
 type ProblemNavbarProps = {
   onResetLayout?: () => void;
@@ -71,15 +71,8 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
       const isAlt = e.altKey;
-      const isS = e.key === "s" || e.key === "S";
       const isT = e.key === "t" || e.key === "T";
       const isSlash = e.key === "/";
-
-      // Alt + S for sticky notes
-      if (isAlt && isS) {
-        e.preventDefault();
-        console.log("notes icon clicked");
-      }
 
       // Alt + T for timer
       if (isAlt && isT) {
@@ -211,19 +204,7 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
         <div className="flex justify-center items-center h-full">
           <MenubarMenu>
             <div className="flex justify-center items-center space-x-2 h-full">
-              <HoverCard>
-                <HoverCardTrigger asChild>
-                  <div
-                    className="flex justify-center items-center rounded-md px-2 bg-secondary h-8 cursor-pointer"
-                    onClick={() => console.log("notes icon clicked")}
-                  >
-                    <StickyNote className="h-5 w-5 text-yellow-400" />
-                  </div>
-                </HoverCardTrigger>
-                <HoverCardContent className="mr-5 p-1">
-                  Sticky notes
-                </HoverCardContent>
-              </HoverCard>
+              <NotesButton />
               <HoverCard>
                 <HoverCardTrigger asChild>
                   <div
