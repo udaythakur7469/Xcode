@@ -32,7 +32,7 @@ type PostToolbarProps = {
   onReset?: (() => void) | null;
 };
 
-const UPLOAD_PLACEHOLDER = "![uploading...](placeholder)";
+const UPLOAD_PLACEHOLDER = "![uploading...]";
 
 const TABLE_TEMPLATE = `| Column 1 | Column 2 | Column 3 |
 | -------- | -------- | -------- |
