@@ -37,8 +37,8 @@ export const createStickyNote = async (req, res, next) => {
                 color: "yellow",
                 x: 100,
                 y: 100,
-                width: 320,
-                height: 240,
+                width: 420,
+                height: 300,
                 zIndex: 1,
             },
         });
@@ -145,8 +145,8 @@ export const bulkCreateStickyNotes = async (req, res, next) => {
                 color: note.color || "yellow",
                 x: note.x ?? 100,
                 y: note.y ?? 100,
-                width: note.width ?? 320,
-                height: note.height ?? 240,
+                width: note.width ?? 420,
+                height: note.height ?? 300,
                 zIndex: note.zIndex ?? 1,
             },
         })));
