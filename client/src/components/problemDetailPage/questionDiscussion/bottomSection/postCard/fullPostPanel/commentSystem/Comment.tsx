@@ -9,7 +9,7 @@ interface CommentProps {
   comment: CommentData;
   depth: number;
   currentUserId: number | null;
-  postId: number;
+  postId: string | null;
   onOpenLogin?: () => void;
 }
 
@@ -370,7 +370,7 @@ const Comment: React.FC<CommentProps> = ({
                 className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 resize-none focus:outline-none focus:border-zinc-500 min-h-[72px] transition-colors"
                 disabled={isSubmittingReply}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  if (e.key === "Enter" && e.shiftKey) {
                     e.preventDefault();
                     handleSubmitReply();
                   }
@@ -394,7 +394,7 @@ const Comment: React.FC<CommentProps> = ({
                   Cancel
                 </button>
                 <span className="text-xs text-zinc-600 ml-auto">
-                  Ctrl+Enter to send
+                  Shift+Enter to send
                 </span>
               </div>
             </div>

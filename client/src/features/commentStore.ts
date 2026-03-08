@@ -41,14 +41,14 @@ interface CommentStoreState {
   isReactingToComment: boolean;
   error: string | null;
 
-  getCommentsByPost: (postId: number, cursor?: string | null) => Promise<void>;
+  getCommentsByPost: (postId: string | null, cursor?: string | null) => Promise<void>;
   getRepliesForComment: (
     commentId: number,
     initial: boolean,
     cursor?: string | null,
   ) => Promise<void>;
   createComment: (
-    postId: number,
+    postId: string | null,
     content: string,
     parentId?: number | null,
   ) => Promise<void>;

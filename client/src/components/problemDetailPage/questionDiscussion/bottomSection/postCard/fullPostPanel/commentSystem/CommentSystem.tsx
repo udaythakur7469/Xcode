@@ -69,14 +69,14 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
             className="w-full bg-zinc-900 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder-zinc-600 resize-none focus:outline-none focus:border-zinc-500 min-h-[88px] transition-colors"
             disabled={isPosting}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+              if (e.key === "Enter" && e.shiftKey) {
                 e.preventDefault();
                 handlePostComment();
               }
             }}
           />
           <div className="flex justify-between items-center mt-2">
-            <span className="text-xs text-zinc-600">Ctrl+Enter to post</span>
+            <span className="text-xs text-zinc-600">Shift+Enter to post</span>
             <button
               onClick={handlePostComment}
               disabled={isPosting || !newCommentText.trim()}
