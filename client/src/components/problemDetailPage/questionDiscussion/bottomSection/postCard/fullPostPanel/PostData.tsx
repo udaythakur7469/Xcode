@@ -18,7 +18,7 @@ const PostData: React.FC<PostDataProps> = ({ fullPostData }) => {
   };
 
   const formattedDate = (date: string): string => {
-    return moment().format("MMM Do YYYY");
+    return moment(date).format("MMM Do YYYY");
   };
 
   const name = fullPostData.author.name;
