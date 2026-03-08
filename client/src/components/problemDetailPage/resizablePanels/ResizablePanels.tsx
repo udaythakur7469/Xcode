@@ -60,7 +60,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   const animateResize = (
     panelRef: any,
     targetSize: number,
-    duration: number = 500
+    duration: number = 500,
   ): Promise<void> => {
     return new Promise((resolve) => {
       if (!panelRef.current) {
@@ -152,19 +152,19 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 
       if (leftPanelRef.current && rightPanelRef.current) {
         animations.push(
-          animateResize(leftPanelRef, DEFAULT_HORIZONTAL_SIZES[0], 500)
+          animateResize(leftPanelRef, DEFAULT_HORIZONTAL_SIZES[0], 500),
         );
         animations.push(
-          animateResize(rightPanelRef, DEFAULT_HORIZONTAL_SIZES[1], 500)
+          animateResize(rightPanelRef, DEFAULT_HORIZONTAL_SIZES[1], 500),
         );
       }
 
       if (codeEditorPanelRef.current && testCasesPanelRef.current) {
         animations.push(
-          animateResize(codeEditorPanelRef, DEFAULT_VERTICAL_SIZES[0], 500)
+          animateResize(codeEditorPanelRef, DEFAULT_VERTICAL_SIZES[0], 500),
         );
         animations.push(
-          animateResize(testCasesPanelRef, DEFAULT_VERTICAL_SIZES[1], 500)
+          animateResize(testCasesPanelRef, DEFAULT_VERTICAL_SIZES[1], 500),
         );
       }
 
@@ -376,7 +376,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
               maxSize={93}
               className="ml-1 mb-1 rounded-lg border"
             >
-              <div className="flex h-full items-center justify-center">
+              <div className="flex h-full items-center justify-center relative">
                 <CodeEditor
                   onCodeSubmit={handleCodeSubmit}
                   onCodeRun={handleCodeRun}

@@ -4,6 +4,7 @@ import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
 import { motion } from "framer-motion";
 import PostData from "./PostData";
+import { useCommentPanel } from "@/context/commentPanelContext";
 
 type FullPostPanelProps = {
   postId: string | null;
@@ -14,11 +15,18 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
   const { getFullPostById, fullPostData, isGettingFullPost, fullPostError } =
     usePostStore();
 
+  const { setIsOpen } = useCommentPanel();
+
   useEffect(() => {
     if (postId) {
       getFullPostById(postId);
     }
   }, [postId, getFullPostById]);
+
+  const closePanels = () => {
+    onClose();
+    setIsOpen(false);
+  };
 
   return (
     <div className="absolute inset-0 z-[1000] pointer-events-none">
@@ -47,7 +55,7 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
         {/* Header — fixed, never scrolls */}
         <div className="flex items-center justify-start pb-1 border-b shrink-0">
           <button
-            onClick={onClose}
+            onClick={() => closePanels()}
             className="flex flex-row items-center justify-center"
             aria-label="Close"
           >

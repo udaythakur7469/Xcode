@@ -3,7 +3,8 @@ import React from "react";
 import * as marked from "marked";
 import hljs from "highlight.js";
 import "highlight.js/styles/github-dark.min.css";
-import PostDataComments from "./PostDataComments";
+import { useCommentPanel } from "@/context/commentPanelContext";
+import { Button } from "@/components/ui/button";
 
 const escapeHtml = (raw: string): string =>
   raw
@@ -288,23 +289,29 @@ const PostDataContent: React.FC<PostDataContentProps> = ({ markdown }) => {
     }
   };
 
+  const { isOpen, setIsOpen } = useCommentPanel();
+
   return (
-    <div className="w-full bg-background text-foreground text-lg">
-      <div
-        className="prose prose-invert max-w-none prose-pre:p-0 prose-pre:m-0 leading-6 pl-3 pr-2 pt-0 break-words text-lg font-sans"
-        style={{
-          wordWrap: "break-word",
-          overflowWrap: "break-word",
-          maxWidth: "100%",
-          // @ts-expect-error: CSS custom property
-          "--hljs-bg": "transparent",
-        }}
-        dangerouslySetInnerHTML={getPreviewHTML()}
-      />
-      <div className="mb-8 pl-3 pr-2 pt-0 pb-3">
-        <PostDataComments />
+    <>
+      <div className="w-full bg-background text-foreground text-lg">
+        <div
+          className="prose prose-invert max-w-none prose-pre:p-0 prose-pre:m-0 leading-6 pl-3 pr-2 pt-0 break-words text-lg font-sans"
+          style={{
+            wordWrap: "break-word",
+            overflowWrap: "break-word",
+            maxWidth: "100%",
+            // @ts-expect-error: CSS custom property
+            "--hljs-bg": "transparent",
+          }}
+          dangerouslySetInnerHTML={getPreviewHTML()}
+        />
       </div>
-    </div>
+      <div className="mb-8 pl-3 pr-2 pt-0 pb-3 mt-5">
+        <Button onClick={() => setIsOpen(!isOpen)}>
+          {isOpen ? "Close comments" : "Open comments"}
+        </Button>
+      </div>
+    </>
   );
 };
 

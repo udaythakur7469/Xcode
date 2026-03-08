@@ -22,6 +22,9 @@ import { useSearchParams } from "next/navigation";
 import { useSubmissionStore } from "@/features/submissionStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useCommentPanel } from "@/context/commentPanelContext";
+import PostComments from "./PostComments";
+import { AnimatePresence, motion } from "framer-motion";
 
 type CodeEditorProps = {
   onCodeSubmit?: () => void;
@@ -300,104 +303,130 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   };
 
+  const { isOpen } = useCommentPanel();
+
   return (
     <div className="h-full w-full flex flex-col">
-      {/* Toolbar */}
-      <div className="h-[40px] bg-secondary rounded-md flex flex-row justify-between px-1 items-center">
-        <div className="flex flex-row justify-start">
-          {/* Language Dropdown */}
-          <LangDropdown
-            selectedLanguage={language}
-            onLanguageChange={handleLanguageChange}
-          />
-          {/* Theme Dropdown */}
-          <ThemeDropdown
-            selectedTheme={theme}
-            onThemeChange={handleThemeChange}
-          />
-          {/* Font Size Dropdown */}
-          <FontSizeDropdown onFontSizeChange={handleFontSizeChange} />
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ type: "tween", duration: 0.3, ease: "easeInOut" }}
+            className="absolute inset-0 z-[1000]"
+          >
+            <PostComments
+              isMaximized={isMaximized}
+              handleMaximizeMinimize={handleMaximizeMinimize}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <>
+        {/* Toolbar */}
+        <div className="h-[40px] bg-secondary rounded-md flex flex-row justify-between px-1 items-center">
+          <div className="flex flex-row justify-start">
+            {/* Language Dropdown */}
+            <LangDropdown
+              selectedLanguage={language}
+              onLanguageChange={handleLanguageChange}
+            />
+            {/* Theme Dropdown */}
+            <ThemeDropdown
+              selectedTheme={theme}
+              onThemeChange={handleThemeChange}
+            />
+            {/* Font Size Dropdown */}
+            <FontSizeDropdown onFontSizeChange={handleFontSizeChange} />
+          </div>
+          <div className="flex justify-end mr-2 items-center space-x-3">
+            {/* Reset Code Hover Card */}
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <History
+                  className="text-yellow-500 cursor-pointer"
+                  onClick={handleResetCode}
+                />
+              </HoverCardTrigger>
+              <HoverCardContent className="mr-5 p-1">
+                Reset code
+              </HoverCardContent>
+            </HoverCard>
+            {/* Toggle between Maximize and Minimize icons */}
+            {isMaximized ? (
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Minimize
+                    className="ml-2 mr-2 cursor-pointer text-yellow-500 hover:text-yellow-600"
+                    size={20}
+                    onClick={handleMaximizeMinimize}
+                  />
+                </HoverCardTrigger>
+                <HoverCardContent className="mr-5 p-1">
+                  Minimize
+                </HoverCardContent>
+              </HoverCard>
+            ) : (
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Maximize
+                    className="ml-2 mr-2 cursor-pointer text-yellow-500 hover:text-yellow-600"
+                    size={20}
+                    onClick={handleMaximizeMinimize}
+                  />
+                </HoverCardTrigger>
+                <HoverCardContent className="mr-5 p-1">
+                  Maximize
+                </HoverCardContent>
+              </HoverCard>
+            )}
+          </div>
         </div>
-        <div className="flex justify-end mr-2 items-center space-x-3">
-          {/* Reset Code Hover Card */}
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <History
-                className="text-yellow-500 cursor-pointer"
-                onClick={handleResetCode}
-              />
-            </HoverCardTrigger>
-            <HoverCardContent className="mr-5 p-1">Reset code</HoverCardContent>
-          </HoverCard>
-          {/* Toggle between Maximize and Minimize icons */}
-          {isMaximized ? (
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <Minimize
-                  className="ml-2 mr-2 cursor-pointer text-yellow-500 hover:text-yellow-600"
-                  size={20}
-                  onClick={handleMaximizeMinimize}
-                />
-              </HoverCardTrigger>
-              <HoverCardContent className="mr-5 p-1">Minimize</HoverCardContent>
-            </HoverCard>
+
+        {/* CodeMirror Editor */}
+        <div className="flex-grow h-[calc(100%-90px)]">
+          {isBaseCodeLoading ? (
+            <div className="h-full flex items-center justify-center">
+              <MoonLoader color="#ffffff" size={50} />
+            </div>
+          ) : baseCodeError ? (
+            <div className="h-full flex items-center justify-center text-red-500">
+              {baseCodeError}
+            </div>
           ) : (
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <Maximize
-                  className="ml-2 mr-2 cursor-pointer text-yellow-500 hover:text-yellow-600"
-                  size={20}
-                  onClick={handleMaximizeMinimize}
-                />
-              </HoverCardTrigger>
-              <HoverCardContent className="mr-5 p-1">Maximize</HoverCardContent>
-            </HoverCard>
+            <CodeMirror
+              value={code}
+              height="100%"
+              width="100%"
+              extensions={[getLanguageExtension()]}
+              theme={getTheme()} // Pass the theme extension directly
+              onChange={(value) => {
+                setCode(value);
+              }}
+              style={{ fontSize: `${fontSize}px`, height: "100%" }}
+            />
           )}
         </div>
-      </div>
 
-      {/* CodeMirror Editor */}
-      <div className="flex-grow h-[calc(100%-90px)]">
-        {isBaseCodeLoading ? (
-          <div className="h-full flex items-center justify-center">
-            <MoonLoader color="#ffffff" size={50} />
-          </div>
-        ) : baseCodeError ? (
-          <div className="h-full flex items-center justify-center text-red-500">
-            {baseCodeError}
-          </div>
-        ) : (
-          <CodeMirror
-            value={code}
-            height="100%"
-            width="100%"
-            extensions={[getLanguageExtension()]}
-            theme={getTheme()} // Pass the theme extension directly
-            onChange={(value) => {
-              setCode(value);
-            }}
-            style={{ fontSize: `${fontSize}px`, height: "100%" }}
-          />
-        )}
-      </div>
-
-      {/* Footer with Run Code Button */}
-      <div className="h-[50px] bg-secondary rounded-md flex items-center justify-end px-4 gap-x-5">
-        <Button
-          className="bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleRunCode}
-          disabled={isRunningCode || isSubmittingCode}
-        >
-          {isRunningCode ? "Running..." : "Run Code"}
-        </Button>
-        <Button
-          className="bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={handleSubmitCode}
-          disabled={isRunningCode || isSubmittingCode}
-        >
-          {isSubmittingCode ? "Submitting..." : "Submit Code"}
-        </Button>
-      </div>
+        {/* Footer with Run Code Button */}
+        <div className="h-[50px] bg-secondary rounded-md flex items-center justify-end px-4 gap-x-5">
+          <Button
+            className="bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleRunCode}
+            disabled={isRunningCode || isSubmittingCode}
+          >
+            {isRunningCode ? "Running..." : "Run Code"}
+          </Button>
+          <Button
+            className="bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleSubmitCode}
+            disabled={isRunningCode || isSubmittingCode}
+          >
+            {isSubmittingCode ? "Submitting..." : "Submit Code"}
+          </Button>
+        </div>
+      </>
     </div>
   );
 };
