@@ -23,7 +23,7 @@ import { useSubmissionStore } from "@/features/submissionStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useCommentPanel } from "@/context/commentPanelContext";
-import PostComments from "./PostComments";
+import PostComments from "../../questionDiscussion/bottomSection/postCard/fullPostPanel/PostComments";
 import { AnimatePresence, motion } from "framer-motion";
 
 type CodeEditorProps = {

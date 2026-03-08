@@ -6,6 +6,7 @@ import {
 } from "@/components/ui/hover-card";
 import { ArrowLeft, Maximize, Minimize } from "lucide-react";
 import { useCommentPanel } from "@/context/commentPanelContext";
+import { useUserStore } from "@/features/userStore";
 
 type PostCommentsProps = {
   isMaximized: boolean;
@@ -16,7 +17,10 @@ const PostComments: React.FC<PostCommentsProps> = ({
   isMaximized,
   handleMaximizeMinimize,
 }) => {
-  const { setIsOpen } = useCommentPanel();
+  const {userData} = useUserStore();
+  const { setIsOpen, postId } = useCommentPanel();
+
+  const userId = userData?.id;
   return (
     <div className="h-full w-full bg-background">
       {/* Toolbar */}
@@ -60,6 +64,7 @@ const PostComments: React.FC<PostCommentsProps> = ({
           Back to editor
         </button>
       </div>
+      <div>comments for post with id {postId} opened by the user with userId {userId}</div>
     </div>
   );
 };
