@@ -69,7 +69,13 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
           Everything inside — title, meta, tags, markdown, comments — 
           scrolls together as one unified page.
         */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+        <div
+          className="flex-1 overflow-y-auto overflow-x-hidden"
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "#888 transparent",
+          }}
+        >
           {isGettingFullPost && (
             <div className="flex justify-center items-center h-full">
               <MoonLoader size={50} color="#ffffff" />
