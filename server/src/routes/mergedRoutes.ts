@@ -7,6 +7,7 @@ import interviewRoutes from "./interviewRoutes.js";
 import postRoutes from "./postRoutes.js";
 import chatRoutes from "./chatRoutes.js";
 import postEditorRoutes from "./postEditorRoutes.js";
+import commentRoutes from "./commentRoutes.js";
 
 const router = express.Router();
 
@@ -18,5 +19,6 @@ router.use("/interview", interviewRoutes);
 router.use("/post", postRoutes);
 router.use("/chat", chatRoutes);
 router.use("/postEditor", postEditorRoutes);
+router.use("/comment", commentRoutes);
 
 export default router;
