@@ -9,7 +9,8 @@ export type NoteColor =
   | "blue"
   | "pink"
   | "white"
-  | "purple";
+  | "purple"
+  | "red";
 
 export interface StickyNote {
   id: string;
