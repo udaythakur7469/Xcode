@@ -93,12 +93,15 @@ const StickyNotesFloatingDialog: React.FC<StickyNotesFloatingDialogProps> = ({
   const startPos2 = useRef({ x: 0, y: 0 });
   const dragOffset = useRef({ x: 0, y: 0 });
 
-  // Spring on SIZE only — position uses plain left/top CSS strings
   const motionWidth = useMotionValue(defaultSize.width);
   const motionHeight = useMotionValue(defaultSize.height);
-  const springCfg = { stiffness: 320, damping: 32 };
+  const motionX = useMotionValue(defaultPosition.x);
+  const motionY = useMotionValue(defaultPosition.y);
+  const springCfg = { stiffness: 300, damping: 30 };
   const springWidth = useSpring(motionWidth, springCfg);
   const springHeight = useSpring(motionHeight, springCfg);
+  const springX = useSpring(motionX, springCfg);
+  const springY = useSpring(motionY, springCfg);
 
   useEffect(() => {
     motionWidth.set(size.width);
@@ -106,6 +109,12 @@ const StickyNotesFloatingDialog: React.FC<StickyNotesFloatingDialogProps> = ({
   useEffect(() => {
     motionHeight.set(size.height);
   }, [size.height]);
+  useEffect(() => {
+    motionX.set(position.x);
+  }, [position.x]);
+  useEffect(() => {
+    motionY.set(position.y);
+  }, [position.y]);
 
   const clampPos = useCallback(
     (pos: { x: number; y: number }) => {
@@ -271,10 +280,10 @@ const StickyNotesFloatingDialog: React.FC<StickyNotesFloatingDialogProps> = ({
           } ${hasColors ? "" : "bg-background border border-border"}`}
           style={{
             position: "fixed",
-            left: isMaximized ? 0 : position.x,
-            top: isMaximized ? 0 : position.y,
-            width: isMaximized ? "100dvw" : springWidth,
-            height: isMaximized ? "100dvh" : springHeight,
+            left: springX,
+            top: springY,
+            width: springWidth,
+            height: springHeight,
             zIndex,
             pointerEvents: "auto",
             ...(hasColors && {
