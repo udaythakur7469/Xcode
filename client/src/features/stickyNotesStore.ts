@@ -6,7 +6,12 @@
 import { create } from "zustand";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
-import { SaveStatus, StickyNote, StickyNoteStore } from "@/types/stickyNotes";
+import {
+  NoteColor,
+  SaveStatus,
+  StickyNote,
+  StickyNoteStore,
+} from "@/types/stickyNotes";
 import {
   clearAllStickyNotesFromLocalStorage,
   deleteNoteFromLocalStorage,
@@ -46,6 +51,21 @@ export const flushAllPendingSaves = () => {
     delete debounceTimers[id];
   });
 };
+
+// ── Color shuffle bag ────────────────────────────────────────
+// Ensures all colors appear once per cycle before any repeats.
+let colorBag: NoteColor[] = [];
+let lastPickedColor: NoteColor | null = null;
+
+function pickNextColor(): NoteColor {
+  if (colorBag.length === 0) {
+    do {
+      colorBag = [...NOTE_COLORS].sort(() => Math.random() - 0.5);
+    } while (colorBag[colorBag.length - 1] === lastPickedColor);
+  }
+  lastPickedColor = colorBag.pop()!;
+  return lastPickedColor;
+}
 
 // ── Store ────────────────────────────────────────────────────
 export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
@@ -242,8 +262,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
           { withCredentials: true },
         );
 
-        const randomColor =
-          NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)];
+        const randomColor = pickNextColor();
 
         const { x: randX, y: randY } = get()._randomPosition(420, 300);
 
