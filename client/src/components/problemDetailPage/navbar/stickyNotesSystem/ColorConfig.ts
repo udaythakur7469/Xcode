@@ -83,6 +83,33 @@ export const NOTE_COLOR_MAP: Record<NoteColor, ColorConfig> = {
     dot: "#F87171",
     swatch: "#F87171",
   },
+  orange: {
+    label: "Orange",
+    bg: "#FB923C",
+    header: "#EA580C",
+    text: "#1C1917",
+    border: "#C2410C",
+    dot: "#FB923C",
+    swatch: "#FB923C",
+  },
+  teal: {
+    label: "Teal",
+    bg: "#2DD4BF",
+    header: "#0D9488",
+    text: "#042F2E",
+    border: "#0F766E",
+    dot: "#2DD4BF",
+    swatch: "#2DD4BF",
+  },
+  indigo: {
+    label: "Indigo",
+    bg: "#818CF8",
+    header: "#4F46E5",
+    text: "#1E1B4B",
+    border: "#4338CA",
+    dot: "#818CF8",
+    swatch: "#818CF8",
+  },
 };
 
 export const NOTE_COLORS: NoteColor[] = [
@@ -93,4 +120,7 @@ export const NOTE_COLORS: NoteColor[] = [
   "white",
   "purple",
   "red",
+  "orange",
+  "teal",
+  "indigo",
 ];
