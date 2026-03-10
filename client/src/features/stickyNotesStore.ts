@@ -255,6 +255,34 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
     const newZ = highestZIndex + 1;
 
     if (isAuthenticated) {
+      const randomColor = pickNextColor();
+      const { x: randX, y: randY } = get()._randomPosition(420, 300);
+
+      // Build optimistic note with a temp id — opens the UI instantly
+      const tempId = uuidv4();
+      const optimisticNote: StickyNote = {
+        id: tempId,
+        title: "Untitled Note",
+        content: "",
+        color: randomColor,
+        x: randX,
+        y: randY,
+        width: 420,
+        height: 300,
+        zIndex: newZ,
+        lastModified: Date.now(),
+      };
+
+      saveNoteToLocalStorage(optimisticNote);
+
+      set((state) => ({
+        notes: [optimisticNote, ...state.notes],
+        openNoteIds: [...state.openNoteIds, tempId],
+        highestZIndex: newZ,
+        saveStatus: { ...state.saveStatus, [tempId]: "saving" },
+      }));
+
+      // Sync to DB in the background
       try {
         const response = await axios.post(
           `${API_URL}/stickyNotes`,
@@ -262,11 +290,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
           { withCredentials: true },
         );
 
-        const randomColor = pickNextColor();
-
-        const { x: randX, y: randY } = get()._randomPosition(420, 300);
-
-        const newNote: StickyNote = {
+        const realNote: StickyNote = {
           ...response.data.note,
           zIndex: newZ,
           color: randomColor,
@@ -276,9 +300,8 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
           y: randY,
         };
 
-        // Immediately persist all overrides to DB
         await axios.put(
-          `${API_URL}/stickyNotes/${newNote.id}`,
+          `${API_URL}/stickyNotes/${realNote.id}`,
           {
             zIndex: newZ,
             color: randomColor,
@@ -290,16 +313,35 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
           { withCredentials: true },
         );
 
-        saveNoteToLocalStorage(newNote);
+        deleteNoteFromLocalStorage(tempId);
+        saveNoteToLocalStorage(realNote);
 
+        // Swap temp id for real DB id everywhere
         set((state) => ({
-          notes: [newNote, ...state.notes],
-          openNoteIds: [...state.openNoteIds, newNote.id],
-          highestZIndex: newZ,
-          saveStatus: { ...state.saveStatus, [newNote.id]: "saved" },
+          notes: state.notes.map((n) => (n.id === tempId ? realNote : n)),
+          openNoteIds: state.openNoteIds.map((id) =>
+            id === tempId ? realNote.id : id,
+          ),
+          saveStatus: {
+            ...Object.fromEntries(
+              Object.entries(state.saveStatus).filter(
+                ([key]) => key !== tempId,
+              ),
+            ),
+            [realNote.id]: "saved",
+          },
         }));
       } catch (error) {
         console.error("Failed to create sticky note:", error);
+        // Rollback — remove the optimistic note
+        deleteNoteFromLocalStorage(tempId);
+        set((state) => ({
+          notes: state.notes.filter((n) => n.id !== tempId),
+          openNoteIds: state.openNoteIds.filter((id) => id !== tempId),
+          saveStatus: Object.fromEntries(
+            Object.entries(state.saveStatus).filter(([key]) => key !== tempId),
+          ),
+        }));
       }
     } else {
       // Guest: create locally
@@ -307,7 +349,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
         id: uuidv4(),
         title: "Untitled Note",
         content: "",
-        color: NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)],
+        color: pickNextColor(),
         ...get()._randomPosition(420, 300),
         width: 420,
         height: 300,
