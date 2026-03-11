@@ -5,7 +5,7 @@
 // Place at: src/components/stickyNotes/StickyNoteDialog.tsx
 // ─────────────────────────────────────────────────────────────
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useRef, useEffect } from "react";
 import { Check, ChevronDown, Loader2, Trash2 } from "lucide-react";
 import { NoteColor, SaveStatus, StickyNote } from "@/types/stickyNotes";
 import { NOTE_COLOR_MAP, NOTE_COLORS } from "./ColorConfig";
@@ -33,6 +33,39 @@ const StickyNoteDialog: React.FC<StickyNoteDialogProps> = ({
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState(note.title || "Untitled Note");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isEditingTitle) setTitleDraft(note.title || "Untitled Note");
+  }, [note.title, isEditingTitle]);
+
+  useEffect(() => {
+    if (isEditingTitle) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [isEditingTitle]);
+
+  const commitTitleEdit = () => {
+    const trimmed = titleDraft.trim() || "Untitled Note";
+    setTitleDraft(trimmed);
+    setIsEditingTitle(false);
+    if (trimmed !== note.title)
+      updateNote(note.id, { title: trimmed }, isAuthenticated);
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitTitleEdit();
+    }
+    if (e.key === "Escape") {
+      setTitleDraft(note.title || "Untitled Note");
+      setIsEditingTitle(false);
+    }
+  };
 
   const currentSaveStatus: SaveStatus = saveStatus[note.id] ?? "idle";
   const c = NOTE_COLOR_MAP[note.color] ?? NOTE_COLOR_MAP["yellow"];
@@ -196,7 +229,34 @@ const StickyNoteDialog: React.FC<StickyNoteDialogProps> = ({
         onOpenChange={(open) => {
           if (!open) handleClose();
         }}
-        title={note.title || "Untitled Note"}
+        title={
+          isEditingTitle ? (
+            <input
+              ref={titleInputRef}
+              className="flex-1 bg-transparent outline-none text-sm font-semibold truncate min-w-0 border-current"
+              style={{ color: c.text }}
+              value={titleDraft}
+              onChange={(e) => setTitleDraft(e.target.value)}
+              onBlur={commitTitleEdit}
+              onKeyDown={handleTitleKeyDown}
+              onMouseDown={(e) => e.stopPropagation()}
+              maxLength={80}
+            />
+          ) : (
+            <span
+              className="flex-1 text-sm font-semibold truncate min-w-0 cursor-text hover:opacity-70 transition-opacity"
+              style={{ color: c.text }}
+              title="Click to rename"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditingTitle(true);
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              {titleDraft}
+            </span>
+          )
+        }
         defaultSize={{ width: note.width, height: note.height }}
         defaultPosition={{ x: note.x, y: note.y }}
         zIndex={note.zIndex}

@@ -38,7 +38,7 @@ interface StickyNotesFloatingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
-  title?: string;
+  title?: React.ReactNode;
   defaultSize?: { width: number; height: number };
   defaultPosition?: { x: number; y: number };
   zIndex?: number;
