@@ -186,9 +186,18 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
 
   // ── closeNote ───────────────────────────────────────────
   closeNote: (noteId: string) => {
-    set((state) => ({
-      openNoteIds: state.openNoteIds.filter((id) => id !== noteId),
-    }));
+    set((state) => {
+      // Resolve both directions: noteId may be a realId or a tempId
+      const tempEntry = Object.entries(state.tempIdMap).find(
+        ([tempId, realId]) => realId === noteId || tempId === noteId,
+      );
+      const tempId = tempEntry?.[0];
+      return {
+        openNoteIds: state.openNoteIds.filter(
+          (id) => id !== noteId && id !== tempId,
+        ),
+      };
+    });
   },
 
   // ── randomPosition ──────────────────────────────────────────
@@ -466,13 +475,29 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
     }
 
     // Remove from Zustand state and open list
-    set((state) => ({
-      notes: state.notes.filter((n) => n.id !== id),
-      openNoteIds: state.openNoteIds.filter((nId) => nId !== id),
-      saveStatus: Object.fromEntries(
-        Object.entries(state.saveStatus).filter(([key]) => key !== id),
-      ),
-    }));
+    set((state) => {
+      const tempEntry = Object.entries(state.tempIdMap).find(
+        ([tempId, realId]) => realId === id || tempId === id,
+      );
+      const tempId = tempEntry?.[0];
+      const realId = tempEntry?.[1] ?? id;
+      return {
+        notes: state.notes.filter((n) => n.id !== id && n.id !== realId),
+        openNoteIds: state.openNoteIds.filter(
+          (nId) => nId !== id && nId !== tempId,
+        ),
+        saveStatus: Object.fromEntries(
+          Object.entries(state.saveStatus).filter(
+            ([key]) => key !== id && key !== tempId,
+          ),
+        ),
+        tempIdMap: Object.fromEntries(
+          Object.entries(state.tempIdMap).filter(
+            ([tId, rId]) => tId !== tempId && rId !== id,
+          ),
+        ),
+      };
+    });
 
     // Remove from localStorage
     deleteNoteFromLocalStorage(id);

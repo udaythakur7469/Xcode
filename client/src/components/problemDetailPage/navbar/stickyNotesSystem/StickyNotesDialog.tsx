@@ -238,7 +238,7 @@ const StickyNoteDialog: React.FC<StickyNoteDialogProps> = ({
         >
           {/* Backdrop */}
           <div
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0"
             onClick={() => !isDeleting && setIsDeleteDialogOpen(false)}
           />
 
