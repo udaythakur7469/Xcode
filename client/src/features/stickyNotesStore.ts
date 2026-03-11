@@ -74,6 +74,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
   highestZIndex: 1,
   saveStatus: {},
   isInitialized: false,
+  tempIdMap: {} as Record<string, string>,
 
   // ── setNotes ────────────────────────────────────────────
   setNotes: (notes: StickyNote[]) => set({ notes }),
@@ -259,7 +260,7 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
       const { x: randX, y: randY } = get()._randomPosition(420, 300);
 
       // Build optimistic note with a temp id — opens the UI instantly
-      const tempId = uuidv4();
+      const tempId = `temp-${uuidv4()}`;
       const optimisticNote: StickyNote = {
         id: tempId,
         title: "Untitled Note",
@@ -316,19 +317,18 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
         deleteNoteFromLocalStorage(tempId);
         saveNoteToLocalStorage(realNote);
 
-        // Swap temp id for real DB id everywhere
+        // Store the mapping so operations (update/delete) resolve the real DB id.
+        // Keep tempId in openNoteIds so the mounted dialog never remounts.
         set((state) => ({
           notes: state.notes.map((n) => (n.id === tempId ? realNote : n)),
-          openNoteIds: state.openNoteIds.map((id) =>
-            id === tempId ? realNote.id : id,
-          ),
+          tempIdMap: { ...state.tempIdMap, [tempId]: realNote.id },
           saveStatus: {
             ...Object.fromEntries(
               Object.entries(state.saveStatus).filter(
                 ([key]) => key !== tempId,
               ),
             ),
-            [realNote.id]: "saved",
+            [tempId]: "saved",
           },
         }));
       } catch (error) {
@@ -415,12 +415,15 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
         id,
         async () => {
           try {
-            // Get the latest note data from state to send the most up-to-date version
             const latestNote = get().notes.find((n) => n.id === id);
             if (!latestNote) return;
 
+            // Resolve real DB id in case this note was optimistically created
+            const resolvedId = get().tempIdMap[id] ?? id;
+            if (resolvedId === id && id.startsWith("temp-")) return; // still pending
+
             await axios.put(
-              `${API_URL}/stickyNotes/${id}`,
+              `${API_URL}/stickyNotes/${resolvedId}`,
               {
                 title: latestNote.title,
                 content: latestNote.content,
@@ -477,7 +480,9 @@ export const useStickyNoteStore = create<StickyNoteStore>()((set, get) => ({
     // Delete from DB if authenticated
     if (isAuthenticated) {
       try {
-        await axios.delete(`${API_URL}/stickyNotes/${id}`, {
+        const resolvedId = get().tempIdMap[id] ?? id;
+        if (resolvedId === id && id.startsWith("temp-")) return; // DB record doesn't exist yet
+        await axios.delete(`${API_URL}/stickyNotes/${resolvedId}`, {
           withCredentials: true,
         });
       } catch (error) {

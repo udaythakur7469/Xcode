@@ -71,6 +71,7 @@ export interface StickyNoteStore {
 
   // Whether the store has been initialized (prevents flicker on mount)
   isInitialized: boolean;
+  tempIdMap: Record<string, string>;
 
   // Actions
   initializeStore: (isAuthenticated: boolean) => Promise<void>;

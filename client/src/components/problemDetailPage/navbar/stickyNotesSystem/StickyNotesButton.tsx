@@ -17,7 +17,10 @@ import {
 } from "@/components/ui/hover-card";
 import { useUserStore } from "@/features/userStore";
 import NotesDropdown from "./NotesDropdown";
-import { flushAllPendingSaves, useStickyNoteStore } from "@/features/stickyNotesStore";
+import {
+  flushAllPendingSaves,
+  useStickyNoteStore,
+} from "@/features/stickyNotesStore";
 import { StickyNote } from "@/types/stickyNotes";
 import StickyNoteDialog from "./StickyNotesDialog";
 
@@ -33,6 +36,7 @@ const NotesButton: React.FC = () => {
   const {
     notes,
     openNoteIds,
+    tempIdMap,
     initializeStore,
     createNote,
     openNote,
@@ -134,7 +138,12 @@ const NotesButton: React.FC = () => {
   };
 
   // ── Open notes (the visible floating ones) ────────────────
-  const openNotes = notes.filter((n) => openNoteIds.includes(n.id));
+  const openNotes = openNoteIds
+    .map((id) => {
+      const resolvedId = tempIdMap[id] ?? id;
+      return notes.find((n) => n.id === resolvedId);
+    })
+    .filter(Boolean) as StickyNote[];
 
   const openCount = openNoteIds.length;
 
@@ -177,13 +186,18 @@ const NotesButton: React.FC = () => {
       </div>
 
       {/* ── Render all open floating sticky note dialogs ── */}
-      {openNotes.map((note) => (
-        <StickyNoteDialog
-          key={note.id}
-          note={note}
-          isAuthenticated={isUserAuthenticated}
-        />
-      ))}
+      {openNoteIds.map((id) => {
+        const resolvedId = tempIdMap[id] ?? id;
+        const note = notes.find((n) => n.id === resolvedId);
+        if (!note) return null;
+        return (
+          <StickyNoteDialog
+            key={id}
+            note={note}
+            isAuthenticated={isUserAuthenticated}
+          />
+        );
+      })}
     </>
   );
 };
