@@ -22,93 +22,93 @@ export interface ColorConfig {
 export const NOTE_COLOR_MAP: Record<NoteColor, ColorConfig> = {
   yellow: {
     label: "Yellow",
-    bg: "#FDE047", // yellow-300 — bright, unmistakably yellow
-    header: "#EAB308", // yellow-500 — noticeably darker header strip
-    text: "#1C1917", // stone-900 — near-black, maximum contrast on yellow
-    border: "#CA8A04", // yellow-600
-    dot: "#FDE047",
-    swatch: "#FDE047",
+    bg: "#F5E6A3", // warm parchment yellow — easy on eyes
+    header: "#D4B83A",
+    text: "#1C1810",
+    border: "#C4A820",
+    dot: "#F5E6A3",
+    swatch: "#F5E6A3",
   },
   green: {
     label: "Green",
-    bg: "#4ADE80", // green-400 — vivid, fresh green
-    header: "#16A34A", // green-600
-    text: "#052E16", // green-950 — very dark green, crisp on bright bg
-    border: "#15803D", // green-700
-    dot: "#4ADE80",
-    swatch: "#4ADE80",
+    bg: "#B8E6C8", // sage green — soft, readable
+    header: "#4A9E6B",
+    text: "#0A2E18",
+    border: "#3A8A5A",
+    dot: "#B8E6C8",
+    swatch: "#B8E6C8",
   },
   blue: {
     label: "Blue",
-    bg: "#60A5FA", // blue-400 — clear, vibrant blue
-    header: "#2563EB", // blue-600
-    text: "#EFF6FF", // blue-50 — near-white, excellent on dark blue header
-    border: "#1D4ED8", // blue-700
-    dot: "#60A5FA",
-    swatch: "#60A5FA",
+    bg: "#B8D4F0", // dusty blue — calm, legible
+    header: "#3A6EA8",
+    text: "#0A1628",
+    border: "#2A5A90",
+    dot: "#B8D4F0",
+    swatch: "#B8D4F0",
   },
   pink: {
     label: "Pink",
-    bg: "#F472B6", // pink-400 — punchy, saturated pink
-    header: "#DB2777", // pink-600
-    text: "#1C1917", // stone-900 — dark on bright pink body
-    border: "#BE185D", // pink-700
-    dot: "#F472B6",
-    swatch: "#F472B6",
+    bg: "#F2C4D8", // muted rose — soft, not garish
+    header: "#C4607A",
+    text: "#2A0A14",
+    border: "#B04A66",
+    dot: "#F2C4D8",
+    swatch: "#F2C4D8",
   },
   white: {
     label: "White",
-    bg: "#F8FAFC", // slate-50 — clean off-white
-    header: "#E2E8F0", // slate-200
-    text: "#0F172A", // slate-900 — crisp black text
-    border: "#CBD5E1", // slate-300
-    dot: "#E2E8F0",
-    swatch: "#F8FAFC",
+    bg: "#F0EEE8", // warm off-white — less harsh than pure white
+    header: "#D8D4CC",
+    text: "#1C1C1E",
+    border: "#C8C4BC",
+    dot: "#E8E4DC",
+    swatch: "#F0EEE8",
   },
   purple: {
     label: "Purple",
-    bg: "#C084FC", // purple-400 — rich, vivid purple
-    header: "#9333EA", // purple-600
-    text: "#1C1917", // stone-900 — dark on bright purple
-    border: "#7E22CE", // purple-700
-    dot: "#C084FC",
-    swatch: "#C084FC",
+    bg: "#D4B8F0", // lavender — rich but not blinding
+    header: "#7A4AB8",
+    text: "#1A0A30",
+    border: "#6A3AA8",
+    dot: "#D4B8F0",
+    swatch: "#D4B8F0",
   },
   red: {
     label: "Red",
-    bg: "#F87171", // red-400 — vivid, warm red
-    header: "#DC2626", // red-600
-    text: "#1C1917", // stone-900 — dark on bright red
-    border: "#B91C1C", // red-700
-    dot: "#F87171",
-    swatch: "#F87171",
+    bg: "#F2B8B8", // dusty red — warm, not alarming
+    header: "#B84A4A",
+    text: "#2A0808",
+    border: "#A03A3A",
+    dot: "#F2B8B8",
+    swatch: "#F2B8B8",
   },
   orange: {
     label: "Orange",
-    bg: "#FB923C",
-    header: "#EA580C",
-    text: "#1C1917",
-    border: "#C2410C",
-    dot: "#FB923C",
-    swatch: "#FB923C",
+    bg: "#F5D4A8", // warm peach — easy on eyes
+    header: "#C47A28",
+    text: "#2A1408",
+    border: "#B46A18",
+    dot: "#F5D4A8",
+    swatch: "#F5D4A8",
   },
   teal: {
     label: "Teal",
-    bg: "#2DD4BF",
-    header: "#0D9488",
-    text: "#042F2E",
-    border: "#0F766E",
-    dot: "#2DD4BF",
-    swatch: "#2DD4BF",
+    bg: "#A8E0D8", // muted teal — fresh, professional
+    header: "#2A8A7E",
+    text: "#042A26",
+    border: "#1A7A6E",
+    dot: "#A8E0D8",
+    swatch: "#A8E0D8",
   },
   indigo: {
     label: "Indigo",
-    bg: "#818CF8",
-    header: "#4F46E5",
-    text: "#1E1B4B",
-    border: "#4338CA",
-    dot: "#818CF8",
-    swatch: "#818CF8",
+    bg: "#C0C8F0", // soft periwinkle — pairs well with dark UI
+    header: "#4A52B8",
+    text: "#0A0E30",
+    border: "#3A42A8",
+    dot: "#C0C8F0",
+    swatch: "#C0C8F0",
   },
 };
 
