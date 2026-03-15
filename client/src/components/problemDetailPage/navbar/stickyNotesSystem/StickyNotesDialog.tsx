@@ -16,6 +16,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdownMenu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/delete-dialog";
 import StickyNotesFloatingDialog from "./StickyNotesFloatingDialog";
 import { useStickyNoteStore } from "@/features/stickyNotesStore";
 
@@ -283,58 +293,41 @@ const StickyNoteDialog: React.FC<StickyNoteDialogProps> = ({
         />
       </StickyNotesFloatingDialog>
 
-      {/*
-        Delete confirmation dialog.
-        Rendered via a fixed overlay at z-index 999999 so it always
-        sits above all open sticky notes regardless of their zIndex.
-        We build this manually (no Shadcn Dialog) to avoid portal
-        z-index conflicts.
-      */}
-      {isDeleteDialogOpen && (
-        <div
-          className="fixed inset-0 flex items-center justify-center"
-          style={{ zIndex: 999999 }}
-          onMouseDown={(e) => e.stopPropagation()}
-        >
-          {/* Backdrop */}
-          <div
-            className="absolute inset-0"
-            onClick={() => !isDeleting && setIsDeleteDialogOpen(false)}
-          />
-
-          {/* Dialog box */}
-          <div className="relative bg-background border border-border rounded-xl shadow-2xl p-6 w-full max-w-sm mx-4">
-            <h2 className="text-base font-semibold mb-1">Delete Note</h2>
-            <p className="text-sm text-muted-foreground mb-5">
-              Are you sure you want to delete &quot;
-              {note.title || "Untitled Note"}&quot;? This cannot be undone.
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsDeleteDialogOpen(false)}
-                disabled={isDeleting}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Deleting…
-                  </>
-                ) : (
-                  "Delete"
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+      >
+        <AlertDialogContent style={{ zIndex: 999999 }}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex flex-row justify-center">
+              Delete Note
+            </AlertDialogTitle>
+            <AlertDialogDescription className="flex flex-col justify-center">
+              <span className="flex flex-row justify-center">
+                Are you sure you want to delete &quot;{" "}
+                {note.title || "Untitled Note"}&quot;? This cannot be undone.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-row justify-center space-x-4">
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 shadow-none"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting…
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };
