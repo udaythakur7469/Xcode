@@ -143,11 +143,11 @@ const CommentSystem: React.FC<CommentSystemProps> = ({
 
       {/* ── Load more top-level comments ────────────────────────── */}
       {hasMore && (
-        <div className="mt-6 text-center">
+        <div className="mt-6 mb-3 text-center">
           <button
             onClick={handleLoadMore}
             disabled={isLoadingMore}
-            className="px-6 py-2 text-sm text-zinc-400 border border-zinc-700 rounded-lg hover:border-zinc-500 hover:text-zinc-200 transition-colors disabled:opacity-40"
+            className="px-6 py-2 text-sm text-white border border-zinc-700 rounded-lg hover:border-zinc-500 hover:text-white transition-colors disabled:opacity-40"
           >
             {isLoadingMore ? "Loading…" : "Load more comments"}
           </button>

@@ -243,7 +243,7 @@ const StickyNoteDialog: React.FC<StickyNoteDialogProps> = ({
           isEditingTitle ? (
             <input
               ref={titleInputRef}
-              className="flex-1 bg-transparent outline-none text-sm font-semibold truncate min-w-0 border-current"
+              className="flex-1 bg-transparent outline-none text-sm font-semibold truncate min-w-0 border-current border p-1 rounded-md"
               style={{ color: c.text }}
               value={titleDraft}
               onChange={(e) => setTitleDraft(e.target.value)}
