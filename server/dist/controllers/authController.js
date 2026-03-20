@@ -34,7 +34,11 @@ export const login = async (req, res, next) => {
         const { email, password } = req.body;
         const checkUser = await verifyUser({ email, password });
         generateAccessTokenAndSetCookie(res, checkUser.id);
-        generateRefreshTokenAndSetCookie(res, checkUser.id);
+        const refreshToken = generateRefreshTokenAndSetCookie(res, checkUser.id);
+        await prisma.user.update({
+            where: { id: checkUser.id },
+            data: { refreshToken },
+        });
         res.status(200).json({
             success: true,
             message: "Logged in successfully",

@@ -59,8 +59,12 @@ export const login = async (
     const checkUser = await verifyUser({ email, password });
 
     generateAccessTokenAndSetCookie(res, checkUser.id);
+    const refreshToken = generateRefreshTokenAndSetCookie(res, checkUser.id);
 
-    generateRefreshTokenAndSetCookie(res, checkUser.id);
+    await prisma.user.update({
+      where: { id: checkUser.id },
+      data: { refreshToken },
+    });
 
     res.status(200).json({
       success: true,
