@@ -152,7 +152,7 @@ interface PostData {
   manageDraftPost: (
     id: string,
     action: "rename" | "post" | "delete",
-    title?: string
+    title?: string,
   ) => Promise<void>;
   getPostBaseTemplate: (title: string) => Promise<void>;
   fetchPostTags: () => Promise<void>;
@@ -162,7 +162,7 @@ interface PostData {
     problemTitle: string,
     postTags: string[],
     content: string,
-    isDraftPost: boolean
+    isDraftPost: boolean,
   ) => Promise<void>;
   getPostCards: (problemTitle: string) => Promise<void>;
   getDraftPosts: (problemTitle: string) => Promise<void>;
@@ -176,7 +176,7 @@ interface PostData {
     title: string,
     tags: string[],
     content: string,
-    publish: boolean
+    publish: boolean,
   ) => Promise<any>;
   getFullPostById: (id: string) => Promise<FullPostData>;
 }
@@ -258,7 +258,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
       const response = await axios.post(
         `${API_URL}/post/validateTag`,
         { tag },
-        { params: { action } }
+        { params: { action } },
       );
 
       const validationData: TagValidation = response.data;
@@ -374,42 +374,89 @@ export const usePostStore = create<PostData>()((set, get) => ({
   },
 
   reactToPost: async (postId: string, action: "like" | "dislike") => {
-    set({ isReactingToPost: true, postReactionError: null });
+    set({ postReactionError: null });
+
+    const currentPosts = get().getPostCardData;
+    const currentPost = currentPosts?.find((p) => p.id === postId);
+
+    // Nothing to update if the post isn't in the store yet
+    if (!currentPost || !currentPosts) return;
+
+    // ── Step 1: Snapshot for rollback ──────────────────────────────────────
+    const snapshot = currentPosts;
+
+    // ── Step 2: Calculate optimistic state ────────────────────────────────
+    const prevReaction = currentPost.userReaction ?? null;
+    const isSameAction = prevReaction === action;
+    const isSwitch = prevReaction !== null && prevReaction !== action;
+
+    // New userReaction: toggle off if same, switch/set otherwise
+    const newReaction: "like" | "dislike" | null = isSameAction ? null : action;
+
+    // Delta for likes
+    let likesDelta = 0;
+    if (action === "like") {
+      likesDelta = isSameAction ? -1 : 1; // toggle off → -1, add/switch → +1
+    } else if (isSwitch && prevReaction === "like") {
+      likesDelta = -1; // switching away from like
+    }
+
+    // Delta for dislikes
+    let dislikesDelta = 0;
+    if (action === "dislike") {
+      dislikesDelta = isSameAction ? -1 : 1; // toggle off → -1, add/switch → +1
+    } else if (isSwitch && prevReaction === "dislike") {
+      dislikesDelta = -1; // switching away from dislike
+    }
+
+    // ── Step 3: Apply optimistic update ───────────────────────────────────
+    const optimisticPosts = currentPosts.map((post) =>
+      post.id === postId
+        ? {
+            ...post,
+            likes: Math.max(0, post.likes + likesDelta),
+            dislikes: Math.max(0, post.dislikes + dislikesDelta),
+            userReaction: newReaction,
+          }
+        : post,
+    );
+
+    set({ getPostCardData: optimisticPosts, isReactingToPost: true });
+
+    // ── Step 4: Fire API call ──────────────────────────────────────────────
     try {
       const response = await axios.post(
         `${API_URL}/post/postReaction`,
         { action },
-        { params: { postId: postId } }
+        { params: { postId } },
       );
 
-      // Update the specific post in the post cards array
-      const currentPosts = get().getPostCardData;
-      if (currentPosts) {
-        const updatedPosts = currentPosts.map((post) => {
-          if (post.id === postId) {
-            return {
+      // ── Step 5a: Reconcile with server truth ──────────────────────────
+      // The server is the source of truth for final counts; use its values.
+      const reconciledPosts = get().getPostCardData!.map((post) =>
+        post.id === postId
+          ? {
               ...post,
               likes: response.data.likes,
               dislikes: response.data.dislikes,
               userReaction: response.data.message.includes("removed")
                 ? null
                 : action,
-            };
-          }
-          return post;
-        });
+            }
+          : post,
+      );
 
-        set({
-          getPostCardData: updatedPosts,
-          isReactingToPost: false,
-        });
-      }
-
+      set({ getPostCardData: reconciledPosts, isReactingToPost: false });
       return response.data;
     } catch (error: any) {
+      // ── Step 5b: Roll back on failure ─────────────────────────────────
       const errMsg =
         error.response?.data?.message || "Error processing reaction";
-      set({ postReactionError: errMsg, isReactingToPost: false });
+      set({
+        getPostCardData: snapshot,
+        isReactingToPost: false,
+        postReactionError: errMsg,
+      });
       throw error;
     }
   },
@@ -478,7 +525,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
     title: string,
     tags: string[],
     content: string,
-    publish: boolean
+    publish: boolean,
   ) => {
     set({ isUpdatingDraftPost: true, updateDraftPostError: null });
 
@@ -493,7 +540,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
         },
         {
           params: { id },
-        }
+        },
       );
 
       set({ isUpdatingDraftPost: false });
@@ -512,7 +559,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
   manageDraftPost: async (
     id: string,
     action: "rename" | "post" | "delete",
-    title?: string
+    title?: string,
   ) => {
     set({ isManagingDraftPost: true, manageDraftPostError: null });
 
@@ -532,7 +579,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
         requestBody,
         {
           params: { action },
-        }
+        },
       );
 
       // If action is delete or post, remove the draft from the DraftPosts list
@@ -540,7 +587,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
         const currentDrafts = get().DraftPosts;
         if (currentDrafts) {
           const updatedDrafts = currentDrafts.filter(
-            (draft) => draft.id !== id
+            (draft) => draft.id !== id,
           );
           set({ DraftPosts: updatedDrafts });
         }
@@ -551,7 +598,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
         const currentDrafts = get().DraftPosts;
         if (currentDrafts) {
           const updatedDrafts = currentDrafts.map((draft) =>
-            draft.id === id ? { ...draft, title } : draft
+            draft.id === id ? { ...draft, title } : draft,
           );
           set({ DraftPosts: updatedDrafts });
         }
