@@ -110,7 +110,7 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
     try {
       const response = await axios.post(
         `${API_URL}/problem/createProblem`,
-        createProblemData
+        createProblemData,
       );
       set({ isLoading: false, error: null, problem: response.data });
       console.log("Problem created:", response.data);
@@ -194,7 +194,7 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
         `${API_URL}/problem/getProblemReactions`,
         {
           params: { title },
-        }
+        },
       );
 
       // Get the current problem and update only the likes, dislikes and userReaction
@@ -231,7 +231,7 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
           `${API_URL}/problem/getProblemReactions`,
           {
             params: { title },
-          }
+          },
         );
         reactionData = reactionResponse.data;
       } catch (reactionError) {
@@ -296,7 +296,7 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
     } catch (testCasesError: any) {
       console.error(
         "Error fetching test cases:",
-        testCasesError.response?.data
+        testCasesError.response?.data,
       ); // Debug log
       const errMsg =
         testCasesError.response?.data?.message ||
@@ -307,26 +307,73 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
   },
 
   reactToProblem: async (title: string, action: "like" | "dislike") => {
-    set({ isReacting: true, error: null });
+    set({ error: null });
+
+    const currentProblem = get().problem;
+
+    // Nothing to update if problem isn't in the store yet
+    if (!currentProblem || currentProblem.title !== title) return;
+
+    // ── Step 1: Snapshot for rollback ──────────────────────────────────────
+    const snapshot = currentProblem;
+
+    // ── Step 2: Calculate optimistic state ────────────────────────────────
+    const prevReaction = currentProblem.userReaction ?? null;
+    const isSameAction = prevReaction === action;
+    const isSwitch = prevReaction !== null && prevReaction !== action;
+
+    // New userReaction: toggle off if same, switch/set otherwise
+    const newReaction: "like" | "dislike" | null = isSameAction ? null : action;
+
+    // Delta for likes
+    let likesDelta = 0;
+    if (action === "like") {
+      likesDelta = isSameAction ? -1 : 1; // toggle off → -1, add/switch → +1
+    } else if (isSwitch && prevReaction === "like") {
+      likesDelta = -1; // switching away from like
+    }
+
+    // Delta for dislikes
+    let dislikesDelta = 0;
+    if (action === "dislike") {
+      dislikesDelta = isSameAction ? -1 : 1; // toggle off → -1, add/switch → +1
+    } else if (isSwitch && prevReaction === "dislike") {
+      dislikesDelta = -1; // switching away from dislike
+    }
+
+    const currentLikes = currentProblem.likes ?? 0;
+    const currentDislikes = currentProblem.dislikes ?? 0;
+
+    // ── Step 3: Apply optimistic update ───────────────────────────────────
+    set({
+      problem: {
+        ...currentProblem,
+        likes: Math.max(0, currentLikes + likesDelta),
+        dislikes: Math.max(0, currentDislikes + dislikesDelta),
+        userReaction: newReaction,
+      },
+      isReacting: true,
+    });
+
+    // ── Step 4: Fire API call ──────────────────────────────────────────────
     try {
       const response = await axios.post(
         `${API_URL}/problem/reaction`,
         { action },
-        { params: { title } }
+        { params: { title } },
       );
 
-      // Update the problem state with the new like/dislike counts
-      const currentProblem = get().problem;
-      if (currentProblem && currentProblem.title === title) {
+      // ── Step 5a: Reconcile with server truth ──────────────────────────
+      const latestProblem = get().problem;
+      if (latestProblem && latestProblem.title === title) {
         set({
           problem: {
-            ...currentProblem,
+            ...latestProblem,
             likes: response.data.likes,
             dislikes: response.data.dislikes,
-            userReaction:
-              action === response.data.message.includes("removed")
-                ? null
-                : action,
+            userReaction: response.data.message.includes("removed")
+              ? null
+              : action,
           },
           isReacting: false,
         });
@@ -334,9 +381,14 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
 
       return response.data;
     } catch (error: any) {
+      // ── Step 5b: Roll back on failure ─────────────────────────────────
       const errMsg =
         error.response?.data?.message || "Error processing reaction";
-      set({ error: errMsg, isReacting: false });
+      set({
+        problem: snapshot,
+        isReacting: false,
+        error: errMsg,
+      });
       throw error;
     }
   },

@@ -1,6 +1,8 @@
+"use client";
+
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation"; // Import useSearchParams
-import { useProblemStore } from "@/features/problemStore"; // Import the store
+import { useSearchParams } from "next/navigation";
+import { useProblemStore } from "@/features/problemStore";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { MoonLoader } from "react-spinners";
 import { CircleCheckBig, Lightbulb, ThumbsDown, ThumbsUp } from "lucide-react";
@@ -13,7 +15,7 @@ import { formatCount } from "@/services/countService";
 type QuestionDataProps = {};
 
 type ProblemDetails = {
-  id?: number; // Added id field
+  id?: number;
   title: string;
   description: string;
   difficulty: "easy" | "medium" | "hard";
@@ -25,39 +27,34 @@ type ProblemDetails = {
     output: string;
     explanation: string;
   }[];
-  hints: string[]; // Updated to array of strings
+  hints: string[];
   testCases: { input: string; expectedOutput: string }[];
   problemStats: {
     totalAttempts: number;
     totalSolved: number;
     acceptanceRate: number;
   };
-  userReaction?: "like" | "dislike" | null; // Added userReaction field
-  likes?: number; // Added likes field
-  dislikes?: number; // Added dislikes field
+  userReaction?: "like" | "dislike" | null;
+  likes?: number;
+  dislikes?: number;
 };
 
 const QuestionData: React.FC<QuestionDataProps> = () => {
-  const searchParams = useSearchParams(); // Get search params
-  const problemTitle = searchParams.get("title"); // Get the title query parameter
+  const searchParams = useSearchParams();
+  const problemTitle = searchParams.get("title");
+
   const {
     getProblemByTitle,
     reactToProblem,
-    refreshProblemLikesAndDislikes,
     isReacting,
     problem: storeProblem,
-  } = useProblemStore(); // Get the getProblemByTitle function from the store
+  } = useProblemStore();
+
   const [problem, setProblem] = useState<ProblemDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [reactionType, setReactionType] = useState<"like" | "dislike" | null>(
-    null
-  );
-  const [clickedAction, setClickedAction] = useState<"like" | "dislike" | null>(
-    null
-  );
 
-  // Fetch problem details from the backend
+  // Fetch problem details on mount
   useEffect(() => {
     const fetchProblemDetails = async () => {
       if (!problemTitle) {
@@ -67,11 +64,9 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
       }
 
       try {
-        const problemDetails = await getProblemByTitle(problemTitle); // Fetch problem details
+        const problemDetails = await getProblemByTitle(problemTitle);
         setProblem(problemDetails);
-        // Set initial reaction state based on the user's previous reaction
-        setReactionType(problemDetails.userReaction || null);
-      } catch (error) {
+      } catch (error: any) {
         setError(error.message);
       } finally {
         setIsLoading(false);
@@ -79,54 +74,35 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
     };
 
     fetchProblemDetails();
+    // Removed the 1-minute polling interval — optimistic updates + reconciliation
+    // on every reaction makes periodic polling redundant.
+  }, [problemTitle, getProblemByTitle]);
 
-    // Setup a refresh interval for likes/dislikes
-    const intervalId = setInterval(() => {
-      if (problemTitle) {
-        refreshProblemLikesAndDislikes(problemTitle).catch(console.error);
-      }
-    }, 60000); // Refresh every 1 minute
-
-    return () => clearInterval(intervalId);
-  }, [problemTitle, getProblemByTitle, refreshProblemLikesAndDislikes]);
-
+  // Alt+H keyboard shortcut to open hints dialog
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
       const isAlt = e.altKey;
       const isH = e.key === "h" || e.key === "H";
-
-      // Alt + H to open hints dialog
       if (isAlt && isH && !isLoading && problem) {
         e.preventDefault();
-        // Trigger the dialog by programmatically clicking the trigger
         const hintButton = document.querySelector("[data-hint-trigger]");
         if (hintButton instanceof HTMLElement) {
           hintButton.click();
         }
       }
     };
-
     window.addEventListener("keydown", keyboardShortcut);
-
-    return () => {
-      window.removeEventListener("keydown", keyboardShortcut);
-    };
+    return () => window.removeEventListener("keydown", keyboardShortcut);
   }, [isLoading, problem]);
 
-  // Handle user reactions (like/dislike)
+  // Handle like/dislike — store handles optimistic update + rollback
   const handleReaction = async (action: "like" | "dislike") => {
     if (!problemTitle || !storeProblem || isReacting) return;
-
     try {
-      // Set which button is being clicked
-      setClickedAction(action);
-
       await reactToProblem(problemTitle, action);
     } catch (error) {
-      console.error("Error handling reaction:", error);
-    } finally {
-      // Reset the clicked state when done
-      setClickedAction(null);
+      // Error handled in store (state rolled back)
+      console.error("Reaction failed:", error);
     }
   };
 
@@ -162,6 +138,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
               </div>
             </div>
           </div>
+
           {/* Difficulty Badge & Tags */}
           <div className="flex flex-row items-center p-2 px-4">
             <Badge
@@ -173,13 +150,14 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
                   problem.difficulty === "easy"
                     ? "text-green-500"
                     : problem.difficulty === "medium"
-                    ? "text-yellow-400"
-                    : "text-red-500"
+                      ? "text-yellow-400"
+                      : "text-red-500"
                 }`}
               >
                 {problem.difficulty}
               </p>
             </Badge>
+
             {problem.tags.map((tag, index) => (
               <Badge
                 key={index}
@@ -189,6 +167,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
                 {tag}
               </Badge>
             ))}
+
             <Dialog>
               <DialogTrigger asChild>
                 <Badge
@@ -204,57 +183,50 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
                 data={problem.hints.map((hintObj) => hintObj.hint)}
               />
             </Dialog>
-            {/* Like badge button */}
+
+            {/* Like badge button — reads from storeProblem for live optimistic values */}
             <Badge
               variant="secondary"
               onClick={() => handleReaction("like")}
-              className={`px-3 py-1 flex items-center ml-2 ${
-                storeProblem.userReaction === "like" ? "bg-secondary" : ""
-              } ${
-                isReacting ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
+              className={`px-3 py-1 flex items-center ml-2 transition-all duration-150 ${
+                isReacting
+                  ? "opacity-70 cursor-not-allowed"
+                  : "cursor-pointer hover:opacity-80"
               }`}
-              style={{ pointerEvents: isReacting ? "none" : "auto" }} // This ensures the click is fully disabled
             >
-              {isReacting && clickedAction === "like" ? (
-                <MoonLoader size={14} className="mr-1" color="#ffffff" />
-              ) : (
-                <ThumbsUp
-                  className={`h-4 w-4 mr-1 ${
-                    storeProblem.userReaction === "like"
-                      ? "text-green-600 fill-green-600"
-                      : ""
-                  }`}
-                />
-              )}
-              {formatCount(storeProblem.likes) || 0}
+              <ThumbsUp
+                className={`h-4 w-4 mr-1 transition-all duration-150 ${
+                  storeProblem?.userReaction === "like"
+                    ? "text-green-600 fill-green-600 scale-110"
+                    : ""
+                }`}
+              />
+              {formatCount(storeProblem?.likes ?? 0)}
             </Badge>
 
-            {/* Dislike badge button */}
+            {/* Dislike badge button — reads from storeProblem for live optimistic values */}
             <Badge
               variant="secondary"
               onClick={() => handleReaction("dislike")}
-              className={`px-3 py-1 flex items-center ml-2 ${
-                storeProblem.userReaction === "dislike" ? "bg-secondary" : ""
-              } ${
-                isReacting ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
+              className={`px-3 py-1 flex items-center ml-2 transition-all duration-150 ${
+                isReacting
+                  ? "opacity-70 cursor-not-allowed"
+                  : "cursor-pointer hover:opacity-80"
               }`}
-              style={{ pointerEvents: isReacting ? "none" : "auto" }} // This ensures the click is fully disabled
             >
-              {isReacting && clickedAction === "dislike" ? (
-                <MoonLoader size={14} className="mr-1" color="#ffffff" />
-              ) : (
-                <ThumbsDown
-                  className={`h-4 w-4 mr-1 ${
-                    storeProblem.userReaction === "dislike"
-                      ? "text-red-600 fill-red-600"
-                      : ""
-                  }`}
-                />
-              )}
-              {formatCount(storeProblem.dislikes) || 0}
+              <ThumbsDown
+                className={`h-4 w-4 mr-1 transition-all duration-150 ${
+                  storeProblem?.userReaction === "dislike"
+                    ? "text-red-600 fill-red-600 scale-110"
+                    : ""
+                }`}
+              />
+              {formatCount(storeProblem?.dislikes ?? 0)}
             </Badge>
+
             <StatsDialog stats={problem.problemStats} />
           </div>
+
           {/* Description */}
           <div className="ml-4 mr-4 mt-4">
             {problem.description
@@ -266,6 +238,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
                 </p>
               ))}
           </div>
+
           {/* Examples */}
           <div className="ml-4 mr-4 mt-8">
             <h3 className="text-xl font-semibold mb-4">Examples:</h3>
@@ -298,4 +271,5 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
     </ScrollArea>
   );
 };
+
 export default QuestionData;
