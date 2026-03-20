@@ -83,6 +83,11 @@ interface Problemdata {
   getTestCasesByTitle: (title: string) => Promise<void>;
   reactToProblem: (title: string, action: "like" | "dislike") => Promise<any>;
   refreshProblemLikesAndDislikes: (title: string) => Promise<any>;
+  applyRemoteProblemReaction: (payload: {
+    problemId: number;
+    likes: number;
+    dislikes: number;
+  }) => void;
 }
 
 export const useProblemStore = create<Problemdata>()((set, get) => ({
@@ -391,5 +396,13 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
       });
       throw error;
     }
+  },
+
+  applyRemoteProblemReaction: ({ problemId, likes, dislikes }) => {
+    const currentProblem = get().problem;
+    if (!currentProblem || currentProblem.id !== problemId) return;
+    set({
+      problem: { ...currentProblem, likes, dislikes },
+    });
   },
 }));

@@ -11,6 +11,7 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import HintsDialog from "../dialogBoxes/HintsDialog";
 import StatsDialog from "../dialogBoxes/StatsDialog";
 import { formatCount } from "@/services/countService";
+import { useSocket } from "@/context/socketContext";
 
 type QuestionDataProps = {};
 
@@ -48,13 +49,17 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
     reactToProblem,
     isReacting,
     problem: storeProblem,
+    applyRemoteProblemReaction,
   } = useProblemStore();
 
   const [problem, setProblem] = useState<ProblemDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch problem details on mount
+  // ── Socket integration ─────────────────────────────────────────────────
+  const { socket } = useSocket();
+
+  // Fetch problem on mount
   useEffect(() => {
     const fetchProblemDetails = async () => {
       if (!problemTitle) {
@@ -62,7 +67,6 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
         setIsLoading(false);
         return;
       }
-
       try {
         const problemDetails = await getProblemByTitle(problemTitle);
         setProblem(problemDetails);
@@ -72,36 +76,56 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
         setIsLoading(false);
       }
     };
-
     fetchProblemDetails();
-    // Removed the 1-minute polling interval — optimistic updates + reconciliation
-    // on every reaction makes periodic polling redundant.
   }, [problemTitle, getProblemByTitle]);
 
-  // Alt+H keyboard shortcut to open hints dialog
+  // Join the socket room once the problem id is known; leave on unmount
+  useEffect(() => {
+    if (!socket || !storeProblem?.id) return;
+
+    const problemId = storeProblem.id;
+    socket.emit("problem:join", problemId);
+
+    // Listen for reaction updates from OTHER users
+    const handleReactionUpdate = (payload: {
+      problemId: number;
+      likes: number;
+      dislikes: number;
+    }) => {
+      applyRemoteProblemReaction(payload);
+    };
+
+    socket.on("problem:reaction:updated", handleReactionUpdate);
+
+    return () => {
+      socket.emit("problem:leave", problemId);
+      socket.off("problem:reaction:updated", handleReactionUpdate);
+    };
+  }, [socket, storeProblem?.id, applyRemoteProblemReaction]);
+
+  // Alt+H shortcut to open hints dialog
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
-      const isAlt = e.altKey;
-      const isH = e.key === "h" || e.key === "H";
-      if (isAlt && isH && !isLoading && problem) {
+      if (
+        e.altKey &&
+        (e.key === "h" || e.key === "H") &&
+        !isLoading &&
+        problem
+      ) {
         e.preventDefault();
         const hintButton = document.querySelector("[data-hint-trigger]");
-        if (hintButton instanceof HTMLElement) {
-          hintButton.click();
-        }
+        if (hintButton instanceof HTMLElement) hintButton.click();
       }
     };
     window.addEventListener("keydown", keyboardShortcut);
     return () => window.removeEventListener("keydown", keyboardShortcut);
   }, [isLoading, problem]);
 
-  // Handle like/dislike — store handles optimistic update + rollback
   const handleReaction = async (action: "like" | "dislike") => {
     if (!problemTitle || !storeProblem || isReacting) return;
     try {
       await reactToProblem(problemTitle, action);
     } catch (error) {
-      // Error handled in store (state rolled back)
       console.error("Reaction failed:", error);
     }
   };
@@ -128,14 +152,12 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
               <p className="text-5xl">{problem.title}</p>
             </div>
             <div className="px-2">
-              <div className="text-md">
-                {problem.solved && (
-                  <div className="flex flex-row items-center">
-                    <p>Solved</p>
-                    <CircleCheckBig className="text-green-500 ml-1 h-4 w-4" />
-                  </div>
-                )}
-              </div>
+              {problem.solved && (
+                <div className="flex flex-row items-center text-md">
+                  <p>Solved</p>
+                  <CircleCheckBig className="text-green-500 ml-1 h-4 w-4" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -184,7 +206,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
               />
             </Dialog>
 
-            {/* Like badge button — reads from storeProblem for live optimistic values */}
+            {/* Like button */}
             <Badge
               variant="secondary"
               onClick={() => handleReaction("like")}
@@ -204,7 +226,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
               {formatCount(storeProblem?.likes ?? 0)}
             </Badge>
 
-            {/* Dislike badge button — reads from storeProblem for live optimistic values */}
+            {/* Dislike button */}
             <Badge
               variant="secondary"
               onClick={() => handleReaction("dislike")}

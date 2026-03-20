@@ -179,6 +179,11 @@ interface PostData {
     publish: boolean,
   ) => Promise<any>;
   getFullPostById: (id: string) => Promise<FullPostData>;
+  applyRemotePostReaction: (payload: {
+    postId: number;
+    likes: number;
+    dislikes: number;
+  }) => void;
 }
 
 export const usePostStore = create<PostData>()((set, get) => ({
@@ -490,6 +495,17 @@ export const usePostStore = create<PostData>()((set, get) => ({
       console.error("Error refreshing post reactions:", error);
       throw new Error("Failed to refresh post reactions");
     }
+  },
+
+  applyRemotePostReaction: ({ postId, likes, dislikes }) => {
+    const currentPosts = get().getPostCardData;
+    if (!currentPosts) return;
+
+    const updatedPosts = currentPosts.map((post) =>
+      // postId from socket is a number; post.id is a string — coerce to compare
+      post.id === String(postId) ? { ...post, likes, dislikes } : post,
+    );
+    set({ getPostCardData: updatedPosts });
   },
 
   getDraftPostData: async (id: string) => {

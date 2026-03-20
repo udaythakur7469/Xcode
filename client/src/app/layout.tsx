@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/themes/themeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import ClientFABWrapper from "@/components/helperComponents/ClientFABWrapper";
 import { CommentPanelProvider } from "@/context/commentPanelContext";
+import { SocketProvider } from "@/context/socketContext";
 
 export const metadata: Metadata = {
   title: "Xcode",
@@ -29,11 +30,13 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <CommentPanelProvider>
-            {children}
-            <Toaster />
-            <ClientFABWrapper />
-          </CommentPanelProvider>
+          <SocketProvider>
+            <CommentPanelProvider>
+              {children}
+              <Toaster />
+              <ClientFABWrapper />
+            </CommentPanelProvider>
+          </SocketProvider>
         </ThemeProvider>
       </body>
     </html>

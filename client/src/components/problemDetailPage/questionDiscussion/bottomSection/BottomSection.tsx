@@ -21,6 +21,7 @@ import PostDialogBox from "../middleSection/dialogBox/PostDialogBox";
 import FullPostPanel from "./postCard/fullPostPanel/FullPostPanel";
 import { AnimatePresence } from "framer-motion";
 import { useCommentPanel } from "@/context/commentPanelContext";
+import { useSocket } from "@/context/socketContext";
 
 type BottomSectionProps = {};
 
@@ -37,6 +38,7 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
     searchPostsError,
     isGettingPostCardData,
     isFetchingCombinedTags,
+    applyRemotePostReaction,
   } = usePostStore();
 
   const { getDraftPosts, DraftPosts, isGettingDraftPosts, DraftPostError } =
@@ -58,8 +60,36 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
 
   const { setPostId } = useCommentPanel();
 
+  // ── Socket integration ─────────────────────────────────────────────────
+  const { socket } = useSocket();
+
   useEffect(() => {
-    // Only make API calls if we're not already loading and have problemTitle
+    if (!socket || !getPostCardData) return;
+
+    // Join a room for each visible post so we receive reaction events for them
+    const postIds = getPostCardData.map((p) => p.id);
+    postIds.forEach((id) => socket.emit("post:join", id));
+
+    // Listen for reaction updates from OTHER users
+    const handleReactionUpdate = (payload: {
+      postId: number;
+      likes: number;
+      dislikes: number;
+    }) => {
+      applyRemotePostReaction(payload);
+    };
+
+    socket.on("post:reaction:updated", handleReactionUpdate);
+
+    // Leave all rooms and remove listener on cleanup
+    return () => {
+      postIds.forEach((id) => socket.emit("post:leave", id));
+      socket.off("post:reaction:updated", handleReactionUpdate);
+    };
+  }, [socket, getPostCardData, applyRemotePostReaction]);
+  // Re-runs whenever the post list changes (e.g. after initial fetch)
+
+  useEffect(() => {
     if (
       problemTitle &&
       !isGettingPostCardData &&
@@ -80,22 +110,13 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   ]);
 
   useEffect(() => {
-    if (getPostCardData) {
-      setPosts(getPostCardData);
-    }
-    if (DraftPosts) {
-      setDraftPosts(DraftPosts);
-    }
-
-    if (draftPosts.length > 0) {
-      setDraftPostsExist(true);
-    }
+    if (getPostCardData) setPosts(getPostCardData);
+    if (DraftPosts) setDraftPosts(DraftPosts);
+    if (draftPosts.length > 0) setDraftPostsExist(true);
   }, [getPostCardData, DraftPosts]);
 
-  // Use search results if available, otherwise use regular posts
   const displayPosts = searchResults ? searchResults : posts;
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -107,11 +128,8 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
         setShowDraftPostsDropdown(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const handleFloatingButtonClick = () => {
@@ -122,26 +140,21 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   const handleDraftClick = (draftId: string) => {
     setSelectedDraftId(draftId);
     setIsPostDialogBoxOpen(true);
-    setShowDraftPostsDropdown(false); // Close dropdown after selection
+    setShowDraftPostsDropdown(false);
   };
 
   const handleDialogClose = () => {
     setIsPostDialogBoxOpen(false);
     setSelectedDraftId(null);
-    // Refresh draft posts to show updated data
-    if (problemTitle) {
-      getDraftPosts(problemTitle);
-    }
+    if (problemTitle) getDraftPosts(problemTitle);
   };
 
-  // Add this handler for PostCard clicks
   const handlePostCardClick = (postId: string) => {
     setSelectedPostId(postId);
     setIsFullPostPanelOpen(true);
     setPostId(postId);
   };
 
-  // Add this handler to close FullPostPanel
   const handleFullPostPanelClose = () => {
     setIsFullPostPanelOpen(false);
     setSelectedPostId(null);
@@ -183,6 +196,7 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
             </HoverCardContent>
           </HoverCard>
         ) : null}
+
         {showDraftPostsDropdown && (
           <div
             ref={dropdownRef}
@@ -218,13 +232,12 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
         </ScrollArea>
       </div>
 
-      {/* PostDialogBox for editing draft - lifted to parent */}
       <PostDialogBox
         isOpen={isPostDialogBoxOpen}
         onClose={handleDialogClose}
         draftId={selectedDraftId}
       />
-      {/* Add FullPostPanel with AnimatePresence */}
+
       <AnimatePresence mode="wait">
         {isFullPostPanelOpen && (
           <FullPostPanel
