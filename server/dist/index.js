@@ -1,10 +1,14 @@
 import dotenv from "dotenv";
+import http from "http";
 import app from "./app.js";
 import logger from "./configs/loggerConfig.js";
+import { initSocket } from "./configs/socketConfig.js";
 dotenv.config();
 const PORT = process.env.PORT || 8000;
+const httpServer = http.createServer(app);
+initSocket(httpServer);
 let server;
-server = app.listen(PORT, () => {
+server = httpServer.listen(PORT, () => {
     logger.info(`server listening at port ${PORT}`);
 });
 //handle server errors

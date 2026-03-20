@@ -8,6 +8,7 @@ import {
   validateTagUsingAI,
 } from "../services/postTagsService.js";
 import cloudinary from "../services/uploadService.js";
+import { getIO } from "../configs/socketConfig.js";
 
 
 export const fetchCommentTagsFromS3 = (req, res, next) => {};
@@ -731,25 +732,20 @@ export const getCombinedTags = async (req, res, next) => {
 
 // Post Reaction Controller
 export const postReaction = async (req, res, next) => {
-  const { postId } = req.query; // Get the postId from the query parameters
-  const { action } = req.body; // 'like' or 'dislike'
-
-  // Extract user ID from the JWT payload
+  const { postId } = req.query;
+  const { action } = req.body;
   const userId = req.user.id || req.user.userId;
 
-  // Validate inputs
   if (!postId || typeof postId !== "string") {
     return res
       .status(400)
       .json({ message: "Post ID is required as a query parameter" });
   }
-
   if (!action || (action !== "like" && action !== "dislike")) {
     return res
       .status(400)
       .json({ message: "Action must be either 'like' or 'dislike'" });
   }
-
   if (!userId) {
     return res
       .status(401)
@@ -757,106 +753,83 @@ export const postReaction = async (req, res, next) => {
   }
 
   try {
-    // Find the post by ID
     const post = await prisma.post.findUnique({
       where: { id: parseInt(postId) },
       select: { id: true },
     });
 
-    if (!post) {
-      return res.status(404).json({ message: "Post not found" });
-    }
+    if (!post) return res.status(404).json({ message: "Post not found" });
 
-    // Calculate current likes and dislikes directly from PostReaction
     const [currentLikes, currentDislikes] = await prisma.$transaction([
       prisma.postReaction.count({
-        where: {
-          postId: post.id,
-          type: "like",
-        },
+        where: { postId: post.id, type: "like" },
       }),
       prisma.postReaction.count({
-        where: {
-          postId: post.id,
-          type: "dislike",
-        },
+        where: { postId: post.id, type: "dislike" },
       }),
     ]);
 
-    // Check if the user has already reacted to this post
     const existingReaction = await prisma.postReaction.findUnique({
-      where: {
-        userId_postId: {
-          userId: userId,
-          postId: post.id,
-        },
-      },
+      where: { userId_postId: { userId, postId: post.id } },
     });
 
-    // Handle different scenarios based on existing reaction and new action
-    if (!existingReaction) {
-      // Case 1: No previous reaction, add new reaction
-      await prisma.postReaction.create({
-        data: {
-          userId: userId,
-          postId: post.id,
-          type: action === "like" ? "like" : "dislike",
-        },
-      });
+    let responsePayload: {
+      message: string;
+      likes: number;
+      dislikes: number;
+    };
 
-      return res.status(200).json({
+    if (!existingReaction) {
+      await prisma.postReaction.create({
+        data: { userId, postId: post.id, type: action },
+      });
+      responsePayload = {
         message: `${action === "like" ? "Like" : "Dislike"} added successfully`,
         likes: action === "like" ? currentLikes + 1 : currentLikes,
         dislikes: action === "dislike" ? currentDislikes + 1 : currentDislikes,
-      });
-    } else if (
-      existingReaction.type === (action === "like" ? "like" : "dislike")
-    ) {
-      // Case 2: User clicked the same reaction again, remove it
+      };
+    } else if (existingReaction.type === action) {
       await prisma.postReaction.delete({
-        where: {
-          userId_postId: {
-            userId: userId,
-            postId: post.id,
-          },
-        },
+        where: { userId_postId: { userId, postId: post.id } },
       });
-
-      return res.status(200).json({
-        message: `${
-          action === "like" ? "Like" : "Dislike"
-        } removed successfully`,
+      responsePayload = {
+        message: `${action === "like" ? "Like" : "Dislike"} removed successfully`,
         likes: action === "like" ? currentLikes - 1 : currentLikes,
         dislikes: action === "dislike" ? currentDislikes - 1 : currentDislikes,
-      });
+      };
     } else {
-      // Case 3: User had opposite reaction before, switch reaction
       await prisma.postReaction.update({
-        where: {
-          userId_postId: {
-            userId: userId,
-            postId: post.id,
-          },
-        },
-        data: {
-          type: action === "like" ? "like" : "dislike",
-        },
+        where: { userId_postId: { userId, postId: post.id } },
+        data: { type: action },
       });
-
       const newLikes =
         existingReaction.type === "like" ? currentLikes - 1 : currentLikes + 1;
-
       const newDislikes =
         existingReaction.type === "dislike"
           ? currentDislikes - 1
           : currentDislikes + 1;
-
-      return res.status(200).json({
+      responsePayload = {
         message: `Changed from ${existingReaction.type} to ${action}`,
         likes: newLikes,
         dislikes: newDislikes,
-      });
+      };
     }
+
+    // ── Emit real-time update to all OTHER clients in this post's room ──
+    // We use `to()` (not `emit()`) so the sender doesn't receive their own
+    // event — their UI is already updated by the optimistic update.
+    try {
+      getIO().to(`post:${post.id}`).emit("post:reaction:updated", {
+        postId: post.id,
+        likes: responsePayload.likes,
+        dislikes: responsePayload.dislikes,
+      });
+    } catch (socketErr) {
+      // Non-fatal — socket may not be initialized in test environments
+      logger.warn("Socket emit failed for post reaction:", socketErr);
+    }
+
+    return res.status(200).json(responsePayload);
   } catch (error) {
     console.error("Post reaction error:", error);
     return res

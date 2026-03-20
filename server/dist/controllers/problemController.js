@@ -3,6 +3,7 @@ import createHttpError from "http-errors";
 import logger from "../configs/loggerConfig.js";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
+import { getIO } from "../configs/socketConfig.js";
 export const createProblem = async (req, res, next) => {
     try {
         const { title, description, difficulty, tags, examples, testCases, hints, } = req.body;
@@ -297,12 +298,9 @@ export const getEditorialByProblemTitle = async (req, res, next) => {
     }
 };
 export const problemReaction = async (req, res, next) => {
-    const { title } = req.query; // Get the title from the query parameters
-    const { action } = req.body; // 'like' or 'dislike'
-    // Extract user ID from the JWT payload that was attached by the authMiddleware
-    // The payload structure depends on how you created the JWT
-    const userId = req.user.id || req.user.userId; // Handle different payload structures
-    // Validate inputs
+    const { title } = req.query;
+    const { action } = req.body;
+    const userId = req.user.id || req.user.userId;
     if (!title || typeof title !== "string") {
         return res
             .status(400)
@@ -319,7 +317,6 @@ export const problemReaction = async (req, res, next) => {
             .json({ message: "User ID not found in token payload" });
     }
     try {
-        // Find the problem by title
         const problem = await prisma.problem.findFirst({
             where: { title },
             select: { id: true },
@@ -327,74 +324,42 @@ export const problemReaction = async (req, res, next) => {
         if (!problem) {
             return res.status(404).json({ message: "Problem not found" });
         }
-        // Calculate current likes and dislikes directly from UserProblemReactions
         const [currentLikes, currentDislikes] = await prisma.$transaction([
             prisma.userProblemReactions.count({
-                where: {
-                    problemId: problem.id,
-                    reactionType: "like",
-                },
+                where: { problemId: problem.id, reactionType: "like" },
             }),
             prisma.userProblemReactions.count({
-                where: {
-                    problemId: problem.id,
-                    reactionType: "dislike",
-                },
+                where: { problemId: problem.id, reactionType: "dislike" },
             }),
         ]);
-        // Check if the user has already reacted to this problem
         const existingReaction = await prisma.userProblemReactions.findUnique({
-            where: {
-                userId_problemId: {
-                    userId: userId,
-                    problemId: problem.id,
-                },
-            },
+            where: { userId_problemId: { userId, problemId: problem.id } },
         });
-        // Handle different scenarios based on existing reaction and new action
+        let responsePayload;
         if (!existingReaction) {
-            // Case 1: No previous reaction, add new reaction
             await prisma.userProblemReactions.create({
-                data: {
-                    userId: userId,
-                    problemId: problem.id,
-                    reactionType: action === "like" ? "like" : "dislike",
-                },
+                data: { userId, problemId: problem.id, reactionType: action },
             });
-            return res.status(200).json({
+            responsePayload = {
                 message: `${action === "like" ? "Like" : "Dislike"} added successfully`,
                 likes: action === "like" ? currentLikes + 1 : currentLikes,
                 dislikes: action === "dislike" ? currentDislikes + 1 : currentDislikes,
-            });
+            };
         }
-        else if (existingReaction.reactionType === (action === "like" ? "like" : "dislike")) {
-            // Case 2: User clicked the same reaction again, remove it
+        else if (existingReaction.reactionType === action) {
             await prisma.userProblemReactions.delete({
-                where: {
-                    userId_problemId: {
-                        userId: userId,
-                        problemId: problem.id,
-                    },
-                },
+                where: { userId_problemId: { userId, problemId: problem.id } },
             });
-            return res.status(200).json({
+            responsePayload = {
                 message: `${action === "like" ? "Like" : "Dislike"} removed successfully`,
                 likes: action === "like" ? currentLikes - 1 : currentLikes,
                 dislikes: action === "dislike" ? currentDislikes - 1 : currentDislikes,
-            });
+            };
         }
         else {
-            // Case 3: User had opposite reaction before, switch reaction
             await prisma.userProblemReactions.update({
-                where: {
-                    userId_problemId: {
-                        userId: userId,
-                        problemId: problem.id,
-                    },
-                },
-                data: {
-                    reactionType: action === "like" ? "like" : "dislike",
-                },
+                where: { userId_problemId: { userId, problemId: problem.id } },
+                data: { reactionType: action },
             });
             const newLikes = existingReaction.reactionType === "like"
                 ? currentLikes - 1
@@ -402,12 +367,26 @@ export const problemReaction = async (req, res, next) => {
             const newDislikes = existingReaction.reactionType === "dislike"
                 ? currentDislikes - 1
                 : currentDislikes + 1;
-            return res.status(200).json({
+            responsePayload = {
                 message: `Changed from ${existingReaction.reactionType} to ${action}`,
                 likes: newLikes,
                 dislikes: newDislikes,
+            };
+        }
+        // ── Emit real-time update to all OTHER clients in this problem's room ─
+        // `to(room)` excludes the sender — their UI is already updated
+        // by the optimistic update in the frontend store.
+        try {
+            getIO().to(`problem:${problem.id}`).emit("problem:reaction:updated", {
+                problemId: problem.id,
+                likes: responsePayload.likes,
+                dislikes: responsePayload.dislikes,
             });
         }
+        catch (socketErr) {
+            logger.warn("Socket emit failed for problem reaction:", socketErr);
+        }
+        return res.status(200).json(responsePayload);
     }
     catch (error) {
         console.error("Problem reaction error:", error);
