@@ -61,22 +61,18 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [isFullPostPanelOpen, setIsFullPostPanelOpen] = useState(false);
 
-  // Track which query is currently active for search pagination
-  const currentSearchQuery = useRef<string | null>(null);
-
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // ── Sentinel ref: the invisible div at the bottom of the scroll list ──────
+  // Sentinel: invisible div at the bottom of the list that triggers load-more
   const sentinelRef = useRef<HTMLDivElement>(null);
-  // Ref to the ScrollArea's inner viewport so we can observe within it
+  // Inner scrollable viewport of the shadcn ScrollArea — used as IntersectionObserver root
   const scrollViewportRef = useRef<HTMLDivElement>(null);
 
   const { setPostId } = useCommentPanel();
-
-  // ── Socket integration ────────────────────────────────────────────────────
   const { socket } = useSocket();
 
+  // ── Socket: join/leave post rooms for real-time reaction updates ──────────
   useEffect(() => {
     if (!socket || !getPostCardData) return;
 
@@ -99,7 +95,7 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
     };
   }, [socket, getPostCardData, applyRemotePostReaction]);
 
-  // ── Initial data fetch ────────────────────────────────────────────────────
+  // ── Initial fetch ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (
       problemTitle &&
@@ -120,14 +116,14 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
     hasFetched,
   ]);
 
-  // ── Sync local state from store ───────────────────────────────────────────
+  // ── Sync store → local state ──────────────────────────────────────────────
   useEffect(() => {
     if (getPostCardData) setPosts(getPostCardData);
     if (DraftPosts) setDraftPosts(DraftPosts);
     if (draftPosts.length > 0) setDraftPostsExist(true);
   }, [getPostCardData, DraftPosts]);
 
-  // ── Determine which posts + pagination to use (search vs normal) ──────────
+  // ── Derived values: which post list and pagination to use ─────────────────
   const isInSearchMode = searchResults !== null;
   const displayPosts = isInSearchMode ? searchResults! : posts;
   const hasNextPage = isInSearchMode
@@ -137,21 +133,15 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
     ? isLoadingMoreSearch
     : isLoadingMorePosts;
 
-  // ── Track the current search query for pagination ─────────────────────────
-  // We read it from searchParams (MiddleSection sets it) — adjust if your
-  // search query lives elsewhere (e.g. a TopSection state lifted up).
-  const searchQuery = searchParams.get("q") ?? null;
-  useEffect(() => {
-    currentSearchQuery.current = searchQuery;
-  }, [searchQuery]);
-
-  // ── IntersectionObserver — fires when sentinel enters the viewport ─────────
+  // ── handleLoadMore: called by IntersectionObserver when sentinel is visible ─
+  // In search mode, loadMoreSearchResults() reads activeSearchQuery from the
+  // Zustand store — no need to pass the query as a prop or ref.
   const handleLoadMore = useCallback(() => {
     if (isLoadingMore || !hasNextPage) return;
 
-    if (isInSearchMode && currentSearchQuery.current) {
-      loadMoreSearchResults(currentSearchQuery.current);
-    } else if (!isInSearchMode && problemTitle) {
+    if (isInSearchMode) {
+      loadMoreSearchResults();
+    } else if (problemTitle) {
       loadMorePosts(problemTitle);
     }
   }, [
@@ -163,6 +153,7 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
     problemTitle,
   ]);
 
+  // ── IntersectionObserver watching the sentinel div ────────────────────────
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -174,8 +165,9 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
         }
       },
       {
-        // Use the scroll viewport as the root so the sentinel is observed
-        // relative to the scrollable area, not the window.
+        // Root must be the ScrollArea viewport, not the browser window.
+        // Without this, the sentinel would always appear "visible" to the window
+        // and every page would load simultaneously on mount.
         root: scrollViewportRef.current ?? null,
         rootMargin: "0px",
         threshold: 0.1,
@@ -186,7 +178,7 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
     return () => observer.disconnect();
   }, [handleLoadMore]);
 
-  // ── Click-outside for draft dropdown ─────────────────────────────────────
+  // ── Click-outside closes draft dropdown ───────────────────────────────────
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -281,17 +273,14 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
         )}
 
         {/*
-          ScrollArea wraps the list. We pass a ref callback to reach the
-          inner viewport div so IntersectionObserver can use it as root.
-          Shadcn's ScrollArea renders a [data-radix-scroll-area-viewport]
-          element — we grab it imperatively after mount.
+          ScrollArea ref callback: shadcn does not expose the inner scrollable
+          viewport via a forwarded ref, so we reach it via querySelector after
+          mount and store it in scrollViewportRef for IntersectionObserver.
         */}
         <ScrollArea
           className="h-[435px] w-full mt-3"
-          // Expose the viewport ref via a callback ref on the wrapper
           ref={(el) => {
             if (el) {
-              // Find the inner scrollable viewport inside shadcn ScrollArea
               const viewport = el.querySelector(
                 "[data-radix-scroll-area-viewport]",
               ) as HTMLDivElement | null;
@@ -314,17 +303,17 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
                   />
                 ))}
 
-                {/* ── Sentinel div — triggers IntersectionObserver ── */}
+                {/* Sentinel — becomes visible when user scrolls to bottom */}
                 <div ref={sentinelRef} className="h-4 w-full" aria-hidden />
 
-                {/* ── Loading spinner for subsequent pages ── */}
+                {/* Spinner shown while next page is loading */}
                 {isLoadingMore && (
-                  <div className="flex justify-center mt-0 pb-4">
+                  <div className="flex justify-center py-4">
                     <MoonLoader size={30} color="#ffffff" />
                   </div>
                 )}
 
-                {/* ── End-of-list message ── */}
+                {/* End-of-list indicator */}
                 {!hasNextPage && displayPosts.length > 0 && (
                   <p className="text-center text-sm text-muted-foreground pb-2">
                     You&apos;ve reached the end

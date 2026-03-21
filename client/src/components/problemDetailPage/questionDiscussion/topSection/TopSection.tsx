@@ -17,9 +17,12 @@ const TopSection: React.FC<TopSectionProps> = () => {
   };
 
   const handleClear = () => {
-    setSearchQuery(""); // Clear the search query
-    // Clear search results by setting them to null
-    usePostStore.setState({ searchResults: null });
+    setSearchQuery("");
+    usePostStore.setState({
+      searchResults: null,
+      searchPagination: null,
+      activeSearchQuery: null,
+    });
   };
 
   // Effect to trigger search when query changes
@@ -32,7 +35,11 @@ const TopSection: React.FC<TopSectionProps> = () => {
       return () => clearTimeout(timeoutId);
     } else {
       // When search query becomes empty, clear search results
-      usePostStore.setState({ searchResults: null });
+      usePostStore.setState({
+        searchResults: null,
+        searchPagination: null,
+        activeSearchQuery: null,
+      });
     }
   }, [searchQuery, searchPosts]);
 
