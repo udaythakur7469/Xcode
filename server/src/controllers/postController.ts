@@ -437,13 +437,15 @@ export const createPost = async (req, res, next) => {
 };
 
 export const getPosts = async (req, res, next) => {
-  const { problemTitle } = req.query;
+  const { problemTitle, cursor, limit } = req.query;
 
   if (!problemTitle) {
     throw createHttpError.BadRequest("Please provide problem title");
   }
 
   const userId = req.user?.id || req.user?.userId;
+  const pageLimit = Math.min(parseInt(limit as string) || 10, 50);
+  const cursorId = cursor ? parseInt(cursor as string) : undefined;
 
   try {
     const problem = await prisma.problem.findFirst({
@@ -453,59 +455,42 @@ export const getPosts = async (req, res, next) => {
 
     if (!problem) {
       throw createHttpError.BadRequest(
-        "Unable to find problem for the requested problemTitle"
+        "Unable to find problem for the requested problemTitle",
       );
     }
 
+    // Fetch limit+1 to detect whether a next page exists
     const postData = await prisma.post.findMany({
       where: { problemId: problem.id, isDraftPost: false },
       orderBy: { createdAt: "desc" },
+      ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+      take: pageLimit + 1,
       select: {
         id: true,
         title: true,
-        tags: {
-          select: {
-            name: true,
-          },
-        },
-        author: {
-          select: {
-            name: true,
-            picture: true,
-          },
-        },
-        postReactions: {
-          select: {
-            type: true,
-            userId: true,
-          },
-        },
-        _count: {
-          select: {
-            comments: true,
-          },
-        },
+        tags: { select: { name: true } },
+        author: { select: { name: true, picture: true } },
+        postReactions: { select: { type: true, userId: true } },
+        _count: { select: { comments: true } },
       },
     });
 
-    // Transform data to count likes and dislikes, and include user's reaction
-    const transformedData = postData.map((post) => {
-      const likes = post.postReactions.filter(
-        (reaction) => reaction.type === "like"
-      ).length;
+    const hasNextPage = postData.length > pageLimit;
+    const posts = hasNextPage ? postData.slice(0, pageLimit) : postData;
+    const nextCursor = hasNextPage ? posts[posts.length - 1].id : null;
+
+    const transformedData = posts.map((post) => {
+      const likes = post.postReactions.filter((r) => r.type === "like").length;
       const dislikes = post.postReactions.filter(
-        (reaction) => reaction.type === "dislike"
+        (r) => r.type === "dislike",
       ).length;
 
-      // Find user's reaction if authenticated
       let userReaction = null;
       if (userId) {
         const userReactionData = post.postReactions.find(
-          (reaction) => reaction.userId === userId
+          (reaction) => reaction.userId === userId,
         );
-        if (userReactionData) {
-          userReaction = userReactionData.type;
-        }
+        if (userReactionData) userReaction = userReactionData.type;
       }
 
       return {
@@ -513,10 +498,10 @@ export const getPosts = async (req, res, next) => {
         title: post.title,
         tags: post.tags,
         author: post.author,
-        likes: likes,
-        dislikes: dislikes,
+        likes,
+        dislikes,
         comments: post._count.comments,
-        userReaction: userReaction,
+        userReaction,
       };
     });
 
@@ -524,6 +509,7 @@ export const getPosts = async (req, res, next) => {
       success: true,
       message: "Posts fetched successfully",
       data: transformedData,
+      pagination: { nextCursor, hasNextPage, limit: pageLimit },
     });
   } catch (error) {
     next(error);
@@ -531,13 +517,15 @@ export const getPosts = async (req, res, next) => {
 };
 
 export const searchPosts = async (req, res, next) => {
-  const { query } = req.query;
+  const { query, cursor, limit } = req.query;
 
   if (!query) {
     throw createHttpError.BadRequest("Search query is required");
   }
 
   const userId = req.user?.id || req.user?.userId;
+  const pageLimit = Math.min(parseInt(limit as string) || 10, 50);
+  const cursorId = cursor ? parseInt(cursor as string) : undefined;
 
   try {
     const postData = await prisma.post.findMany({
@@ -552,55 +540,37 @@ export const searchPosts = async (req, res, next) => {
             },
           },
         ],
-        isDraftPost: false, // Only search published posts
+        isDraftPost: false,
       },
       orderBy: { createdAt: "desc" },
+      ...(cursorId ? { cursor: { id: cursorId }, skip: 1 } : {}),
+      take: pageLimit + 1,
       select: {
         id: true,
         title: true,
-        tags: {
-          select: {
-            name: true,
-          },
-        },
-        author: {
-          select: {
-            name: true,
-            picture: true,
-          },
-        },
-        postReactions: {
-          select: {
-            type: true,
-            userId: true,
-          },
-        },
-        _count: {
-          select: {
-            comments: true,
-          },
-        },
+        tags: { select: { name: true } },
+        author: { select: { name: true, picture: true } },
+        postReactions: { select: { type: true, userId: true } },
+        _count: { select: { comments: true } },
       },
     });
 
-    // Transform data to count likes and dislikes, and include user's reaction
-    const transformedData = postData.map((post) => {
-      const likes = post.postReactions.filter(
-        (reaction) => reaction.type === "like"
-      ).length;
+    const hasNextPage = postData.length > pageLimit;
+    const posts = hasNextPage ? postData.slice(0, pageLimit) : postData;
+    const nextCursor = hasNextPage ? posts[posts.length - 1].id : null;
+
+    const transformedData = posts.map((post) => {
+      const likes = post.postReactions.filter((r) => r.type === "like").length;
       const dislikes = post.postReactions.filter(
-        (reaction) => reaction.type === "dislike"
+        (r) => r.type === "dislike",
       ).length;
 
-      // Find user's reaction if authenticated
       let userReaction = null;
       if (userId) {
         const userReactionData = post.postReactions.find(
-          (reaction) => reaction.userId === userId
+          (reaction) => reaction.userId === userId,
         );
-        if (userReactionData) {
-          userReaction = userReactionData.type;
-        }
+        if (userReactionData) userReaction = userReactionData.type;
       }
 
       return {
@@ -608,10 +578,10 @@ export const searchPosts = async (req, res, next) => {
         title: post.title,
         tags: post.tags,
         author: post.author,
-        likes: likes,
-        dislikes: dislikes,
+        likes,
+        dislikes,
         comments: post._count.comments,
-        userReaction: userReaction,
+        userReaction,
       };
     });
 
@@ -619,6 +589,7 @@ export const searchPosts = async (req, res, next) => {
       success: true,
       message: "Posts searched successfully",
       data: transformedData,
+      pagination: { nextCursor, hasNextPage, limit: pageLimit },
     });
   } catch (error) {
     logger.error("Error searching posts", error);
