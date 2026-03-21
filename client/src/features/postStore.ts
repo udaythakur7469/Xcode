@@ -143,6 +143,7 @@ interface PostData {
   searchPostsError: any | null;
   searchPagination: PaginationMeta | null;
   isLoadingMoreSearch: boolean;
+  activeSearchQuery: string | null;
   combinedTags: string[] | null;
   isFetchingCombinedTags: boolean;
   combinedTagsError: any | null;
@@ -178,7 +179,7 @@ interface PostData {
   loadMorePosts: (problemTitle: string) => Promise<void>;
   getDraftPosts: (problemTitle: string) => Promise<void>;
   searchPosts: (query: string) => Promise<void>;
-  loadMoreSearchResults: (query: string) => Promise<void>;
+  loadMoreSearchResults: () => Promise<void>;
   getCombinedTags: (problemTitle: string) => Promise<void>;
   reactToPost: (postId: string, action: "like" | "dislike") => Promise<void>;
   refreshPostReactions: (postId: string) => Promise<void>;
@@ -226,6 +227,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
   searchPostsError: null,
   searchPagination: null,
   isLoadingMoreSearch: false,
+  activeSearchQuery: null,
   combinedTags: null,
   isFetchingCombinedTags: false,
   combinedTagsError: null,
@@ -343,8 +345,6 @@ export const usePostStore = create<PostData>()((set, get) => ({
 
   loadMorePosts: async (problemTitle) => {
     const { postsPagination, isLoadingMorePosts, getPostCardData } = get();
-
-    // Guard: don't fetch if already loading or no more pages
     if (isLoadingMorePosts || !postsPagination?.hasNextPage) return;
 
     set({ isLoadingMorePosts: true });
@@ -356,14 +356,11 @@ export const usePostStore = create<PostData>()((set, get) => ({
           limit: PAGE_LIMIT,
         },
       });
-
       const newPosts: PostCardData[] = response.data.data.map((p: any) => ({
         ...p,
         id: String(p.id),
       }));
-
       set({
-        // Append to existing list
         getPostCardData: [...(getPostCardData ?? []), ...newPosts],
         postsPagination: response.data.pagination,
         isLoadingMorePosts: false,
@@ -399,6 +396,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
       isSearchingPosts: true,
       searchPostsError: null,
       searchPagination: null,
+      activeSearchQuery: query, // KEY: stored here so loadMoreSearchResults can read it
     });
     try {
       const response = await axios.get(`${API_URL}/post/searchPosts`, {
@@ -414,30 +412,42 @@ export const usePostStore = create<PostData>()((set, get) => ({
       });
     } catch (error: any) {
       const errMsg = error?.response?.data?.message || "Error searching posts";
-      set({ searchPostsError: errMsg, isSearchingPosts: false });
+      set({
+        searchPostsError: errMsg,
+        isSearchingPosts: false,
+        activeSearchQuery: null,
+      });
       throw error;
     }
   },
 
-  loadMoreSearchResults: async (query) => {
-    const { searchPagination, isLoadingMoreSearch, searchResults } = get();
-    if (isLoadingMoreSearch || !searchPagination?.hasNextPage) return;
+  loadMoreSearchResults: async () => {
+    const {
+      searchPagination,
+      isLoadingMoreSearch,
+      searchResults,
+      activeSearchQuery,
+    } = get();
+    if (
+      isLoadingMoreSearch ||
+      !searchPagination?.hasNextPage ||
+      !activeSearchQuery
+    )
+      return;
 
     set({ isLoadingMoreSearch: true });
     try {
       const response = await axios.get(`${API_URL}/post/searchPosts`, {
         params: {
-          query,
+          query: activeSearchQuery,
           cursor: searchPagination.nextCursor,
           limit: PAGE_LIMIT,
         },
       });
-
       const newPosts: SearchPostData[] = response.data.data.map((p: any) => ({
         ...p,
         id: String(p.id),
       }));
-
       set({
         searchResults: [...(searchResults ?? []), ...newPosts],
         searchPagination: response.data.pagination,
