@@ -50,6 +50,12 @@ interface CreatePostTags {
   updatedAt: string;
 }
 
+interface PaginationMeta {
+  nextCursor: number | null;
+  hasNextPage: boolean;
+  limit: number;
+}
+
 export interface PostCardData {
   id: string;
   title: string;
@@ -127,12 +133,16 @@ interface PostData {
   getPostCardData: PostCardData[] | null;
   isGettingPostCardData: boolean;
   postCardError: any | null;
+  postsPagination: PaginationMeta | null;
+  isLoadingMorePosts: boolean;
   DraftPosts: DraftPostData[] | null;
   isGettingDraftPosts: boolean;
   DraftPostError: any | null;
   searchResults: SearchPostData[] | null;
   isSearchingPosts: boolean;
   searchPostsError: any | null;
+  searchPagination: PaginationMeta | null;
+  isLoadingMoreSearch: boolean;
   combinedTags: string[] | null;
   isFetchingCombinedTags: boolean;
   combinedTagsError: any | null;
@@ -165,8 +175,10 @@ interface PostData {
     isDraftPost: boolean,
   ) => Promise<void>;
   getPostCards: (problemTitle: string) => Promise<void>;
+  loadMorePosts: (problemTitle: string) => Promise<void>;
   getDraftPosts: (problemTitle: string) => Promise<void>;
   searchPosts: (query: string) => Promise<void>;
+  loadMoreSearchResults: (query: string) => Promise<void>;
   getCombinedTags: (problemTitle: string) => Promise<void>;
   reactToPost: (postId: string, action: "like" | "dislike") => Promise<void>;
   refreshPostReactions: (postId: string) => Promise<void>;
@@ -186,6 +198,8 @@ interface PostData {
   }) => void;
 }
 
+const PAGE_LIMIT = 10;
+
 export const usePostStore = create<PostData>()((set, get) => ({
   postBaseTemplate: null,
   isPostBaseTemplateLoading: false,
@@ -202,12 +216,16 @@ export const usePostStore = create<PostData>()((set, get) => ({
   getPostCardData: null,
   isGettingPostCardData: false,
   postCardError: null,
+  postsPagination: null,
+  isLoadingMorePosts: false,
   DraftPosts: null,
   isGettingDraftPosts: false,
   DraftPostError: null,
   searchResults: null,
   isSearchingPosts: false,
   searchPostsError: null,
+  searchPagination: null,
+  isLoadingMoreSearch: false,
   combinedTags: null,
   isFetchingCombinedTags: false,
   combinedTagsError: null,
@@ -298,23 +316,60 @@ export const usePostStore = create<PostData>()((set, get) => ({
     }
   },
   getPostCards: async (problemTitle) => {
-    set({ isGettingPostCardData: true, postCardError: null });
-
+    set({
+      isGettingPostCardData: true,
+      postCardError: null,
+      postsPagination: null,
+    });
     try {
       const response = await axios.get(`${API_URL}/post/getPosts`, {
-        params: { problemTitle },
+        params: { problemTitle, limit: PAGE_LIMIT },
       });
-
       set({
-        getPostCardData: response.data.data,
+        getPostCardData: response.data.data.map((p: any) => ({
+          ...p,
+          id: String(p.id),
+        })),
+        postsPagination: response.data.pagination,
         isGettingPostCardData: false,
       });
-    } catch (error) {
+    } catch (error: any) {
       const errMsg =
         error?.response?.data?.message || "Error fetching post card data";
       set({ postCardError: errMsg, isGettingPostCardData: false });
-
       throw error;
+    }
+  },
+
+  loadMorePosts: async (problemTitle) => {
+    const { postsPagination, isLoadingMorePosts, getPostCardData } = get();
+
+    // Guard: don't fetch if already loading or no more pages
+    if (isLoadingMorePosts || !postsPagination?.hasNextPage) return;
+
+    set({ isLoadingMorePosts: true });
+    try {
+      const response = await axios.get(`${API_URL}/post/getPosts`, {
+        params: {
+          problemTitle,
+          cursor: postsPagination.nextCursor,
+          limit: PAGE_LIMIT,
+        },
+      });
+
+      const newPosts: PostCardData[] = response.data.data.map((p: any) => ({
+        ...p,
+        id: String(p.id),
+      }));
+
+      set({
+        // Append to existing list
+        getPostCardData: [...(getPostCardData ?? []), ...newPosts],
+        postsPagination: response.data.pagination,
+        isLoadingMorePosts: false,
+      });
+    } catch (error: any) {
+      set({ isLoadingMorePosts: false });
     }
   },
 
@@ -340,21 +395,56 @@ export const usePostStore = create<PostData>()((set, get) => ({
   },
 
   searchPosts: async (query) => {
-    set({ isSearchingPosts: true, searchPostsError: null });
-
+    set({
+      isSearchingPosts: true,
+      searchPostsError: null,
+      searchPagination: null,
+    });
     try {
       const response = await axios.get(`${API_URL}/post/searchPosts`, {
-        params: { query },
+        params: { query, limit: PAGE_LIMIT },
       });
-
       set({
-        searchResults: response.data.data,
+        searchResults: response.data.data.map((p: any) => ({
+          ...p,
+          id: String(p.id),
+        })),
+        searchPagination: response.data.pagination,
         isSearchingPosts: false,
       });
     } catch (error: any) {
       const errMsg = error?.response?.data?.message || "Error searching posts";
       set({ searchPostsError: errMsg, isSearchingPosts: false });
       throw error;
+    }
+  },
+
+  loadMoreSearchResults: async (query) => {
+    const { searchPagination, isLoadingMoreSearch, searchResults } = get();
+    if (isLoadingMoreSearch || !searchPagination?.hasNextPage) return;
+
+    set({ isLoadingMoreSearch: true });
+    try {
+      const response = await axios.get(`${API_URL}/post/searchPosts`, {
+        params: {
+          query,
+          cursor: searchPagination.nextCursor,
+          limit: PAGE_LIMIT,
+        },
+      });
+
+      const newPosts: SearchPostData[] = response.data.data.map((p: any) => ({
+        ...p,
+        id: String(p.id),
+      }));
+
+      set({
+        searchResults: [...(searchResults ?? []), ...newPosts],
+        searchPagination: response.data.pagination,
+        isLoadingMoreSearch: false,
+      });
+    } catch (error: any) {
+      set({ isLoadingMoreSearch: false });
     }
   },
 
