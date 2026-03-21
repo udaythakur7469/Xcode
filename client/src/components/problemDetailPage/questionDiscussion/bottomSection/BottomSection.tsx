@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import PostCard from "./postCard/PostCard";
 import {
   DraftPostData,
@@ -31,11 +31,17 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
 
   const {
     getPostCards,
+    loadMorePosts,
     getPostCardData,
     postCardError,
+    postsPagination,
+    isLoadingMorePosts,
     searchResults,
     isSearchingPosts,
     searchPostsError,
+    searchPagination,
+    isLoadingMoreSearch,
+    loadMoreSearchResults,
     isGettingPostCardData,
     isFetchingCombinedTags,
     applyRemotePostReaction,
@@ -55,22 +61,28 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [isFullPostPanelOpen, setIsFullPostPanelOpen] = useState(false);
 
+  // Track which query is currently active for search pagination
+  const currentSearchQuery = useRef<string | null>(null);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
+  // ── Sentinel ref: the invisible div at the bottom of the scroll list ──────
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  // Ref to the ScrollArea's inner viewport so we can observe within it
+  const scrollViewportRef = useRef<HTMLDivElement>(null);
+
   const { setPostId } = useCommentPanel();
 
-  // ── Socket integration ─────────────────────────────────────────────────
+  // ── Socket integration ────────────────────────────────────────────────────
   const { socket } = useSocket();
 
   useEffect(() => {
     if (!socket || !getPostCardData) return;
 
-    // Join a room for each visible post so we receive reaction events for them
     const postIds = getPostCardData.map((p) => p.id);
     postIds.forEach((id) => socket.emit("post:join", id));
 
-    // Listen for reaction updates from OTHER users
     const handleReactionUpdate = (payload: {
       postId: number;
       likes: number;
@@ -81,14 +93,13 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
 
     socket.on("post:reaction:updated", handleReactionUpdate);
 
-    // Leave all rooms and remove listener on cleanup
     return () => {
       postIds.forEach((id) => socket.emit("post:leave", id));
       socket.off("post:reaction:updated", handleReactionUpdate);
     };
   }, [socket, getPostCardData, applyRemotePostReaction]);
-  // Re-runs whenever the post list changes (e.g. after initial fetch)
 
+  // ── Initial data fetch ────────────────────────────────────────────────────
   useEffect(() => {
     if (
       problemTitle &&
@@ -109,14 +120,73 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
     hasFetched,
   ]);
 
+  // ── Sync local state from store ───────────────────────────────────────────
   useEffect(() => {
     if (getPostCardData) setPosts(getPostCardData);
     if (DraftPosts) setDraftPosts(DraftPosts);
     if (draftPosts.length > 0) setDraftPostsExist(true);
   }, [getPostCardData, DraftPosts]);
 
-  const displayPosts = searchResults ? searchResults : posts;
+  // ── Determine which posts + pagination to use (search vs normal) ──────────
+  const isInSearchMode = searchResults !== null;
+  const displayPosts = isInSearchMode ? searchResults! : posts;
+  const hasNextPage = isInSearchMode
+    ? (searchPagination?.hasNextPage ?? false)
+    : (postsPagination?.hasNextPage ?? false);
+  const isLoadingMore = isInSearchMode
+    ? isLoadingMoreSearch
+    : isLoadingMorePosts;
 
+  // ── Track the current search query for pagination ─────────────────────────
+  // We read it from searchParams (MiddleSection sets it) — adjust if your
+  // search query lives elsewhere (e.g. a TopSection state lifted up).
+  const searchQuery = searchParams.get("q") ?? null;
+  useEffect(() => {
+    currentSearchQuery.current = searchQuery;
+  }, [searchQuery]);
+
+  // ── IntersectionObserver — fires when sentinel enters the viewport ─────────
+  const handleLoadMore = useCallback(() => {
+    if (isLoadingMore || !hasNextPage) return;
+
+    if (isInSearchMode && currentSearchQuery.current) {
+      loadMoreSearchResults(currentSearchQuery.current);
+    } else if (!isInSearchMode && problemTitle) {
+      loadMorePosts(problemTitle);
+    }
+  }, [
+    isLoadingMore,
+    hasNextPage,
+    isInSearchMode,
+    loadMoreSearchResults,
+    loadMorePosts,
+    problemTitle,
+  ]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          handleLoadMore();
+        }
+      },
+      {
+        // Use the scroll viewport as the root so the sentinel is observed
+        // relative to the scrollable area, not the window.
+        root: scrollViewportRef.current ?? null,
+        rootMargin: "0px",
+        threshold: 0.1,
+      },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [handleLoadMore]);
+
+  // ── Click-outside for draft dropdown ─────────────────────────────────────
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -134,7 +204,6 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
 
   const handleFloatingButtonClick = () => {
     setShowDraftPostsDropdown((prev) => !prev);
-    console.log("draft post button clicked!");
   };
 
   const handleDraftClick = (draftId: string) => {
@@ -211,19 +280,60 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
           </div>
         )}
 
-        <ScrollArea className="h-[435px] w-full mt-3">
+        {/*
+          ScrollArea wraps the list. We pass a ref callback to reach the
+          inner viewport div so IntersectionObserver can use it as root.
+          Shadcn's ScrollArea renders a [data-radix-scroll-area-viewport]
+          element — we grab it imperatively after mount.
+        */}
+        <ScrollArea
+          className="h-[435px] w-full mt-3"
+          // Expose the viewport ref via a callback ref on the wrapper
+          ref={(el) => {
+            if (el) {
+              // Find the inner scrollable viewport inside shadcn ScrollArea
+              const viewport = el.querySelector(
+                "[data-radix-scroll-area-viewport]",
+              ) as HTMLDivElement | null;
+              if (viewport) {
+                (
+                  scrollViewportRef as React.MutableRefObject<HTMLDivElement | null>
+                ).current = viewport;
+              }
+            }
+          }}
+        >
           <div className="space-y-3 mr-2 pb-3">
             {displayPosts.length > 0 ? (
-              displayPosts.map((post, index) => (
-                <PostCard
-                  key={index}
-                  data={post}
-                  onClick={() => handlePostCardClick(post.id)}
-                />
-              ))
+              <>
+                {displayPosts.map((post, index) => (
+                  <PostCard
+                    key={index}
+                    data={post}
+                    onClick={() => handlePostCardClick(post.id)}
+                  />
+                ))}
+
+                {/* ── Sentinel div — triggers IntersectionObserver ── */}
+                <div ref={sentinelRef} className="h-4 w-full" aria-hidden />
+
+                {/* ── Loading spinner for subsequent pages ── */}
+                {isLoadingMore && (
+                  <div className="flex justify-center mt-0 pb-4">
+                    <MoonLoader size={30} color="#ffffff" />
+                  </div>
+                )}
+
+                {/* ── End-of-list message ── */}
+                {!hasNextPage && displayPosts.length > 0 && (
+                  <p className="text-center text-sm text-muted-foreground pb-2">
+                    You&apos;ve reached the end
+                  </p>
+                )}
+              </>
             ) : (
               <div className="flex justify-center items-center h-[400px] w-full text-white">
-                {searchResults && searchResults.length === 0
+                {isInSearchMode
                   ? "No posts found for your search"
                   : "No posts found"}
               </div>
