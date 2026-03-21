@@ -306,9 +306,13 @@ const PostDataContent: React.FC<PostDataContentProps> = ({ markdown }) => {
           dangerouslySetInnerHTML={getPreviewHTML()}
         />
       </div>
-      <div className="mb-8 pl-3 pr-2 pt-0 pb-3 mt-5">
-        <Button onClick={() => setIsOpen(!isOpen)}>
-          {isOpen ? "Close comments" : "Open comments"}
+      <div className="mb-8 pl-3 pr-2 pt-0 pb-3 mt-8 flex flex-row justify-center">
+        <Button
+          onClick={() => setIsOpen(!isOpen)}
+          variant="outline"
+          className="text-white font-bold border-white w-full"
+        >
+          {isOpen ? "Close comments" : "Show comments"}
         </Button>
       </div>
     </>

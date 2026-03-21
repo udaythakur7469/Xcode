@@ -2,7 +2,6 @@ import React from "react";
 import { Heart, HeartOff, MessagesSquare } from "lucide-react";
 import { usePostStore } from "@/features/postStore";
 import { formatCount } from "@/services/countService";
-import { useCommentPanel } from "@/context/commentPanelContext";
 
 type PostFooterProps = {
   postId: string;
@@ -28,8 +27,6 @@ const PostFooter: React.FC<PostFooterProps> = ({
   const displayLikes = currentPost?.likes ?? likes;
   const displayDislikes = currentPost?.dislikes ?? dislikes;
   const displayUserReaction = currentPost?.userReaction ?? userReaction;
-
-  const { setIsOpen } = useCommentPanel();
 
   const handleReaction = async (action: "like" | "dislike") => {
     // Guard against double-clicks while API call is in-flight
@@ -93,10 +90,6 @@ const PostFooter: React.FC<PostFooterProps> = ({
       {/* Comments */}
       <div
         className="gap-x-2 flex flex-row items-center px-2 py-0.5 bg-background text-gray-300 rounded cursor-pointer transition-colors hover:opacity-80"
-        onClick={(e) => {
-          e.stopPropagation();
-          setIsOpen(true);
-        }}
       >
         <MessagesSquare size={16} className="text-blue-500" />
         {formatCount(comments)}
