@@ -36,7 +36,9 @@ const DraftPostDropdown: React.FC<DraftPostDropdownProps> = ({
 
   return (
     <div className="relative">
-      <div className="text-xl flex justify-center items-center mb-2">Saved Drafts</div>
+      <div className="text-xl flex justify-center items-center mb-2">
+        Saved Drafts
+      </div>
       <ScrollArea className="h-[180px] w-full pr-2">
         <div className="space-y-3">
           {draftPosts.map((draftPost) => (
