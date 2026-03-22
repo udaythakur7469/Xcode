@@ -112,7 +112,7 @@ export const runCode = async (req, res, next) => {
         const judge0Response = await axios.post(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=true`, {
             source_code: Buffer.from(fullCode).toString("base64"), // Encode the source code
             language_id: getLanguageId(language), // Map language to Judge0 language ID
-            stdin: Buffer.from(problemData.testCases[0].apiInput).toString("base64"), // Encode the input
+            stdin: Buffer.from("1\n" + problemData.testCases[0].apiInput).toString("base64"),
         }, {
             headers: JUDGE0_HEADERS,
         });
@@ -210,34 +210,112 @@ export const submitCode = async (req, res) => {
         fullCode = `${baseCode.headerFiles || ""}\n${code}\n${baseCode.mainClassCode || ""}`;
         console.log("Full code being sent:", fullCode);
         const totalTestCases = problemData.testCases.length;
-        // Submit all test cases in parallel
-        // Submit all test cases sequentially
-        // Submit all test cases in parallel
-        const submissionResults = await Promise.all(problemData.testCases.map(async (testCase, index) => {
-            const judge0Response = await axios.post(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=true`, {
-                source_code: Buffer.from(fullCode).toString("base64"),
-                language_id: getLanguageId(language),
-                stdin: Buffer.from(testCase.apiInput).toString("base64"),
-            }, {
-                headers: JUDGE0_HEADERS,
-                timeout: 30000, // 30 second axios timeout
+        // Combine ALL test cases into one stdin
+        const combinedStdin = totalTestCases +
+            "\n" +
+            problemData.testCases.map((tc) => tc.apiInput).join("\n");
+        console.log("Combined stdin:", combinedStdin);
+        // Send ONE single job to Judge0
+        const judge0Response = await axios.post(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=true`, {
+            source_code: Buffer.from(fullCode).toString("base64"),
+            language_id: getLanguageId(language),
+            stdin: Buffer.from(combinedStdin).toString("base64"),
+        }, {
+            headers: JUDGE0_HEADERS,
+            timeout: 30000,
+        });
+        const judgeResult = judge0Response.data;
+        // Decode outputs
+        if (judgeResult.stdout) {
+            judgeResult.stdout = Buffer.from(judgeResult.stdout, "base64").toString();
+        }
+        if (judgeResult.stderr) {
+            judgeResult.stderr = Buffer.from(judgeResult.stderr, "base64").toString();
+        }
+        if (judgeResult.compile_output) {
+            judgeResult.compile_output = Buffer.from(judgeResult.compile_output, "base64").toString();
+        }
+        // Handle compilation error
+        if (judgeResult.status.id === 6) {
+            const errorInfo = parseErrorPosition(judgeResult.compile_output, language);
+            return res.status(400).json({
+                success: false,
+                status: "compilation_error",
+                statusDescription: judgeResult.status.description,
+                compile_output: judgeResult.compile_output,
+                stderr: judgeResult.stderr,
+                errorInfo,
             });
-            const result = judge0Response.data;
-            if (result.stdout) {
-                result.stdout = Buffer.from(result.stdout, "base64").toString();
-            }
-            if (result.stderr) {
-                result.stderr = Buffer.from(result.stderr, "base64").toString();
-            }
-            if (result.compile_output) {
-                result.compile_output = Buffer.from(result.compile_output, "base64").toString();
-            }
-            const runtime = parseFloat(result.time) || 0;
-            const memory = parseFloat(result.memory) || 0;
-            const errorInfo = parseErrorPosition(result.compile_output, language);
-            const processedResult = processSubmissionResult(result, errorInfo, language);
-            return { index, testCase, result, processedResult, runtime, memory };
-        }));
+        }
+        // Handle runtime error
+        if ([7, 8, 9, 10, 11, 12].includes(judgeResult.status.id)) {
+            return res.status(400).json({
+                success: false,
+                status: "runtime_error",
+                statusDescription: judgeResult.status.description,
+                stderr: judgeResult.stderr,
+                time: judgeResult.time,
+                memory: judgeResult.memory,
+            });
+        }
+        // Handle time limit exceeded
+        if (judgeResult.status.id === 5) {
+            return res.status(400).json({
+                success: false,
+                status: "time_limit_exceeded",
+                statusDescription: judgeResult.status.description,
+                time: judgeResult.time,
+                memory: judgeResult.memory,
+            });
+        }
+        // Handle internal error
+        if (judgeResult.status.id >= 13) {
+            return res.status(500).json({
+                error: "Internal server error occurred during submission",
+                statusDescription: judgeResult.status.description,
+            });
+        }
+        // Split output by newline — one line per test case
+        const outputs = judgeResult.stdout
+            ? judgeResult.stdout.trim().split("\n")
+            : [];
+        console.log("Outputs:", outputs);
+        // Build submissionResults in same format as before
+        const submissionResults = problemData.testCases.map((testCase, index) => {
+            const actualOutput = outputs[index]?.trim() || "";
+            const expectedOutput = testCase.apiExpectedOutput?.trim() || "";
+            const passed = actualOutput === expectedOutput;
+            return {
+                index,
+                testCase,
+                result: {
+                    stdout: actualOutput,
+                    stderr: judgeResult.stderr,
+                    status: passed
+                        ? { id: 3, description: "Accepted" }
+                        : { id: 4, description: "Wrong Answer" },
+                    time: judgeResult.time,
+                    memory: judgeResult.memory,
+                },
+                processedResult: passed
+                    ? {
+                        success: true,
+                        status: "accepted",
+                        statusDescription: "Accepted",
+                        stdout: actualOutput,
+                        time: judgeResult.time,
+                        memory: judgeResult.memory,
+                    }
+                    : {
+                        success: false,
+                        status: "wrong_answer",
+                        statusDescription: "Wrong Answer",
+                        stdout: actualOutput,
+                    },
+                runtime: parseFloat(judgeResult.time) || 0,
+                memory: parseFloat(judgeResult.memory) || 0,
+            };
+        });
         // Process results to find first failure
         let allTestCasesPassed = true;
         let failedTestCase = null;
