@@ -15,22 +15,18 @@ export const getLanguageId = (language) => {
             return 54; // Default to C++
     }
 };
-export // Helper function to poll Judge0 API for the result
- const pollJudge0Result = async (submissionId) => {
+export const pollJudge0Result = async (submissionId) => {
+    const maxAttempts = 40; // 20 seconds max
+    let attempts = 0;
     let result;
     do {
-        result = await axios.get(`${JUDGE0_URL}/submissions/${submissionId}?base64_encoded=true`, {
-            headers: JUDGE0_HEADERS,
-        });
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Poll every second
-    } while (result.data.status.id <= 2); // Status 3 means finished
-    // If the response contains base64 encoded data, decode it
-    if (result.data.stdout) {
-        result.data.stdout = Buffer.from(result.data.stdout, "base64").toString();
-    }
-    if (result.data.stderr) {
-        result.data.stderr = Buffer.from(result.data.stderr, "base64").toString();
-    }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        result = await axios.get(`${JUDGE0_URL}/submissions/${submissionId}?base64_encoded=true`, { headers: JUDGE0_HEADERS });
+        attempts++;
+        if (attempts >= maxAttempts) {
+            throw new Error("Judge0 timed out after 20 seconds");
+        }
+    } while (result.data.status.id <= 2);
     return result.data;
 };
 /**

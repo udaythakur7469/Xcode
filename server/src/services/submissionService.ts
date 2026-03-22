@@ -14,7 +14,7 @@ interface BaseProcessedResult {
 
 interface SuccessResult extends BaseProcessedResult {
   success: true;
-  status: 'accepted';
+  status: "accepted";
   stdout: string;
   time: number;
   memory: number;
@@ -22,7 +22,7 @@ interface SuccessResult extends BaseProcessedResult {
 
 interface CompilationErrorResult extends BaseProcessedResult {
   success: false;
-  status: 'compilation_error';
+  status: "compilation_error";
   stderr?: string;
   compile_output: string;
   errorInfo: any;
@@ -30,7 +30,7 @@ interface CompilationErrorResult extends BaseProcessedResult {
 
 interface RuntimeErrorResult extends BaseProcessedResult {
   success: false;
-  status: 'runtime_error';
+  status: "runtime_error";
   statusId: number;
   message: string;
   stderr: string;
@@ -40,7 +40,7 @@ interface RuntimeErrorResult extends BaseProcessedResult {
 
 interface TimeoutErrorResult extends BaseProcessedResult {
   success: false;
-  status: 'time_limit_exceeded';
+  status: "time_limit_exceeded";
   message: string;
   time?: number;
   memory?: number;
@@ -48,7 +48,7 @@ interface TimeoutErrorResult extends BaseProcessedResult {
 
 interface WrongAnswerResult extends BaseProcessedResult {
   success: false;
-  status: 'wrong_answer';
+  status: "wrong_answer";
   stdout?: string;
   stderr?: string;
   time?: number;
@@ -57,25 +57,25 @@ interface WrongAnswerResult extends BaseProcessedResult {
 
 interface InternalErrorResult extends BaseProcessedResult {
   success: false;
-  status: 'internal_error';
+  status: "internal_error";
   message: string;
   error: string;
 }
 
 interface UnknownErrorResult extends BaseProcessedResult {
   success: false;
-  status: 'unknown_error';
+  status: "unknown_error";
   message: string;
   stderr?: string;
 }
 
-export type ProcessedResult = 
-  | SuccessResult 
-  | CompilationErrorResult 
-  | RuntimeErrorResult 
-  | TimeoutErrorResult 
-  | WrongAnswerResult 
-  | InternalErrorResult 
+export type ProcessedResult =
+  | SuccessResult
+  | CompilationErrorResult
+  | RuntimeErrorResult
+  | TimeoutErrorResult
+  | WrongAnswerResult
+  | InternalErrorResult
   | UnknownErrorResult;
 
 // Helper function to map language to Judge0 language ID
@@ -94,26 +94,23 @@ export const getLanguageId = (language) => {
   }
 };
 
-export // Helper function to poll Judge0 API for the result
-const pollJudge0Result = async (submissionId) => {
+export const pollJudge0Result = async (submissionId) => {
+  const maxAttempts = 40; // 20 seconds max
+  let attempts = 0;
   let result;
+
   do {
+    await new Promise((resolve) => setTimeout(resolve, 500));
     result = await axios.get(
       `${JUDGE0_URL}/submissions/${submissionId}?base64_encoded=true`,
-      {
-        headers: JUDGE0_HEADERS,
-      }
+      { headers: JUDGE0_HEADERS },
     );
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // Poll every second
-  } while (result.data.status.id <= 2); // Status 3 means finished
+    attempts++;
 
-  // If the response contains base64 encoded data, decode it
-  if (result.data.stdout) {
-    result.data.stdout = Buffer.from(result.data.stdout, "base64").toString();
-  }
-  if (result.data.stderr) {
-    result.data.stderr = Buffer.from(result.data.stderr, "base64").toString();
-  }
+    if (attempts >= maxAttempts) {
+      throw new Error("Judge0 timed out after 20 seconds");
+    }
+  } while (result.data.status.id <= 2);
 
   return result.data;
 };
@@ -128,7 +125,7 @@ const pollJudge0Result = async (submissionId) => {
 export const processSubmissionResult = (
   result,
   errorInfo,
-  language
+  language,
 ): ProcessedResult => {
   const statusId = result.status.id;
 
@@ -254,7 +251,10 @@ export const processRuntimeError = (result, statusId): RuntimeErrorResult => {
  * @param {Array} errorInfo - Array of parsed error information
  * @returns {Object} Formatted error response
  */
-export const processCompilationError = (result, errorInfo): CompilationErrorResult => {
+export const processCompilationError = (
+  result,
+  errorInfo,
+): CompilationErrorResult => {
   let simplified_output = "";
 
   if (result.compile_output) {
@@ -297,7 +297,7 @@ export const processCompilationError = (result, errorInfo): CompilationErrorResu
     if (cleanErrorInfo[0].file) {
       cleanErrorInfo[0].file = cleanErrorInfo[0].file.replace(
         /\nmain\.cpp/g,
-        "main.cpp"
+        "main.cpp",
       );
     }
   }
