@@ -1,12 +1,12 @@
 import axios from "axios";
 import prisma from "../configs/db.js";
-import { getLanguageId, parseErrorPosition, pollJudge0Result, processSubmissionResult, } from "../services/submissionService.js";
+import { getLanguageId, parseErrorPosition, processSubmissionResult, } from "../services/submissionService.js";
 import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
-export const JUDGE0_URL = process.env.JUDGE0_URL;
+import { captureJudgeResponse } from "../utils/judgeResponseLogger.js";
+export const JUDGE0_URL = process.env.JUDGE0_BASE_URL;
 export const JUDGE0_HEADERS = {
-    "x-rapidapi-key": process.env.JUDGE0_API_KEY,
-    "x-rapidapi-host": process.env.JUDGE0_HOST,
+    "X-Auth-Token": process.env.JUDGE0_AUTH_TOKEN,
     "Content-Type": "application/json",
 };
 export const storeBaseClassCode = async (req, res) => {
@@ -83,6 +83,8 @@ export const runCode = async (req, res, next) => {
             .status(400)
             .json({ message: "Title is required as a query parameter" });
     }
+    let fullCode = "";
+    captureJudgeResponse(res, "runCode", language, () => fullCode);
     try {
         // Fetch the problem details, including test cases and base code
         const problemData = await prisma.problem.findFirst({
@@ -104,7 +106,7 @@ export const runCode = async (req, res, next) => {
         }
         // Add a newline after every line in the user's code
         // Combine the header files, formatted user's code, and main class code
-        const fullCode = `${baseCode.headerFiles || ""}\n${code}\n${baseCode.mainClassCode || ""}`;
+        fullCode = `${baseCode.headerFiles || ""}\n${code}\n${baseCode.mainClassCode || ""}`;
         console.log("Full code being sent:", fullCode); // For debugging
         // Send the code to Judge0 API
         const judge0Response = await axios.post(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=true`, {
@@ -181,6 +183,8 @@ export const submitCode = async (req, res) => {
             .status(400)
             .json({ message: "Title is required as a query parameter" });
     }
+    let fullCode = "";
+    captureJudgeResponse(res, "submitCode", language, () => fullCode);
     try {
         // Fetch the problem details, including test cases and base code
         const problemData = await prisma.problem.findFirst({
@@ -203,48 +207,37 @@ export const submitCode = async (req, res) => {
                 .json({ error: "Base code not found for this language" });
         }
         // Combine the header files, formatted user's code, and main class code
-        const fullCode = `${baseCode.headerFiles || ""}\n${code}\n${baseCode.mainClassCode || ""}`;
+        fullCode = `${baseCode.headerFiles || ""}\n${code}\n${baseCode.mainClassCode || ""}`;
         console.log("Full code being sent:", fullCode);
         const totalTestCases = problemData.testCases.length;
         // Submit all test cases in parallel
-        const submissionPromises = problemData.testCases.map(async (testCase, index) => {
-            try {
-                const judge0Response = await axios.post(`${JUDGE0_URL}/submissions`, {
-                    source_code: fullCode,
-                    language_id: getLanguageId(language),
-                    stdin: testCase.apiInput,
-                }, {
-                    headers: JUDGE0_HEADERS,
-                });
-                const submissionId = judge0Response.data.token;
-                const result = await pollJudge0Result(submissionId);
-                // Decode stderr and compile_output if present
-                if (result.stderr) {
-                    result.stderr = Buffer.from(result.stderr, "base64").toString();
-                }
-                if (result.compile_output) {
-                    result.compile_output = Buffer.from(result.compile_output, "base64").toString();
-                }
-                const runtime = parseFloat(result.time) || 0;
-                const memory = parseFloat(result.memory) || 0;
-                const errorInfo = parseErrorPosition(result.compile_output, language);
-                const processedResult = processSubmissionResult(result, errorInfo, language);
-                return {
-                    index,
-                    testCase,
-                    result,
-                    processedResult,
-                    runtime,
-                    memory,
-                };
+        // Submit all test cases sequentially
+        // Submit all test cases in parallel
+        const submissionResults = await Promise.all(problemData.testCases.map(async (testCase, index) => {
+            const judge0Response = await axios.post(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=true`, {
+                source_code: Buffer.from(fullCode).toString("base64"),
+                language_id: getLanguageId(language),
+                stdin: Buffer.from(testCase.apiInput).toString("base64"),
+            }, {
+                headers: JUDGE0_HEADERS,
+                timeout: 30000, // 30 second axios timeout
+            });
+            const result = judge0Response.data;
+            if (result.stdout) {
+                result.stdout = Buffer.from(result.stdout, "base64").toString();
             }
-            catch (error) {
-                console.error(`Error processing test case ${index}:`, error);
-                throw error;
+            if (result.stderr) {
+                result.stderr = Buffer.from(result.stderr, "base64").toString();
             }
-        });
-        // Wait for all submissions to complete
-        const submissionResults = await Promise.all(submissionPromises);
+            if (result.compile_output) {
+                result.compile_output = Buffer.from(result.compile_output, "base64").toString();
+            }
+            const runtime = parseFloat(result.time) || 0;
+            const memory = parseFloat(result.memory) || 0;
+            const errorInfo = parseErrorPosition(result.compile_output, language);
+            const processedResult = processSubmissionResult(result, errorInfo, language);
+            return { index, testCase, result, processedResult, runtime, memory };
+        }));
         // Process results to find first failure
         let allTestCasesPassed = true;
         let failedTestCase = null;

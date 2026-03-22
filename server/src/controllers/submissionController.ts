@@ -9,11 +9,11 @@ import {
 import { Difficulty, SubmissionStatus } from "@prisma/client";
 import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
+import { captureJudgeResponse } from "../utils/judgeResponseLogger.js";
 
-export const JUDGE0_URL = process.env.JUDGE0_URL;
+export const JUDGE0_URL = process.env.JUDGE0_BASE_URL;
 export const JUDGE0_HEADERS = {
-  "x-rapidapi-key": process.env.JUDGE0_API_KEY,
-  "x-rapidapi-host": process.env.JUDGE0_HOST,
+  "X-Auth-Token": process.env.JUDGE0_AUTH_TOKEN,
   "Content-Type": "application/json",
 };
 
@@ -133,6 +133,9 @@ export const runCode = async (req, res, next) => {
       .json({ message: "Title is required as a query parameter" });
   }
 
+  let fullCode = "";
+  captureJudgeResponse(res, "runCode", language, () => fullCode);
+
   try {
     // Fetch the problem details, including test cases and base code
     const problemData = await prisma.problem.findFirst({
@@ -149,7 +152,7 @@ export const runCode = async (req, res, next) => {
 
     // Fetch the base code for the selected language
     const baseCode = problemData.baseCodes.find(
-      (baseCode) => baseCode.language === language
+      (baseCode) => baseCode.language === language,
     );
 
     if (!baseCode) {
@@ -161,7 +164,7 @@ export const runCode = async (req, res, next) => {
     // Add a newline after every line in the user's code
 
     // Combine the header files, formatted user's code, and main class code
-    const fullCode = `${baseCode.headerFiles || ""}\n${code}\n${
+    fullCode = `${baseCode.headerFiles || ""}\n${code}\n${
       baseCode.mainClassCode || ""
     }`;
 
@@ -174,12 +177,12 @@ export const runCode = async (req, res, next) => {
         source_code: Buffer.from(fullCode).toString("base64"), // Encode the source code
         language_id: getLanguageId(language), // Map language to Judge0 language ID
         stdin: Buffer.from(problemData.testCases[0].apiInput).toString(
-          "base64"
+          "base64",
         ), // Encode the input
       },
       {
         headers: JUDGE0_HEADERS,
-      }
+      },
     );
 
     const result = judge0Response.data;
@@ -195,7 +198,7 @@ export const runCode = async (req, res, next) => {
     if (result.compile_output) {
       result.compile_output = Buffer.from(
         result.compile_output,
-        "base64"
+        "base64",
       ).toString();
     }
 
@@ -205,7 +208,7 @@ export const runCode = async (req, res, next) => {
     const processedResult: ProcessedResult = processSubmissionResult(
       result,
       errorInfo,
-      language
+      language,
     );
 
     // Handle internal errors (status >= 13)
@@ -266,6 +269,9 @@ export const submitCode = async (req, res) => {
       .json({ message: "Title is required as a query parameter" });
   }
 
+  let fullCode = "";
+  captureJudgeResponse(res, "submitCode", language, () => fullCode);
+
   try {
     // Fetch the problem details, including test cases and base code
     const problemData = await prisma.problem.findFirst({
@@ -284,7 +290,7 @@ export const submitCode = async (req, res) => {
 
     // Fetch the base code for the selected language
     const baseCode = problemData.baseCodes.find(
-      (baseCode) => baseCode.language === language
+      (baseCode) => baseCode.language === language,
     );
 
     if (!baseCode) {
@@ -294,7 +300,7 @@ export const submitCode = async (req, res) => {
     }
 
     // Combine the header files, formatted user's code, and main class code
-    const fullCode = `${baseCode.headerFiles || ""}\n${code}\n${
+    fullCode = `${baseCode.headerFiles || ""}\n${code}\n${
       baseCode.mainClassCode || ""
     }`;
 
@@ -303,62 +309,50 @@ export const submitCode = async (req, res) => {
     const totalTestCases = problemData.testCases.length;
 
     // Submit all test cases in parallel
-    const submissionPromises = problemData.testCases.map(
-      async (testCase, index) => {
-        try {
-          const judge0Response = await axios.post(
-            `${JUDGE0_URL}/submissions`,
-            {
-              source_code: fullCode,
-              language_id: getLanguageId(language),
-              stdin: testCase.apiInput,
-            },
-            {
-              headers: JUDGE0_HEADERS,
-            }
-          );
+    // Submit all test cases sequentially
+    // Submit all test cases in parallel
+    const submissionResults = await Promise.all(
+      problemData.testCases.map(async (testCase, index) => {
+        const judge0Response = await axios.post(
+          `${JUDGE0_URL}/submissions?base64_encoded=true&wait=true`,
+          {
+            source_code: Buffer.from(fullCode).toString("base64"),
+            language_id: getLanguageId(language),
+            stdin: Buffer.from(testCase.apiInput).toString("base64"),
+          },
+          {
+            headers: JUDGE0_HEADERS,
+            timeout: 30000, // 30 second axios timeout
+          },
+        );
 
-          const submissionId = judge0Response.data.token;
-          const result = await pollJudge0Result(submissionId);
+        const result = judge0Response.data;
 
-          // Decode stderr and compile_output if present
-          if (result.stderr) {
-            result.stderr = Buffer.from(result.stderr, "base64").toString();
-          }
-          if (result.compile_output) {
-            result.compile_output = Buffer.from(
-              result.compile_output,
-              "base64"
-            ).toString();
-          }
-
-          const runtime = parseFloat(result.time) || 0;
-          const memory = parseFloat(result.memory) || 0;
-
-          const errorInfo = parseErrorPosition(result.compile_output, language);
-          const processedResult: ProcessedResult = processSubmissionResult(
-            result,
-            errorInfo,
-            language
-          );
-
-          return {
-            index,
-            testCase,
-            result,
-            processedResult,
-            runtime,
-            memory,
-          };
-        } catch (error) {
-          console.error(`Error processing test case ${index}:`, error);
-          throw error;
+        if (result.stdout) {
+          result.stdout = Buffer.from(result.stdout, "base64").toString();
         }
-      }
-    );
+        if (result.stderr) {
+          result.stderr = Buffer.from(result.stderr, "base64").toString();
+        }
+        if (result.compile_output) {
+          result.compile_output = Buffer.from(
+            result.compile_output,
+            "base64",
+          ).toString();
+        }
 
-    // Wait for all submissions to complete
-    const submissionResults = await Promise.all(submissionPromises);
+        const runtime = parseFloat(result.time) || 0;
+        const memory = parseFloat(result.memory) || 0;
+        const errorInfo = parseErrorPosition(result.compile_output, language);
+        const processedResult: ProcessedResult = processSubmissionResult(
+          result,
+          errorInfo,
+          language,
+        );
+
+        return { index, testCase, result, processedResult, runtime, memory };
+      }),
+    );
 
     // Process results to find first failure
     let allTestCasesPassed = true;
@@ -447,12 +441,12 @@ export const submitCode = async (req, res) => {
     const submissionStatus = allTestCasesPassed
       ? "accepted"
       : failureReason === "compilation_error"
-      ? "compilation_error"
-      : failureReason === "runtime_error"
-      ? "runtime_error"
-      : failureReason === "time_limit_exceeded"
-      ? "time_limit_exceeded"
-      : "wrong_answer";
+        ? "compilation_error"
+        : failureReason === "runtime_error"
+          ? "runtime_error"
+          : failureReason === "time_limit_exceeded"
+            ? "time_limit_exceeded"
+            : "wrong_answer";
 
     if (!allTestCasesPassed) {
       updateStatistics(
@@ -465,7 +459,7 @@ export const submitCode = async (req, res) => {
         runtimeInMilliseconds,
         memoryInMegabytes,
         testCasesPassed,
-        totalTestCases
+        totalTestCases,
       );
 
       return res.status(400).json({
@@ -491,7 +485,7 @@ export const submitCode = async (req, res) => {
       runtimeInMilliseconds,
       memoryInMegabytes,
       testCasesPassed,
-      totalTestCases
+      totalTestCases,
     );
 
     res.status(200).json({
@@ -519,7 +513,7 @@ const updateStatistics = async (
   runtime: number, // Add runtime parameter
   memory: number, // Add memory parameter
   testCasesPassed: number,
-  totalTestCases: number
+  totalTestCases: number,
 ) => {
   // Update user statistics
   await prisma.stats.upsert({
