@@ -1,4 +1,5 @@
 import express from "express";
+import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
 import {
   generateFeedback,
   generateInterview,
@@ -8,18 +9,103 @@ import {
   getLatestInterviews,
 } from "../controllers/interviewController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
+import {
+  generateFeedbackLimiter,
+  generateInterviewLimiter,
+  interviewReadLimiter,
+} from "../middlewares/rateLimiter.js";
+import redis from "../configs/redisConfig.js";
 
 const router = express.Router();
 
-router.route("/generate-interview").post(generateInterview);
+// ── AI Mutations (rate limited, no cache) ───────────────────────
+
 router
-  .route("/getInterviewsByUserId")
-  .get(authMiddleware, getInterviewsByUserId);
-router.route("/getLatestInterviews").get(authMiddleware, getLatestInterviews);
-router.route("/getInterviewDetails").get(authMiddleware, getInterviewDetails);
-router.route("/generateFeedback").post(authMiddleware, generateFeedback);
+  .route("/generate-interview")
+  .post(generateInterviewLimiter, generateInterview);
+
 router
-  .route("/getFeedbackByInterviewId")
-  .get(authMiddleware, getFeedbackByInterviewId);
+  .route("/generateFeedback")
+  .post(authMiddleware, generateFeedbackLimiter, generateFeedback);
+
+// ── Reads (cached) ───────────────────────────────────────────────
+
+/**
+ * GET /interview/getInterviewsByUserId
+ * User's own interview list — 5 min TTL.
+ */
+router.route("/getInterviewsByUserId").get(
+  authMiddleware,
+  interviewReadLimiter,
+  cacheMiddleware(redis, {
+    ttl: 300, // 5 minutes
+    autoCache: {
+      tags: ["interviews:list"],
+      includeAuth: true,
+      keyGenerator: (req: any) => {
+        const userId = req.user?.userId;
+        return `interviews:user:${userId}`;
+      },
+    },
+  }),
+  getInterviewsByUserId,
+);
+
+/**
+ * GET /interview/getLatestInterviews
+ * Latest interviews from other users — 5 min TTL.
+ */
+router.route("/getLatestInterviews").get(
+  authMiddleware,
+  interviewReadLimiter,
+  cacheMiddleware(redis, {
+    ttl: 300,
+    autoCache: {
+      tags: ["interviews:latest"],
+      keyGenerator: (req: any) => {
+        const userId = req.user?.userId;
+        return `interviews:latest:excluding:${userId}`;
+      },
+    },
+  }),
+  getLatestInterviews,
+);
+
+/**
+ * GET /interview/getInterviewDetails
+ * Single interview — 1 hour TTL (content doesn't change once created).
+ */
+router.route("/getInterviewDetails").get(
+  authMiddleware,
+  interviewReadLimiter,
+  cacheMiddleware(redis, {
+    ttl: 3600, // 1 hour
+    autoCache: {
+      tags: (req: any) => ["interviews", `interview:${req.query.id}`],
+      keyGenerator: (req: any) => `interview:detail:${req.query.id}`,
+    },
+  }),
+  getInterviewDetails,
+);
+
+/**
+ * GET /interview/getFeedbackByInterviewId
+ * Interview feedback — 1 hour TTL (feedback is immutable once generated).
+ */
+router.route("/getFeedbackByInterviewId").get(
+  authMiddleware,
+  interviewReadLimiter,
+  cacheMiddleware(redis, {
+    ttl: 3600,
+    autoCache: {
+      tags: (req: any) => [
+        "interviews:feedback",
+        `interview:${req.query.id}:feedback`,
+      ],
+      keyGenerator: (req: any) => `interview:feedback:${req.query.id}`,
+    },
+  }),
+  getFeedbackByInterviewId,
+);
 
 export default router;
