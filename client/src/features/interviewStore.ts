@@ -1,9 +1,7 @@
+import axios from "@/lib/axiosInstance";
 import { create } from "zustand";
-import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-axios.defaults.withCredentials = true;
 
 enum interviewType {
   BEHAVIORAL = "BEHAVIORAL",

@@ -1,10 +1,5 @@
-// ─────────────────────────────────────────────────────────────
-// Sticky Notes Zustand Store
-// Place this file at: src/features/stickyNotes/stickyNoteStore.ts
-// ─────────────────────────────────────────────────────────────
-
 import { create } from "zustand";
-import axios from "axios";
+import axios from "@/lib/axiosInstance";
 import { v4 as uuidv4 } from "uuid";
 import {
   NoteColor,

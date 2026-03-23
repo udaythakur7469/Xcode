@@ -1,10 +1,8 @@
 import { create } from "zustand";
-import axios from "axios";
+import axios from "@/lib/axiosInstance";
 import { useUserStore } from "./userStore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-axios.defaults.withCredentials = true;
 
 export interface User {
   id: number;

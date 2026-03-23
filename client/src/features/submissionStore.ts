@@ -1,12 +1,9 @@
+import axios from "@/lib/axiosInstance";
 import { create } from "zustand";
-import axios from "axios";
 import { User } from "./authStore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-axios.defaults.withCredentials = true;
-
-// Define the Submission interface based on your Prisma schema
 export interface Submission {
   id: number;
   problemId: number;

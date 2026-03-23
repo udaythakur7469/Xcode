@@ -1,9 +1,7 @@
-import axios from "axios";
+import axios from "@/lib/axiosInstance";
 import { create } from "zustand";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
-
-axios.defaults.withCredentials = true;
 
 interface TagValidation {
   success: boolean;
