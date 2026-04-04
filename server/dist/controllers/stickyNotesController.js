@@ -42,6 +42,13 @@ export const createStickyNote = async (req, res, next) => {
                 zIndex: 1,
             },
         });
+        try {
+            if (req.cache)
+                await req.cache.invalidateByTags(["sticky-notes"]);
+        }
+        catch (cacheErr) {
+            logger.error("Cache invalidation error in createStickyNote", cacheErr);
+        }
         return res.status(201).json({
             message: "Sticky note created successfully",
             note,
@@ -90,6 +97,13 @@ export const updateStickyNote = async (req, res, next) => {
             where: { id },
             data: updateData,
         });
+        try {
+            if (req.cache)
+                await req.cache.invalidateByTags(["sticky-notes"]);
+        }
+        catch (cacheErr) {
+            logger.error("Cache invalidation error in updateStickyNote", cacheErr);
+        }
         return res.status(200).json({
             message: "Sticky note updated successfully",
             note: updatedNote,
@@ -116,6 +130,13 @@ export const deleteStickyNote = async (req, res, next) => {
             throw createHttpError.NotFound("Sticky note not found");
         }
         await prisma.stickyNote.delete({ where: { id } });
+        try {
+            if (req.cache)
+                await req.cache.invalidateByTags(["sticky-notes"]);
+        }
+        catch (cacheErr) {
+            logger.error("Cache invalidation error in deleteStickyNote", cacheErr);
+        }
         return res.status(200).json({
             message: "Sticky note deleted successfully",
         });
@@ -150,6 +171,13 @@ export const bulkCreateStickyNotes = async (req, res, next) => {
                 zIndex: note.zIndex ?? 1,
             },
         })));
+        try {
+            if (req.cache)
+                await req.cache.invalidateByTags(["sticky-notes"]);
+        }
+        catch (cacheErr) {
+            logger.error("Cache invalidation error in bulkCreateStickyNotes", cacheErr);
+        }
         return res.status(201).json({
             message: `${createdNotes.length} notes migrated successfully`,
             notes: createdNotes,
