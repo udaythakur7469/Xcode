@@ -410,21 +410,23 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         </div>
 
         {/* Footer with Run Code Button */}
-        <div className="h-[50px] bg-secondary rounded-md flex items-center justify-end px-4 gap-x-5">
-          <Button
-            className="bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleRunCode}
-            disabled={isRunningCode || isSubmittingCode}
-          >
-            {isRunningCode ? "Running..." : "Run Code"}
-          </Button>
-          <Button
-            className="bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={handleSubmitCode}
-            disabled={isRunningCode || isSubmittingCode}
-          >
-            {isSubmittingCode ? "Submitting..." : "Submit Code"}
-          </Button>
+        <div className="h-[50px] bg-secondary rounded-md flex items-center justify-start px-4 gap-x-5">
+          <div className="ml-5 space-x-5">
+            <Button
+              className="bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleRunCode}
+              disabled={isRunningCode || isSubmittingCode}
+            >
+              {isRunningCode ? "Running..." : "Run Code"}
+            </Button>
+            <Button
+              className="bg-green-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleSubmitCode}
+              disabled={isRunningCode || isSubmittingCode}
+            >
+              {isSubmittingCode ? "Submitting..." : "Submit Code"}
+            </Button>
+          </div>
         </div>
       </>
     </div>
