@@ -288,17 +288,13 @@ export const processCompilationError = (
       .replace(/:\n/g, ": "); // Replace ":\n" with ": " to remove newline after colon
   }
 
-  // Modify error info to clean up the file field
+  // Keep only the first error entry for display; clean up any stray whitespace
+  // in the file field that older compiler outputs might leave.
   let cleanErrorInfo = null;
   if (errorInfo && errorInfo.length > 0) {
-    cleanErrorInfo = [{ ...errorInfo[0] }]; // Clone the first error
-
-    // Clean up the file field if it has "\nmain.cpp"
+    cleanErrorInfo = [{ ...errorInfo[0] }];
     if (cleanErrorInfo[0].file) {
-      cleanErrorInfo[0].file = cleanErrorInfo[0].file.replace(
-        /\nmain\.cpp/g,
-        "main.cpp",
-      );
+      cleanErrorInfo[0].file = cleanErrorInfo[0].file.replace(/\n/g, "").trim();
     }
   }
 
@@ -318,19 +314,36 @@ export const processCompilationError = (
  * @param {string} language - The programming language
  * @returns {Array} Array of error objects with position information
  */
+// Shared shape for every entry pushed into the errors array.
+// codeSnippet / pointerStart / pointerLength are optional because they're only
+// attached when the compiler output contains a caret line (^~~).
+interface ErrorEntry {
+  file: string;
+  line: number;
+  column?: number;
+  type?: string;
+  function?: string | null;
+  message: string | null;
+  codeSnippet?: string;
+  pointerStart?: number;
+  pointerLength?: number;
+}
+
 export const parseErrorPosition = (compileOutput, language) => {
   if (!compileOutput) return null;
 
-  const errors = [];
+  const errors: ErrorEntry[] = [];
 
   if (language === "cpp" || language === "c") {
     // C/C++ error format: file:line:column: error: message
-    const regex = /([^:]+):(\d+):(\d+):\s*(error|warning):\s*(.*)/g;
+    // [^\s:] anchors the file match to a single non-whitespace, non-colon token
+    // so it never bleeds across the caret lines (^~~) that GCC emits between errors.
+    const regex = /([^\s:][^:]*):(\d+):(\d+):\s*(error|warning):\s*([^\n]*)/g;
     let match;
 
     while ((match = regex.exec(compileOutput)) !== null) {
       errors.push({
-        file: match[1],
+        file: match[1].trim(),
         line: parseInt(match[2], 10),
         column: parseInt(match[3], 10),
         type: match[4],
@@ -339,12 +352,13 @@ export const parseErrorPosition = (compileOutput, language) => {
     }
   } else if (language === "java") {
     // Java error format: file:line: error: message
-    const regex = /([^:]+):(\d+):\s*(error|warning):\s*(.*)/g;
+    // Same non-newline anchor to prevent bleeding across multi-error caret lines.
+    const regex = /([^\s:][^:]*):(\d+):\s*(error|warning):\s*([^\n]*)/g;
     let match;
 
     while ((match = regex.exec(compileOutput)) !== null) {
       errors.push({
-        file: match[1],
+        file: match[1].trim(),
         line: parseInt(match[2], 10),
         type: match[3],
         message: match[4].trim(),
