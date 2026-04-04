@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useProblemStore } from "@/features/problemStore";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { MoonLoader } from "react-spinners";
 import { CircleCheckBig, Lightbulb, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +20,7 @@ type ProblemDetails = {
   description: string;
   difficulty: "easy" | "medium" | "hard";
   tags: string[];
+  constraints: string[];
   solved: boolean;
   examples: {
     id: number;
@@ -56,10 +56,8 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Socket integration ─────────────────────────────────────────────────
   const { socket } = useSocket();
 
-  // Fetch problem on mount
   useEffect(() => {
     const fetchProblemDetails = async () => {
       if (!problemTitle) {
@@ -79,14 +77,11 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
     fetchProblemDetails();
   }, [problemTitle, getProblemByTitle]);
 
-  // Join the socket room once the problem id is known; leave on unmount
   useEffect(() => {
     if (!socket || !storeProblem?.id) return;
-
     const problemId = storeProblem.id;
     socket.emit("problem:join", problemId);
 
-    // Listen for reaction updates from OTHER users
     const handleReactionUpdate = (payload: {
       problemId: number;
       likes: number;
@@ -96,14 +91,12 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
     };
 
     socket.on("problem:reaction:updated", handleReactionUpdate);
-
     return () => {
       socket.emit("problem:leave", problemId);
       socket.off("problem:reaction:updated", handleReactionUpdate);
     };
   }, [socket, storeProblem?.id, applyRemoteProblemReaction]);
 
-  // Alt+H shortcut to open hints dialog
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
       if (
@@ -135,9 +128,9 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
   }
 
   return (
-    <ScrollArea className="h-[610px] w-full">
+    <div className="h-[610px] w-full overflow-y-auto">
       {isLoading ? (
-        <div className="h-[610px] w-full flex justify-center items-center">
+        <div className="h-full w-full flex justify-center items-center">
           <MoonLoader size={200} color="#ffffff" />
         </div>
       ) : error ? (
@@ -146,6 +139,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
         <div className="text-red-500 text-center">Problem not found.</div>
       ) : (
         <div>
+          {/* Title */}
           <div className="h-full w-full flex flex-row justify-between items-center bg-background p-2">
             <div className="flex items-center ml-1">
               <p className="text-5xl">{problem.id}. </p>
@@ -161,8 +155,8 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
             </div>
           </div>
 
-          {/* Difficulty Badge & Tags */}
-          <div className="flex flex-row items-center p-2 px-4">
+          {/* Difficulty Badge, Tags, Hints, Reactions */}
+          <div className="flex flex-row items-center flex-wrap gap-2 px-4 py-2">
             <Badge
               variant="secondary"
               className="px-3 py-1 flex items-center cursor-default"
@@ -184,69 +178,70 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
               <Badge
                 key={index}
                 variant="secondary"
-                className="ml-2 px-3 py-1 flex items-center cursor-default"
+                className="px-3 py-1 flex items-center cursor-default"
               >
                 {tag}
               </Badge>
             ))}
 
-            <Dialog>
-              <DialogTrigger asChild>
-                <Badge
-                  variant="secondary"
-                  className="ml-2 px-3 py-1 flex items-center cursor-pointer"
-                  data-hint-trigger
-                >
-                  <Lightbulb className="h-4 w-4 mr-1 text-yellow-400" />
-                  Hint
-                </Badge>
-              </DialogTrigger>
-              <HintsDialog
-                data={problem.hints.map((hintObj) => hintObj.hint)}
-              />
-            </Dialog>
+            {/* This group always moves to next line together if it doesn't fit */}
+            <div className="flex flex-row items-center gap-2 flex-shrink-0 pt-1">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Badge
+                    variant="secondary"
+                    className="px-3 py-1 flex items-center cursor-pointer"
+                    data-hint-trigger
+                  >
+                    <Lightbulb className="h-4 w-4 mr-1 text-yellow-400" />
+                    Hint
+                  </Badge>
+                </DialogTrigger>
+                <HintsDialog
+                  data={problem.hints.map((hintObj) => hintObj.hint)}
+                />
+              </Dialog>
 
-            {/* Like button */}
-            <Badge
-              variant="secondary"
-              onClick={() => handleReaction("like")}
-              className={`px-3 py-1 flex items-center ml-2 transition-all duration-150 ${
-                isReacting
-                  ? "opacity-70 cursor-not-allowed"
-                  : "cursor-pointer hover:opacity-80"
-              }`}
-            >
-              <ThumbsUp
-                className={`h-4 w-4 mr-1 transition-all duration-150 ${
-                  storeProblem?.userReaction === "like"
-                    ? "text-green-600 fill-green-600 scale-110"
-                    : ""
+              <Badge
+                variant="secondary"
+                onClick={() => handleReaction("like")}
+                className={`px-3 py-1 flex items-center transition-all duration-150 ${
+                  isReacting
+                    ? "opacity-70 cursor-not-allowed"
+                    : "cursor-pointer hover:opacity-80"
                 }`}
-              />
-              {formatCount(storeProblem?.likes ?? 0)}
-            </Badge>
+              >
+                <ThumbsUp
+                  className={`h-4 w-4 mr-1 transition-all duration-150 ${
+                    storeProblem?.userReaction === "like"
+                      ? "text-green-600 fill-green-600 scale-110"
+                      : ""
+                  }`}
+                />
+                {formatCount(storeProblem?.likes ?? 0)}
+              </Badge>
 
-            {/* Dislike button */}
-            <Badge
-              variant="secondary"
-              onClick={() => handleReaction("dislike")}
-              className={`px-3 py-1 flex items-center ml-2 transition-all duration-150 ${
-                isReacting
-                  ? "opacity-70 cursor-not-allowed"
-                  : "cursor-pointer hover:opacity-80"
-              }`}
-            >
-              <ThumbsDown
-                className={`h-4 w-4 mr-1 transition-all duration-150 ${
-                  storeProblem?.userReaction === "dislike"
-                    ? "text-red-600 fill-red-600 scale-110"
-                    : ""
+              <Badge
+                variant="secondary"
+                onClick={() => handleReaction("dislike")}
+                className={`px-3 py-1 flex items-center transition-all duration-150 ${
+                  isReacting
+                    ? "opacity-70 cursor-not-allowed"
+                    : "cursor-pointer hover:opacity-80"
                 }`}
-              />
-              {formatCount(storeProblem?.dislikes ?? 0)}
-            </Badge>
+              >
+                <ThumbsDown
+                  className={`h-4 w-4 mr-1 transition-all duration-150 ${
+                    storeProblem?.userReaction === "dislike"
+                      ? "text-red-600 fill-red-600 scale-110"
+                      : ""
+                  }`}
+                />
+                {formatCount(storeProblem?.dislikes ?? 0)}
+              </Badge>
 
-            <StatsDialog stats={problem.problemStats} />
+              <StatsDialog stats={problem.problemStats} />
+            </div>
           </div>
 
           {/* Description */}
@@ -287,10 +282,25 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
               </div>
             ))}
           </div>
+
+          {/* Constraints */}
+          {problem.constraints && problem.constraints.length > 0 && (
+            <div className="ml-4 mr-4 mt-8 mb-4">
+              <h3 className="text-xl font-semibold mb-4">Constraints:</h3>
+              <ul className="list-disc list-inside space-y-1">
+                {problem.constraints.map((constraint, index) => (
+                  <li key={index} className="text-md font-mono">
+                    {constraint}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="h-[10px]" />
         </div>
       )}
-    </ScrollArea>
+    </div>
   );
 };
 
