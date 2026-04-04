@@ -178,6 +178,14 @@ export const updateProfilePicture = async (req, res) => {
                 links: true,
             },
         });
+        try {
+            if (req.cache) {
+                await req.cache.invalidateByTags(["user:profile"]);
+            }
+        }
+        catch (cacheErr) {
+            console.error("Cache invalidation error in updateProfilePicture", cacheErr);
+        }
         res.status(200).json({
             success: true,
             message: "Profile picture updated successfully",
@@ -217,7 +225,17 @@ export const updateProfile = async (req, res) => {
                 links: true,
             },
         });
-        res.status(200).json({
+        try {
+            if (req.cache) {
+                await req.cache.invalidateByTags(["user:profile"]);
+            }
+        }
+        catch (cacheErr) {
+            console.error("Cache invalidation error in updateProfile", cacheErr);
+        }
+        res
+            .status(200)
+            .json({
             success: true,
             message: "Profile updated successfully",
             user: updatedUser,
