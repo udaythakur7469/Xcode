@@ -12,12 +12,12 @@ const redis = createRedisClient({
 });
 // Log connection lifecycle
 redis.on("ready", () => {
-    logger.info("✅ Redis Cloud connected successfully");
+    logger.info("Redis Cloud connected successfully");
 });
 redis.on("error", (err) => {
-    logger.error("❌ Redis connection error:", err.message);
+    logger.error("Redis connection error:", err.message);
 });
 redis.on("reconnecting", () => {
-    logger.warn("🔄 Redis reconnecting...");
+    logger.warn("Redis reconnecting...");
 });
 export default redis;
