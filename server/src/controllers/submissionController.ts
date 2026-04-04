@@ -8,7 +8,6 @@ import {
 import { Difficulty, SubmissionStatus } from "@prisma/client";
 import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
-import { captureJudgeResponse } from "../utils/judgeResponseLogger.js";
 
 export const JUDGE0_URL = process.env.JUDGE0_BASE_URL;
 export const JUDGE0_HEADERS = {
@@ -133,7 +132,6 @@ export const runCode = async (req, res, next) => {
   }
 
   let fullCode = "";
-  captureJudgeResponse(res, "runCode", language, () => fullCode);
 
   try {
     // Fetch the problem details, including test cases and base code
@@ -236,7 +234,7 @@ export const runCode = async (req, res, next) => {
     // Return successful execution
     res.status(200).json({
       message: "Code executed successfully",
-      stdout: processedResult.stdout, // This is safe because SuccessResult has stdout
+      stdout: processedResult.stdout?.trimEnd() ?? "",
       time: processedResult.time,
       memory: processedResult.memory,
       status: processedResult.status,
@@ -269,7 +267,6 @@ export const submitCode = async (req, res) => {
   }
 
   let fullCode = "";
-  captureJudgeResponse(res, "submitCode", language, () => fullCode);
 
   try {
     // Fetch the problem details, including test cases and base code
@@ -345,50 +342,70 @@ export const submitCode = async (req, res) => {
       ).toString();
     }
 
-    // Handle compilation error
-    if (judgeResult.status.id === 6) {
-      const errorInfo = parseErrorPosition(
-        judgeResult.compile_output,
-        language,
-      );
-      return res.status(400).json({
-        success: false,
-        status: "compilation_error",
-        statusDescription: judgeResult.status.description,
-        compile_output: judgeResult.compile_output,
-        stderr: judgeResult.stderr,
-        errorInfo,
-      });
-    }
-
-    // Handle runtime error
-    if ([7, 8, 9, 10, 11, 12].includes(judgeResult.status.id)) {
-      return res.status(400).json({
-        success: false,
-        status: "runtime_error",
-        statusDescription: judgeResult.status.description,
-        stderr: judgeResult.stderr,
-        time: judgeResult.time,
-        memory: judgeResult.memory,
-      });
-    }
-
-    // Handle time limit exceeded
-    if (judgeResult.status.id === 5) {
-      return res.status(400).json({
-        success: false,
-        status: "time_limit_exceeded",
-        statusDescription: judgeResult.status.description,
-        time: judgeResult.time,
-        memory: judgeResult.memory,
-      });
-    }
-
     // Handle internal error
     if (judgeResult.status.id >= 13) {
       return res.status(500).json({
         error: "Internal server error occurred during submission",
         statusDescription: judgeResult.status.description,
+      });
+    }
+
+    // Handle compilation error, runtime error, and TLE — before any test case
+    // comparison. These are judge-level failures (the program never ran against
+    // test cases), so there is no actualOutput. We still wrap them in the
+    // failedTestCase envelope so the frontend always sees one consistent shape
+    // for every HTTP 400 response from submitCode.
+    const judgeFailureId = judgeResult.status.id;
+    if (judgeFailureId === 6 || (judgeFailureId >= 5 && judgeFailureId <= 12)) {
+      const isCompile = judgeFailureId === 6;
+      const isTLE = judgeFailureId === 5;
+      const isRuntime = judgeFailureId >= 7 && judgeFailureId <= 12;
+
+      const status = isCompile
+        ? "compilation_error"
+        : isTLE
+          ? "time_limit_exceeded"
+          : "runtime_error";
+
+      const errorInfo = isCompile
+        ? parseErrorPosition(judgeResult.compile_output, language)
+        : null;
+
+      const runtimeMs = Math.round((parseFloat(judgeResult.time) || 0) * 1000);
+      const memoryMb = (parseFloat(judgeResult.memory) || 0) / 1024;
+
+      updateStatistics(
+        req.user.userId,
+        problemData.id,
+        problemData.difficulty,
+        status as SubmissionStatus,
+        code,
+        language,
+        runtimeMs,
+        memoryMb,
+        0,
+        totalTestCases,
+      );
+
+      return res.status(400).json({
+        message: `Code failed: ${judgeResult.status.description}`,
+        failedTestCase: {
+          input: problemData.testCases[0]?.userInput || null,
+          expectedOutput: problemData.testCases[0]?.userExpectedOutput || null,
+          actualOutput: null,
+          status,
+          statusDescription: judgeResult.status.description,
+          stderr: judgeResult.stderr || null,
+          compile_output: isCompile ? judgeResult.compile_output : null,
+          errorInfo: isCompile ? errorInfo : null,
+          runtime: parseFloat(judgeResult.time) || 0,
+          memory: parseFloat(judgeResult.memory) || 0,
+        },
+        language,
+        runtimeInMilliseconds: runtimeMs,
+        memoryInMegabytes: memoryMb,
+        testCasesPassed: 0,
+        totalTestCases,
       });
     }
 
@@ -570,6 +587,20 @@ export const submitCode = async (req, res) => {
       testCasesPassed,
       totalTestCases,
     );
+
+    try {
+      if (req.cache) {
+        await req.cache.invalidateByTags([
+          "submissions:user",
+          `submissions:problem:${title}`,
+          "user:profile",
+          "user:heatmap",
+          "user:languages",
+        ]);
+      }
+    } catch (cacheErr) {
+      console.error("Cache invalidation error in submitCode", cacheErr);
+    }
 
     res.status(200).json({
       message: "All test cases passed",
