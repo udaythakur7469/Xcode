@@ -24,18 +24,18 @@ const StatsDialog: React.FC<StatsDialogProps> = ({ stats }) => {
       <HoverCardTrigger>
         <Badge
           variant="secondary"
-          className="px-2 py-0.5 flex items-center ml-2 cursor-pointer"
+          className="px-2 py-1 flex items-center ml-1 cursor-pointer"
         >
           <ChartNoAxesCombined className="h-5 w-5" />
         </Badge>
       </HoverCardTrigger>
       <HoverCardContent side="right">
         <div className="flex flex-col p-2">
-          <div>Accuracy : {toTwoDecimals(stats.acceptanceRate)}%</div>
+          <div>Accuracy : {toTwoDecimals(stats?.acceptanceRate)}%</div>
           <SelectSeparator />
-          <div>Attempts : {formatCount(stats.totalAttempts)}</div>
+          <div>Attempts : {formatCount(stats?.totalAttempts)}</div>
           <SelectSeparator />
-          <div>Accepted : {formatCount(stats.totalSolved)}</div>
+          <div>Accepted : {formatCount(stats?.totalSolved)}</div>
         </div>
       </HoverCardContent>
     </HoverCard>
