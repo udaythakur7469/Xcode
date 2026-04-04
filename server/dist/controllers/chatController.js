@@ -88,10 +88,17 @@ export const deleteChat = async (req, res, next) => {
             throw createHttpError.NotFound("Chat not found");
         }
         await prisma.chat.delete({ where: { id: chatId } });
-        return res.status(200).json({
-            success: true,
-            message: "Chat deleted successfully",
-        });
+        try {
+            if (req.cache) {
+                await req.cache.invalidateByTags(["chat:messages", "chat:list"]);
+            }
+        }
+        catch (cacheErr) {
+            logger.error("Cache invalidation error in deleteChat", cacheErr);
+        }
+        return res
+            .status(200)
+            .json({ success: true, message: "Chat deleted successfully" });
     }
     catch (error) {
         logger.error("error in deleteChat controller", error);
@@ -224,6 +231,14 @@ export const sendMessage = async (req, res, next) => {
                 updatedAt: aiPlaceholder.updatedAt,
             },
         });
+        try {
+            if (req.cache) {
+                await req.cache.invalidateByTags(["chat:messages", "chat:list"]);
+            }
+        }
+        catch (cacheErr) {
+            logger.error("Cache invalidation error in sendMessage", cacheErr);
+        }
         // Generate AI response asynchronously
         (async () => {
             try {
