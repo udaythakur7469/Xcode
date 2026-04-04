@@ -11,10 +11,10 @@ router
     .post(optionalAuthMiddleware, readLimiter, createChat);
 router
     .route("/deleteChat")
-    .delete(optionalAuthMiddleware, readLimiter, deleteChat);
+    .delete(optionalAuthMiddleware, readLimiter, cacheMiddleware(redis, { strategy: "none" }), deleteChat);
 router
     .route("/sendMessage")
-    .post(optionalAuthMiddleware, chatMessageLimiter, sendMessage);
+    .post(optionalAuthMiddleware, chatMessageLimiter, cacheMiddleware(redis, { strategy: "none" }), sendMessage);
 router
     .route("/abortMessage")
     .post(optionalAuthMiddleware, readLimiter, abortMessage);

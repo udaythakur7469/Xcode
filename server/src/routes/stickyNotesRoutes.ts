@@ -38,16 +38,40 @@ router.route("/").get(
 
 // ── Mutations (rate limited, no cache) ──────────────────────────
 
-router.route("/").post(authMiddleware, stickyNotesLimiter, createStickyNote);
+router
+  .route("/")
+  .post(
+    authMiddleware,
+    stickyNotesLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    createStickyNote,
+  );
 
 router
   .route("/bulk")
-  .post(authMiddleware, stickyNotesLimiter, bulkCreateStickyNotes);
-
-router.route("/:id").put(authMiddleware, stickyNotesLimiter, updateStickyNote);
+  .post(
+    authMiddleware,
+    stickyNotesLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    bulkCreateStickyNotes,
+  );
 
 router
   .route("/:id")
-  .delete(authMiddleware, stickyNotesLimiter, deleteStickyNote);
+  .put(
+    authMiddleware,
+    stickyNotesLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    updateStickyNote,
+  );
+
+router
+  .route("/:id")
+  .delete(
+    authMiddleware,
+    stickyNotesLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    deleteStickyNote,
+  );
 
 export default router;

@@ -81,7 +81,14 @@ router.route("/validateTag").post(readLimiter, checkCommentTagsUsingAI);
 // ── Post CRUD ────────────────────────────────────────────────────
 
 /** POST /post/createPost */
-router.route("/createPost").post(authMiddleware, createPostLimiter, createPost);
+router
+  .route("/createPost")
+  .post(
+    authMiddleware,
+    createPostLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    createPost,
+  );
 
 /**
  * GET /post/getPosts — paginated post list per problem
@@ -162,11 +169,21 @@ router.route("/getDraftPostById").get(
 
 router
   .route("/updateDraftPost")
-  .put(authMiddleware, createPostLimiter, updateDraftPost);
+  .put(
+    authMiddleware,
+    createPostLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    updateDraftPost,
+  );
 
 router
   .route("/manageDraftPost")
-  .put(authMiddleware, createPostLimiter, manageDraftPost);
+  .put(
+    authMiddleware,
+    createPostLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    manageDraftPost,
+  );
 
 // ── Tags combined ────────────────────────────────────────────────
 
@@ -190,7 +207,12 @@ router.route("/getPostTags").get(
 
 router
   .route("/postReaction")
-  .post(authMiddleware, reactionLimiter, postReaction);
+  .post(
+    authMiddleware,
+    reactionLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    postReaction,
+  );
 
 /**
  * GET /post/getPostReactions

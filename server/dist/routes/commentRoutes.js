@@ -8,17 +8,17 @@ const router = express.Router();
 // ── Comment CRUD (mutations — no cache) ─────────────────────────
 router
     .route("/create")
-    .post(optionalAuthMiddleware, createCommentLimiter, createComment);
+    .post(optionalAuthMiddleware, createCommentLimiter, cacheMiddleware(redis, { strategy: "none" }), createComment);
 router
     .route("/:commentId")
-    .patch(optionalAuthMiddleware, mutateCommentLimiter, editComment);
+    .patch(optionalAuthMiddleware, mutateCommentLimiter, cacheMiddleware(redis, { strategy: "none" }), editComment);
 router
     .route("/:commentId")
-    .delete(optionalAuthMiddleware, mutateCommentLimiter, deleteComment);
+    .delete(optionalAuthMiddleware, mutateCommentLimiter, cacheMiddleware(redis, { strategy: "none" }), deleteComment);
 // ── Reactions (mutation — no cache) ─────────────────────────────
 router
     .route("/:commentId/react")
-    .post(optionalAuthMiddleware, reactionLimiter, reactToComment);
+    .post(optionalAuthMiddleware, reactionLimiter, cacheMiddleware(redis, { strategy: "none" }), reactToComment);
 // ── Reads (cached) ───────────────────────────────────────────────
 /**
  * GET /comment/post/:postId

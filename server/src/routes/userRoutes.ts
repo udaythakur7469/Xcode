@@ -16,7 +16,14 @@ const router = express.Router();
 
 // ── Mutations (no cache) ─────────────────────────────────────────
 
-router.route("/profile").patch(authMiddleware, userReadLimiter, updateProfile);
+router
+  .route("/profile")
+  .patch(
+    authMiddleware,
+    userReadLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    updateProfile,
+  );
 
 router
   .route("/profile/picture")
@@ -24,6 +31,7 @@ router
     authMiddleware,
     uploadLimiter,
     upload.single("picture"),
+    cacheMiddleware(redis, { strategy: "none" }),
     updateProfilePicture,
   );
 

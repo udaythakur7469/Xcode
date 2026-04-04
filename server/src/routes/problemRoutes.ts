@@ -21,12 +21,19 @@ import {
   readLimiter,
 } from "../middlewares/rateLimiter.js";
 import redis from "../configs/redisConfig.js";
+import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js";
 
 const router = express.Router();
 
 // ── Admin / Write routes (no cache) ─────────────────────────────
 
-router.route("/createProblem").post(readLimiter, createProblem);
+router
+  .route("/createProblem")
+  .post(
+    readLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    createProblem,
+  );
 router.route("/hints").post(readLimiter, addHints);
 router.route("/addEditorials").post(readLimiter, addEditorials);
 router.route("/testCases").post(readLimiter, addTestCases);
@@ -38,7 +45,13 @@ router.route("/getHints").post(generateHintsLimiter, generateHints);
 
 // ── Reactions (mutations — no cache) ────────────────────────────
 
-router.post("/reaction", authMiddleware, reactionLimiter, problemReaction);
+router.post(
+  "/reaction",
+  authMiddleware,
+  reactionLimiter,
+  cacheMiddleware(redis, { strategy: "none" }),
+  problemReaction,
+);
 
 // ── Reads (cached) ───────────────────────────────────────────────
 
@@ -47,14 +60,17 @@ router.post("/reaction", authMiddleware, reactionLimiter, problemReaction);
  * 10 min TTL — problem list is stable.
  */
 router.route("/getProblems").get(
+  optionalAuthMiddleware,
   readLimiter,
   cacheMiddleware(redis, {
     ttl: 600, // 10 minutes
     autoCache: {
       tags: ["problems:list"],
+      includeAuth: true,
       keyGenerator: (req: any) => {
         const { page, difficulty, status, tags } = req.query;
-        return `problems:list:page:${page || 1}:diff:${difficulty || "all"}:status:${status || "all"}:tags:${tags || ""}`;
+        const userId = req.user?.userId || "guest";
+        return `problems:list:user:${userId}:page:${page || 1}:diff:${difficulty || "all"}:status:${status || "all"}:tags:${tags || ""}`;
       },
     },
   }),
@@ -82,6 +98,7 @@ router.route("/searchProblems").get(
  * 1 hour TTL — problem content almost never changes.
  */
 router.route("/problemDetail").get(
+  optionalAuthMiddleware,
   readLimiter,
   cacheMiddleware(redis, {
     ttl: 3600, // 1 hour
@@ -98,6 +115,7 @@ router.route("/problemDetail").get(
  * 6 hour TTL — editorials are written once.
  */
 router.route("/getEditorials").get(
+  optionalAuthMiddleware,
   readLimiter,
   cacheMiddleware(redis, {
     ttl: 21600, // 6 hours
@@ -114,6 +132,7 @@ router.route("/getEditorials").get(
  * 1 hour TTL — test cases are stable.
  */
 router.route("/getTestCases").get(
+  optionalAuthMiddleware,
   readLimiter,
   cacheMiddleware(redis, {
     ttl: 3600,

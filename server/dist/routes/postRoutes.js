@@ -41,7 +41,9 @@ router.route("/fetch").get(readLimiter, cacheMiddleware(redis, {
 router.route("/validateTag").post(readLimiter, checkCommentTagsUsingAI);
 // ── Post CRUD ────────────────────────────────────────────────────
 /** POST /post/createPost */
-router.route("/createPost").post(authMiddleware, createPostLimiter, createPost);
+router
+    .route("/createPost")
+    .post(authMiddleware, createPostLimiter, cacheMiddleware(redis, { strategy: "none" }), createPost);
 /**
  * GET /post/getPosts — paginated post list per problem
  * 60s TTL, tagged by problem.
@@ -97,10 +99,10 @@ router.route("/getDraftPostById").get(authMiddleware, userReadLimiter, cacheMidd
 }), getDraftPostById);
 router
     .route("/updateDraftPost")
-    .put(authMiddleware, createPostLimiter, updateDraftPost);
+    .put(authMiddleware, createPostLimiter, cacheMiddleware(redis, { strategy: "none" }), updateDraftPost);
 router
     .route("/manageDraftPost")
-    .put(authMiddleware, createPostLimiter, manageDraftPost);
+    .put(authMiddleware, createPostLimiter, cacheMiddleware(redis, { strategy: "none" }), manageDraftPost);
 // ── Tags combined ────────────────────────────────────────────────
 /**
  * GET /post/getPostTags — combined problem + post tags
@@ -116,7 +118,7 @@ router.route("/getPostTags").get(readLimiter, cacheMiddleware(redis, {
 // ── Reactions (mutations — no cache) ────────────────────────────
 router
     .route("/postReaction")
-    .post(authMiddleware, reactionLimiter, postReaction);
+    .post(authMiddleware, reactionLimiter, cacheMiddleware(redis, { strategy: "none" }), postReaction);
 /**
  * GET /post/getPostReactions
  * 30s TTL — reactions can change quickly.

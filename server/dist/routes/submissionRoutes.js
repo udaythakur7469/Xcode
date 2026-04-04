@@ -2,14 +2,18 @@ import express from "express";
 import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
 import { fetchBaseClassCode, getAllSubmissions, getUserSubmissions, runCode, storeBaseClassCode, submitCode, } from "../controllers/submissionController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
-import { readLimiter, runCodeLimiter, submitCodeLimiter, submissionReadLimiter, } from "../middlewares/rateLimiter.js";
+import { readLimiter, submissionReadLimiter, } from "../middlewares/rateLimiter.js";
 import redis from "../configs/redisConfig.js";
 const router = express.Router();
 // ── Admin / Write routes ─────────────────────────────────────────
 router.route("/add-base-code").post(readLimiter, storeBaseClassCode);
 // ── Code execution (expensive — rate limited, never cached) ─────
-router.route("/runCode").post(authMiddleware, runCodeLimiter, runCode);
-router.route("/submitCode").post(authMiddleware, submitCodeLimiter, submitCode);
+// router.route("/runCode").post(authMiddleware, runCodeLimiter, runCode);
+// router.route("/submitCode").post(authMiddleware, submitCodeLimiter, submitCode);
+router.route("/runCode").post(authMiddleware, runCode);
+router
+    .route("/submitCode")
+    .post(authMiddleware, cacheMiddleware(redis, { strategy: "none" }), submitCode);
 // ── Reads (cached) ───────────────────────────────────────────────
 /**
  * GET /submission/get-base-code

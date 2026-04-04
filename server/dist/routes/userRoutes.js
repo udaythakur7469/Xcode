@@ -7,10 +7,12 @@ import { uploadLimiter, userReadLimiter } from "../middlewares/rateLimiter.js";
 import redis from "../configs/redisConfig.js";
 const router = express.Router();
 // ── Mutations (no cache) ─────────────────────────────────────────
-router.route("/profile").patch(authMiddleware, userReadLimiter, updateProfile);
+router
+    .route("/profile")
+    .patch(authMiddleware, userReadLimiter, cacheMiddleware(redis, { strategy: "none" }), updateProfile);
 router
     .route("/profile/picture")
-    .patch(authMiddleware, uploadLimiter, upload.single("picture"), updateProfilePicture);
+    .patch(authMiddleware, uploadLimiter, upload.single("picture"), cacheMiddleware(redis, { strategy: "none" }), updateProfilePicture);
 // ── Reads (cached) ───────────────────────────────────────────────
 /**
  * GET /user/checkUser
