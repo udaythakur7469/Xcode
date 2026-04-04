@@ -166,7 +166,7 @@ export const stickyNotesLimiter = rateLimit({
 // ─────────────────────────────────────────────────────────────────
 export const readLimiter = rateLimit({
     redis,
-    limit: 100,
+    limit: 300,
     window: 60,
     keyPrefix: "read:general",
     identifier,
