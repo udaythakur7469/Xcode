@@ -16,6 +16,7 @@ interface ProblemDetails {
   description: string;
   difficulty: "easy" | "medium" | "hard";
   tags: string[];
+  constraints: string[];
   examples: { input: string; output: string; explanation: string }[];
   testCases: { input: string; expectedOutput: string }[];
   likes?: number;
