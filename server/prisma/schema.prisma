@@ -139,6 +139,8 @@ model Problem {
   // Detailed description of the problem.
   description String
 
+  constraints String[]
+
   // Difficulty level (uses the Difficulty enum).
   difficulty Difficulty
 
