@@ -100,6 +100,15 @@ export const createComment = async (req, res, next) => {
       replyCount: 0,
     };
 
+    try {
+      if (req.cache) {
+        const tags = [`post:${Number(postId)}:comments`];
+        if (parentId) tags.push(`comment:${Number(parentId)}:replies`);
+        await req.cache.invalidateByTags(tags);
+      }
+    } catch (cacheErr) {
+      logger.error("Cache invalidation error in createComment", cacheErr);
+    }
     res.status(201).json({
       message: "Comment created successfully",
       comment: formattedComment,
@@ -403,6 +412,16 @@ export const reactToComment = async (req, res, next) => {
         data: { userId, commentId: Number(commentId), type: action },
       });
 
+      try {
+        if (req.cache) {
+          await req.cache.invalidateByTags([
+            `comment:${Number(commentId)}:reactions`,
+          ]);
+        }
+      } catch (cacheErr) {
+        logger.error("Cache invalidation error in reactToComment", cacheErr);
+      }
+
       return res.status(200).json({
         message: `${action === "like" ? "Like" : "Dislike"} added successfully`,
         likes: action === "like" ? currentLikes + 1 : currentLikes,
@@ -419,6 +438,16 @@ export const reactToComment = async (req, res, next) => {
           },
         },
       });
+
+      try {
+        if (req.cache) {
+          await req.cache.invalidateByTags([
+            `comment:${Number(commentId)}:reactions`,
+          ]);
+        }
+      } catch (cacheErr) {
+        logger.error("Cache invalidation error in reactToComment", cacheErr);
+      }
 
       return res.status(200).json({
         message: `${
@@ -446,6 +475,16 @@ export const reactToComment = async (req, res, next) => {
         existingReaction.type === "dislike"
           ? currentDislikes - 1
           : currentDislikes + 1;
+
+      try {
+        if (req.cache) {
+          await req.cache.invalidateByTags([
+            `comment:${Number(commentId)}:reactions`,
+          ]);
+        }
+      } catch (cacheErr) {
+        logger.error("Cache invalidation error in reactToComment", cacheErr);
+      }
 
       return res.status(200).json({
         message: `Changed from ${existingReaction.type} to ${action}`,
@@ -479,7 +518,7 @@ export const deleteComment = async (req, res, next) => {
 
     const comment = await prisma.comment.findUnique({
       where: { id: Number(commentId) },
-      select: { id: true, authorId: true },
+      select: { id: true, authorId: true, postId: true },
     });
 
     if (!comment) {
@@ -494,6 +533,16 @@ export const deleteComment = async (req, res, next) => {
 
     await prisma.comment.delete({ where: { id: Number(commentId) } });
 
+    try {
+      if (req.cache) {
+        await req.cache.invalidateByTags([
+          `post:${comment.postId}:comments`,
+          `comment:${Number(commentId)}:replies`,
+        ]);
+      }
+    } catch (cacheErr) {
+      logger.error("Cache invalidation error in deleteComment", cacheErr);
+    }
     res.status(200).json({ message: "Comment deleted successfully" });
   } catch (error) {
     logger.error("Error deleting comment", error);
@@ -550,6 +599,17 @@ export const editComment = async (req, res, next) => {
         },
       },
     });
+
+    try {
+      if (req.cache) {
+        await req.cache.invalidateByTags([
+          `post:${updatedComment.postId}:comments`,
+          `comment:${Number(commentId)}:replies`,
+        ]);
+      }
+    } catch (cacheErr) {
+      logger.error("Cache invalidation error in editComment", cacheErr);
+    }
 
     res.status(200).json({
       message: "Comment updated successfully",
