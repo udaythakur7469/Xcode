@@ -301,11 +301,20 @@ export const updateDraftPost = async (req, res, next) => {
         const message = publish
             ? "Post published successfully"
             : "Draft updated successfully";
-        res.status(200).json({
-            success: true,
-            message: message,
-            data: updatedPost,
-        });
+        try {
+            if (req.cache) {
+                await req.cache.invalidateByTags([
+                    "posts:drafts",
+                    `post:${parseInt(id)}`,
+                ]);
+            }
+        }
+        catch (cacheErr) {
+            logger.error("Cache invalidation error in updateDraftPost", cacheErr);
+        }
+        res
+            .status(200)
+            .json({ success: true, message: message, data: updatedPost });
     }
     catch (error) {
         next(error);
@@ -349,7 +358,21 @@ export const createPost = async (req, res, next) => {
                 tags: true,
             },
         });
-        res.status(201).json({
+        try {
+            if (req.cache) {
+                await req.cache.invalidateByTags([
+                    "posts",
+                    `posts:problem:${problemTitle}`,
+                    "posts:search",
+                ]);
+            }
+        }
+        catch (cacheErr) {
+            logger.error("Cache invalidation error in createPost", cacheErr);
+        }
+        res
+            .status(201)
+            .json({
             success: true,
             message: "Post created successfully",
             data: newPost,
@@ -668,6 +691,14 @@ export const postReaction = async (req, res, next) => {
             // Non-fatal — socket may not be initialized in test environments
             logger.warn("Socket emit failed for post reaction:", socketErr);
         }
+        try {
+            if (req.cache) {
+                await req.cache.invalidateByTags([`post:${post.id}:reactions`]);
+            }
+        }
+        catch (cacheErr) {
+            logger.error("Cache invalidation error in postReaction", cacheErr);
+        }
         return res.status(200).json(responsePayload);
     }
     catch (error) {
@@ -806,11 +837,19 @@ export const manageDraftPost = async (req, res, next) => {
                 message = "Draft post deleted successfully";
                 break;
         }
-        res.status(200).json({
-            success: true,
-            message: message,
-            data: result,
-        });
+        try {
+            if (req.cache) {
+                await req.cache.invalidateByTags([
+                    "posts:drafts",
+                    `post:${parseInt(id)}`,
+                    "posts",
+                ]);
+            }
+        }
+        catch (cacheErr) {
+            logger.error("Cache invalidation error in manageDraftPost", cacheErr);
+        }
+        res.status(200).json({ success: true, message: message, data: result });
     }
     catch (error) {
         next(error);

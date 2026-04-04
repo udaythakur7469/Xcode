@@ -367,11 +367,19 @@ export const updateDraftPost = async (req, res, next) => {
       ? "Post published successfully"
       : "Draft updated successfully";
 
-    res.status(200).json({
-      success: true,
-      message: message,
-      data: updatedPost,
-    });
+    try {
+      if (req.cache) {
+        await req.cache.invalidateByTags([
+          "posts:drafts",
+          `post:${parseInt(id)}`,
+        ]);
+      }
+    } catch (cacheErr) {
+      logger.error("Cache invalidation error in updateDraftPost", cacheErr);
+    }
+    res
+      .status(200)
+      .json({ success: true, message: message, data: updatedPost });
   } catch (error) {
     next(error);
   }
@@ -426,11 +434,24 @@ export const createPost = async (req, res, next) => {
       },
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Post created successfully",
-      data: newPost,
-    });
+    try {
+      if (req.cache) {
+        await req.cache.invalidateByTags([
+          "posts",
+          `posts:problem:${problemTitle}`,
+          "posts:search",
+        ]);
+      }
+    } catch (cacheErr) {
+      logger.error("Cache invalidation error in createPost", cacheErr);
+    }
+    res
+      .status(201)
+      .json({
+        success: true,
+        message: "Post created successfully",
+        data: newPost,
+      });
   } catch (error) {
     next(error);
   }
@@ -800,6 +821,13 @@ export const postReaction = async (req, res, next) => {
       logger.warn("Socket emit failed for post reaction:", socketErr);
     }
 
+    try {
+      if (req.cache) {
+        await req.cache.invalidateByTags([`post:${post.id}:reactions`]);
+      }
+    } catch (cacheErr) {
+      logger.error("Cache invalidation error in postReaction", cacheErr);
+    }
     return res.status(200).json(responsePayload);
   } catch (error) {
     console.error("Post reaction error:", error);
@@ -966,11 +994,18 @@ export const manageDraftPost = async (req, res, next) => {
         break;
     }
 
-    res.status(200).json({
-      success: true,
-      message: message,
-      data: result,
-    });
+    try {
+      if (req.cache) {
+        await req.cache.invalidateByTags([
+          "posts:drafts",
+          `post:${parseInt(id)}`,
+          "posts",
+        ]);
+      }
+    } catch (cacheErr) {
+      logger.error("Cache invalidation error in manageDraftPost", cacheErr);
+    }
+    res.status(200).json({ success: true, message: message, data: result });
   } catch (error) {
     next(error);
   }
