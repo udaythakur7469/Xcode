@@ -19,7 +19,7 @@ interface CreateProblemInput {
   }[];
   hints: string[];
 }
-
+/* 
 export const createProblem = async (req, res, next) => {
   try {
     const {
@@ -91,26 +91,47 @@ export const createProblem = async (req, res, next) => {
   }
 };
 
+*/
+
+// After
 export const getProblems = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = 20;
     const skip = (page - 1) * limit;
-    const difficulty = req.query.difficulty as
-      | "easy"
-      | "medium"
-      | "hard"
-      | undefined;
-
+    const difficulty = req.query.difficulty as "easy" | "medium" | "hard" | undefined;
     const status = req.query.status as "solved" | "unsolved" | undefined;
     const tags = req.query.tags as string | undefined;
 
+    // Get the authenticated user's ID if available
+    const userId = req.user?.userId || req.user?.id || null;
+
+    // Fetch the user's solved problem IDs in one query
+    const solvedProblemIds = new Set<number>();
+    if (userId) {
+      const solvedRecords = await prisma.solvedProblems.findMany({
+        where: { userId },
+        select: { problemId: true },
+      });
+      solvedRecords.forEach((r) => solvedProblemIds.add(r.problemId));
+    }
+
+    // Build where clause — status filter now uses SolvedProblems
+    // so we handle it after fetching, not in the DB query
     const whereClause: any = {};
-    if (difficulty) whereClause.difficulty = difficulty; // Apply difficulty filter if provided
-    if (status !== undefined) whereClause.solved = status === "solved"; // Apply status filter only if status is provided
+    if (difficulty) whereClause.difficulty = difficulty;
     if (tags) {
-      const tagsArray = tags.split(","); // Convert comma-separated string to array
-      whereClause.tags = { hasSome: tagsArray }; // Filter by tags
+      const tagsArray = tags.split(",");
+      whereClause.tags = { hasSome: tagsArray };
+    }
+
+    // If status filter is active and user is logged in, filter by solved IDs
+    if (status && userId) {
+      if (status === "solved") {
+        whereClause.id = { in: [...solvedProblemIds] };
+      } else if (status === "unsolved") {
+        whereClause.id = { notIn: [...solvedProblemIds] };
+      }
     }
 
     const problems = await prisma.problem.findMany({
@@ -118,9 +139,9 @@ export const getProblems = async (req, res, next) => {
       skip,
       take: limit,
       select: {
+        id: true,
         title: true,
         difficulty: true,
-        solved: true,
         problemStats: {
           select: {
             totalAttempts: true,
@@ -130,7 +151,6 @@ export const getProblems = async (req, res, next) => {
       },
     });
 
-    // Calculate acceptance rate for each problem
     const formattedProblems = problems.map((problem) => ({
       title: problem.title,
       difficulty: problem.difficulty,
@@ -140,13 +160,11 @@ export const getProblems = async (req, res, next) => {
               problem.problemStats.totalAttempts) *
             100
           : 0,
-      solved: problem.solved,
+      // Derive solved from SolvedProblems, not Problem.solved
+      solved: solvedProblemIds.has(problem.id),
     }));
 
-    // Get total number of problems for pagination
-    const totalProblems = await prisma.problem.count({
-      where: whereClause, // Apply the same filter for counting
-    });
+    const totalProblems = await prisma.problem.count({ where: whereClause });
 
     res.status(200).json({
       message: "Problems fetched successfully",
@@ -419,7 +437,7 @@ export const problemReaction = async (req, res, next) => {
   try {
     const problem = await prisma.problem.findFirst({
       where: { title },
-      select: { id: true },
+      select: { id: true, title: true },
     });
 
     if (!problem) {
@@ -496,6 +514,15 @@ export const problemReaction = async (req, res, next) => {
       logger.warn("Socket emit failed for problem reaction:", socketErr);
     }
 
+    try {
+      if (req.cache) {
+        await req.cache.invalidateByTags([
+          `problem:reactions:${problem.title || title}`,
+        ]);
+      }
+    } catch (cacheErr) {
+      logger.error("Cache invalidation error in problemReaction", cacheErr);
+    }
     return res.status(200).json(responsePayload);
   } catch (error) {
     console.error("Problem reaction error:", error);
@@ -651,7 +678,7 @@ export const getTestCases = async (req, res, next) => {
 
     if (!problem) {
       throw createHttpError.NotFound(
-        "unable to find problem for the requested problem title"
+        "unable to find problem for the requested problem title",
       );
     }
 
@@ -708,5 +735,257 @@ Return *only the 3 hints in a numbered markdown list*.
   } catch (error) {
     console.error("Error generating hints:", error);
     next();
+  }
+};
+
+// new controller
+
+import { Difficulty } from "@prisma/client";
+
+interface EditorialInput {
+  videoUrl?: string;
+
+  bruteForceTitle: string;
+  bruteForceIntuition: string;
+  bruteForceAlgorithm: string;
+  bruteForceCodeCpp: string;
+  bruteForceCodeJs: string;
+  bruteForceCodePython: string;
+  bruteForceCodeJava: string;
+  bruteForceTimeComplexity: string;
+  bruteForceSpaceComplexity: string;
+
+  betterTitle: string;
+  betterIntuition: string;
+  betterAlgorithm: string;
+  betterCodeCpp: string;
+  betterCodeJs: string;
+  betterCodePython: string;
+  betterCodeJava: string;
+  betterTimeComplexity: string;
+  betterSpaceComplexity: string;
+
+  optimalTitle: string;
+  optimalIntuition: string;
+  optimalAlgorithm: string;
+  optimalCodeCpp: string;
+  optimalCodeJs: string;
+  optimalCodePython: string;
+  optimalCodeJava: string;
+  optimalTimeComplexity: string;
+  optimalSpaceComplexity: string;
+}
+
+interface BaseCodeInput {
+  language: string; // e.g. "cpp", "javascript", "python", "java"
+  baseClassCode?: string; // starter code shown to the user
+  headerFiles?: string; // any header/import boilerplate
+  mainClassCode?: string; // hidden driver/main class code
+}
+
+interface ExampleInput {
+  input: string;
+  output: string;
+  explanation: string;
+}
+
+interface TestCaseInput {
+  userInput: string;
+  apiInput: string;
+  userExpectedOutput: string;
+  apiExpectedOutput: string;
+}
+
+interface CreateProblemInput {
+  title: string;
+  description: string;
+  difficulty: Difficulty;
+  tags: string[];
+  constraints: string[];
+  examples: ExampleInput[];
+  testCases: TestCaseInput[];
+  hints: string[];
+  baseCodes: BaseCodeInput[];
+  editorial: EditorialInput;
+}
+
+export const createProblem = async (req, res, next) => {
+  try {
+    const {
+      title,
+      description,
+      difficulty,
+      tags,
+      constraints,
+      examples,
+      testCases,
+      hints,
+      baseCodes,
+      editorial,
+    }: CreateProblemInput = req.body;
+
+    // ── Presence checks ───────────────────────────────────────────
+    if (
+      !title ||
+      !description ||
+      !difficulty ||
+      !tags ||
+      !constraints ||
+      !examples ||
+      !testCases ||
+      !hints ||
+      !baseCodes ||
+      !editorial
+    ) {
+      throw createHttpError.BadRequest("Please fill all fields");
+    }
+
+    // ── Array length checks ───────────────────────────────────────
+    if (
+      constraints.length === 0 ||
+      examples.length === 0 ||
+      testCases.length === 0 ||
+      hints.length === 0 ||
+      baseCodes.length === 0
+    ) {
+      throw createHttpError.BadRequest(
+        "examples, testCases, hints, and baseCodes cannot be empty",
+      );
+    }
+
+    // ── Editorial completeness check ──────────────────────────────
+    const requiredEditorialFields: (keyof EditorialInput)[] = [
+      "bruteForceTitle",
+      "bruteForceIntuition",
+      "bruteForceAlgorithm",
+      "bruteForceCodeCpp",
+      "bruteForceCodeJs",
+      "bruteForceCodePython",
+      "bruteForceCodeJava",
+      "bruteForceTimeComplexity",
+      "bruteForceSpaceComplexity",
+      "betterTitle",
+      "betterIntuition",
+      "betterAlgorithm",
+      "betterCodeCpp",
+      "betterCodeJs",
+      "betterCodePython",
+      "betterCodeJava",
+      "betterTimeComplexity",
+      "betterSpaceComplexity",
+      "optimalTitle",
+      "optimalIntuition",
+      "optimalAlgorithm",
+      "optimalCodeCpp",
+      "optimalCodeJs",
+      "optimalCodePython",
+      "optimalCodeJava",
+      "optimalTimeComplexity",
+      "optimalSpaceComplexity",
+    ];
+
+    const missingEditorialFields = requiredEditorialFields.filter(
+      (field) => !editorial[field],
+    );
+
+    if (missingEditorialFields.length > 0) {
+      throw createHttpError.BadRequest(
+        `Missing editorial fields: ${missingEditorialFields.join(", ")}`,
+      );
+    }
+
+    // ── Create the problem with all relations ─────────────────────
+    const newProblem = await prisma.problem.create({
+      data: {
+        title,
+        description,
+        difficulty,
+        tags,
+        constraints,
+
+        examples: {
+          create: examples,
+        },
+
+        testCases: {
+          create: testCases,
+        },
+
+        hints: {
+          create: hints.map((hint) => ({ hint })),
+        },
+
+        baseCodes: {
+          create: baseCodes.map(
+            ({ language, baseClassCode, headerFiles, mainClassCode }) => ({
+              language,
+              baseClassCode: baseClassCode ?? null,
+              headerFiles: headerFiles ?? null,
+              mainClassCode: mainClassCode ?? null,
+            }),
+          ),
+        },
+
+        editorial: {
+          create: {
+            videoUrl: editorial.videoUrl,
+
+            bruteForceTitle: editorial.bruteForceTitle,
+            bruteForceIntuition: editorial.bruteForceIntuition,
+            bruteForceAlgorithm: editorial.bruteForceAlgorithm,
+            bruteForceCodeCpp: editorial.bruteForceCodeCpp,
+            bruteForceCodeJs: editorial.bruteForceCodeJs,
+            bruteForceCodePython: editorial.bruteForceCodePython,
+            bruteForceCodeJava: editorial.bruteForceCodeJava,
+            bruteForceTimeComplexity: editorial.bruteForceTimeComplexity,
+            bruteForceSpaceComplexity: editorial.bruteForceSpaceComplexity,
+
+            betterTitle: editorial.betterTitle,
+            betterIntuition: editorial.betterIntuition,
+            betterAlgorithm: editorial.betterAlgorithm,
+            betterCodeCpp: editorial.betterCodeCpp,
+            betterCodeJs: editorial.betterCodeJs,
+            betterCodePython: editorial.betterCodePython,
+            betterCodeJava: editorial.betterCodeJava,
+            betterTimeComplexity: editorial.betterTimeComplexity,
+            betterSpaceComplexity: editorial.betterSpaceComplexity,
+
+            optimalTitle: editorial.optimalTitle,
+            optimalIntuition: editorial.optimalIntuition,
+            optimalAlgorithm: editorial.optimalAlgorithm,
+            optimalCodeCpp: editorial.optimalCodeCpp,
+            optimalCodeJs: editorial.optimalCodeJs,
+            optimalCodePython: editorial.optimalCodePython,
+            optimalCodeJava: editorial.optimalCodeJava,
+            optimalTimeComplexity: editorial.optimalTimeComplexity,
+            optimalSpaceComplexity: editorial.optimalSpaceComplexity,
+          },
+        },
+      },
+
+      include: {
+        examples: true,
+        testCases: true,
+        hints: true,
+        baseCodes: true,
+        editorial: true,
+      },
+    });
+
+    try {
+      if (req.cache) {
+        await req.cache.invalidateByTags(["problems:list", "problems:search"]);
+      }
+    } catch (cacheErr) {
+      logger.error("Cache invalidation error in createProblem", cacheErr);
+    }
+
+    res.status(201).json({
+      message: "Problem created successfully",
+      problem: newProblem,
+    });
+  } catch (error) {
+    logger.error("Error in creating problem", error);
+    next(error);
   }
 };
