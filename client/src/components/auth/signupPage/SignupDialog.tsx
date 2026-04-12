@@ -15,6 +15,12 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
   openLogin,
   onSuccessfulAuth,
 }) => {
+  // Handles switching to login: close signup dialog first, then open login
+  const handleOpenLogin = () => {
+    onClose();
+    openLogin();
+  };
+
   return (
     <CustomDialog isOpen={isOpen} onClose={onClose} title="Sign Up">
       <AnimatePresence mode="wait">
@@ -30,21 +36,8 @@ export const SignupDialog: React.FC<SignupDialogProps> = ({
               <SignupForm
                 onSuccess={onClose}
                 onSuccessfulAuth={onSuccessfulAuth}
+                openLogin={handleOpenLogin}
               />
-
-              {/* Button to Open Login Dialog */}
-              <p className="mt-4 text-sm text-center">
-                Already have an account?{" "}
-                <button
-                  onClick={() => {
-                    onClose();
-                    openLogin();
-                  }}
-                  className="text-blue-500 hover:underline"
-                >
-                  Log In
-                </button>
-              </p>
             </div>
           </motion.div>
         )}
