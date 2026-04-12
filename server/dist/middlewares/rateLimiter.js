@@ -1,5 +1,5 @@
 import redis from "../configs/redisConfig.js";
-import { rateLimit } from "./middlewareWrappers.js";
+import { rateLimit } from "@periodic/titanium";
 // ─────────────────────────────────────────────────────────────────
 // IDENTIFIER HELPER
 // Uses userId from JWT if authenticated, falls back to IP address.
@@ -222,5 +222,33 @@ export const tagUploadLimiter = rateLimit({
     window: 60,
     keyPrefix: "upload:tags",
     identifier,
+    failStrategy: "open",
+});
+export const magicLinkLimiter = rateLimit({
+    redis,
+    limit: 5,
+    window: 3600,
+    keyPrefix: "auth:magic-link",
+    identifier: (req) => {
+        const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+            req.socket?.remoteAddress ||
+            "unknown";
+        return `ip:${ip}`;
+    },
+    message: "Too many magic link requests. Please try again in an hour.",
+    failStrategy: "open",
+});
+export const forgotPasswordLimiter = rateLimit({
+    redis,
+    limit: 20,
+    window: 36,
+    keyPrefix: "auth:forgot-password",
+    identifier: (req) => {
+        const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+            req.socket?.remoteAddress ||
+            "unknown";
+        return `ip:${ip}`;
+    },
+    message: "Too many password reset requests. Please try again in an hour.",
     failStrategy: "open",
 });
