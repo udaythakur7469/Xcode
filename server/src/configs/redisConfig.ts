@@ -1,4 +1,5 @@
 import { createRedisClient } from "@periodic/osmium";
+import Redis from "ioredis";
 import logger from "./loggerConfig.js";
 
 const redisUrl = process.env.REDIS_URL;
@@ -13,7 +14,7 @@ const redis = createRedisClient({
   host: url.hostname,
   port: Number(url.port) || 6379,
   password: url.password || undefined,
-});
+}) as Redis;
 
 // Log connection lifecycle
 (redis as any).on("ready", () => {
