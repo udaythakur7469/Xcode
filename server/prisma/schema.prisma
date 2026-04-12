@@ -29,13 +29,22 @@ model User {
   email String @unique
 
   // User's password (should be stored hashed).
-  password String
+  password String?
 
   // Optional profile picture with a default image.
   picture String? @default("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM3FwFWSj9qohGE7FhrwJ-PlcK4-tLdWSlGg&s")
 
   // User's token
   refreshToken String?
+
+  provider   String?
+  providerId String?
+
+  magicLinkToken  String?
+  magicLinkExpiry DateTime?
+
+  passwordResetToken  String?
+  passwordResetExpiry DateTime?
 
   description String?
 
