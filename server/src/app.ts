@@ -5,7 +5,6 @@ import morgan from "morgan";
 import helmet from "helmet";
 import compression from "compression";
 import cookieParser from "cookie-parser";
-import createHttpError from "http-errors";
 import routes from "./routes/mergedRoutes.js";
 
 interface CustomError extends Error {
