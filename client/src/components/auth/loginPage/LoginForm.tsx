@@ -20,43 +20,44 @@ import {
 import { useAuthStore } from "@/features/authStore";
 import { PropagateLoader } from "react-spinners";
 import { EyeOff, Eye } from "lucide-react";
+import { OAuthButtons } from "@/components/auth/helperComponents/OAuthButtons";
+import { MagicLinkButton } from "@/components/auth/helperComponents/MagicLinkButton";
 
 interface LoginFormProps {
-  onSuccess?: () => void; // Add this line
+  onSuccess?: () => void;
   onSuccessfulAuth: () => void;
+  openSignup: () => void;
+  openForgotPassword: () => void;
 }
 
-export const LoginForm = ({ onSuccess, onSuccessfulAuth }: LoginFormProps) => {
+export const LoginForm = ({
+  onSuccess,
+  onSuccessfulAuth,
+  openSignup,
+  openForgotPassword,
+}: LoginFormProps) => {
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+    defaultValues: { email: "", password: "" },
   });
 
   const { login, isLoading, error } = useAuthStore();
+  const [showPassword, setShowPassword] = useState(false);
 
   const onSubmit = async (loginData: LoginFormData) => {
     try {
       await login(loginData.email, loginData.password);
       onSuccessfulAuth?.();
       onSuccess?.();
-    } catch (error) {
-      console.log(error);
+    } catch (err) {
+      console.log(err);
     }
-  };
-
-  const [showPassword, setShowPassword] = useState(false);
-
-  const handleShowPassword = () => {
-    setShowPassword((prev) => !prev);
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        {/* Email Field */}
+        {/* Email */}
         <FormField
           control={form.control}
           name="email"
@@ -71,7 +72,7 @@ export const LoginForm = ({ onSuccess, onSuccessfulAuth }: LoginFormProps) => {
           )}
         />
 
-        {/* Password Field */}
+        {/* Password */}
         <FormField
           control={form.control}
           name="password"
@@ -86,13 +87,15 @@ export const LoginForm = ({ onSuccess, onSuccessfulAuth }: LoginFormProps) => {
                     {...field}
                     className="pr-10"
                   />
-
                   <Button
                     title={showPassword ? "Hide password" : "Show password"}
                     type="button"
                     variant="password"
                     size="icon"
-                    onClick={handleShowPassword}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setShowPassword((prev) => !prev);
+                    }}
                     className="absolute right-2 top-1/2 -translate-y-1/2"
                   >
                     {showPassword ? (
@@ -108,18 +111,40 @@ export const LoginForm = ({ onSuccess, onSuccessfulAuth }: LoginFormProps) => {
           )}
         />
 
-        {/* Submit Button */}
+        {/* Divider */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">or</span>
+          </div>
+        </div>
+
+        {/* OAuth buttons */}
+        <OAuthButtons mode="login" />
+
+        {/* Divider */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <span className="w-full border-t" />
+          </div>
+          <div className="relative flex justify-center text-xs uppercase">
+            <span className="bg-background px-2 text-muted-foreground">or</span>
+          </div>
+        </div>
+
+        {/* Magic Link */}
+        <MagicLinkButton />
+
+        {/* Login button */}
         <Button
           type="submit"
           className="w-full flex items-center justify-center"
         >
           {isLoading ? (
             <PropagateLoader
-              style={{
-                display: "flex",
-                alignItems: "center",
-                height: "100%",
-              }}
+              style={{ display: "flex", alignItems: "center", height: "100%" }}
             />
           ) : error ? (
             error
@@ -127,6 +152,29 @@ export const LoginForm = ({ onSuccess, onSuccessfulAuth }: LoginFormProps) => {
             "Login"
           )}
         </Button>
+
+        {/* Switch to signup */}
+        <p className="text-sm text-center text-muted-foreground">
+          Don&apos;t have an account?{" "}
+          <button
+            type="button"
+            onClick={openSignup}
+            className="text-blue-500 hover:underline"
+          >
+            Sign Up
+          </button>
+        </p>
+
+        {/* Forgot password */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={openForgotPassword}
+            className="text-sm text-muted-foreground hover:underline"
+          >
+            Forgot password?
+          </button>
+        </div>
       </form>
     </Form>
   );

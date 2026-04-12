@@ -6,6 +6,7 @@ interface LoginDialogProps {
   isOpen: boolean;
   onClose: () => void;
   openSignup: () => void;
+  openForgotPassword: () => void;
   onSuccessfulAuth: () => void;
 }
 
@@ -13,8 +14,19 @@ export const LoginDialog: React.FC<LoginDialogProps> = ({
   isOpen,
   onClose,
   openSignup,
+  openForgotPassword,
   onSuccessfulAuth,
 }) => {
+  const handleOpenSignup = () => {
+    onClose();
+    openSignup();
+  };
+
+  const handleOpenForgotPassword = () => {
+    onClose();
+    openForgotPassword();
+  };
+
   return (
     <CustomDialog isOpen={isOpen} onClose={onClose} title="Login">
       <AnimatePresence mode="wait">
@@ -30,21 +42,9 @@ export const LoginDialog: React.FC<LoginDialogProps> = ({
               <LoginForm
                 onSuccess={onClose}
                 onSuccessfulAuth={onSuccessfulAuth}
+                openSignup={handleOpenSignup}
+                openForgotPassword={handleOpenForgotPassword}
               />
-
-              {/* Button to Open Signup Dialog */}
-              <p className="mt-4 text-sm text-center">
-                Don't have an account?{" "}
-                <button
-                  onClick={() => {
-                    onClose();
-                    openSignup();
-                  }}
-                  className="text-blue-500 hover:underline"
-                >
-                  Sign Up
-                </button>
-              </p>
             </div>
           </motion.div>
         )}
