@@ -1,5 +1,5 @@
 import express from "express";
-import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
+import { cacheMiddleware } from "@periodic/osmium";
 import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js";
 import {
   createChat,

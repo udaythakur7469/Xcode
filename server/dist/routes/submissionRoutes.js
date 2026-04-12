@@ -1,5 +1,5 @@
 import express from "express";
-import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
+import { cacheMiddleware } from "@periodic/osmium";
 import { fetchBaseClassCode, getAllSubmissions, getUserSubmissions, runCode, storeBaseClassCode, submitCode, } from "../controllers/submissionController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { readLimiter, submissionReadLimiter, } from "../middlewares/rateLimiter.js";

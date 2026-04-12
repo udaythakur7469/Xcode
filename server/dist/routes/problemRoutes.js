@@ -1,5 +1,5 @@
 import express from "express";
-import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
+import { cacheMiddleware } from "@periodic/osmium";
 import { addEditorials, addHints, addTestCases, createProblem, generateHints, getEditorialByProblemTitle, getProblemByTitle, getProblemReactions, getProblems, getTestCases, problemReaction, searchProblems, } from "../controllers/problemController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { generateHintsLimiter, reactionLimiter, readLimiter, } from "../middlewares/rateLimiter.js";

@@ -1,5 +1,5 @@
 import express from "express";
-import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
+import { cacheMiddleware } from "@periodic/osmium";
 import { authenticatedUser, getUserHeatmapData, getUserSolvedLanguages, updateProfile, updateProfilePicture, } from "../controllers/userController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { upload } from "../services/uploadService.js";

@@ -1,5 +1,5 @@
 import express from "express";
-import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
+import { cacheMiddleware } from "@periodic/osmium";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js";
 import { checkCommentTagsUsingAI, createPost, fetchTagsFromCloudinary, getCombinedTags, getDraftPostById, getDraftPosts, getMarkdownEditorBasePostFormat, getPostById, getPostReactions, getPosts, manageDraftPost, postReaction, searchPosts, updateDraftPost, uploadTagsToCloudinary, } from "../controllers/postController.js";

@@ -1,5 +1,5 @@
 import express from "express";
-import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
+import { cacheMiddleware } from "@periodic/osmium";
 import { createComment, deleteComment, editComment, getCommentsByPost, getRepliesForComment, reactToComment, } from "../controllers/commentController.js";
 import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js";
 import { createCommentLimiter, mutateCommentLimiter, reactionLimiter, readLimiter, } from "../middlewares/rateLimiter.js";

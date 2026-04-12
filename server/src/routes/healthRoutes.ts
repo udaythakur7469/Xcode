@@ -1,6 +1,6 @@
 import express, { RequestHandler } from "express";
 import redis from "../configs/redisConfig.js";
-import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
+import { cacheMiddleware } from "@periodic/osmium";
 
 const router = express.Router();
 

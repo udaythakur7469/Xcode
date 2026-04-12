@@ -1,5 +1,5 @@
 import express from "express";
-import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
+import { cacheMiddleware } from "@periodic/osmium";
 import { getStickyNotes, createStickyNote, updateStickyNote, deleteStickyNote, bulkCreateStickyNotes, } from "../controllers/stickyNotesController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { stickyNotesLimiter } from "../middlewares/rateLimiter.js";

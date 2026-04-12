@@ -1,5 +1,5 @@
 import express from "express";
-import { cacheMiddleware } from "../middlewares/middlewareWrappers.js";
+import { cacheMiddleware } from "@periodic/osmium";
 import { generateFeedback, generateInterview, getFeedbackByInterviewId, getInterviewDetails, getInterviewsByUserId, getLatestInterviews, } from "../controllers/interviewController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { generateFeedbackLimiter, generateInterviewLimiter, interviewReadLimiter, } from "../middlewares/rateLimiter.js";
