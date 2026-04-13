@@ -15,6 +15,7 @@ interface CustomError extends Error {
 dotenv.config();
 
 const app: Application = express();
+app.set("etag", false);
 
 //initializing morgan
 if (process.env.NODE_ENV !== "production") {

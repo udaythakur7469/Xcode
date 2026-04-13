@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import routes from "./routes/mergedRoutes.js";
 dotenv.config();
 const app = express();
+app.set("etag", false);
 //initializing morgan
 if (process.env.NODE_ENV !== "production") {
     app.use(morgan("dev"));
