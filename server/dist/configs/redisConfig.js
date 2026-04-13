@@ -1,11 +1,11 @@
-import { createRedisClient } from "@periodic/osmium";
+import { createStandaloneRedisClient } from "@periodic/osmium";
 import logger from "./loggerConfig.js";
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
     throw new Error("REDIS_URL environment variable is not set");
 }
 const url = new URL(redisUrl);
-const redis = createRedisClient({
+const redis = createStandaloneRedisClient({
     host: url.hostname,
     port: Number(url.port) || 6379,
     password: url.password || undefined,
