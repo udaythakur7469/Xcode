@@ -16,6 +16,7 @@ import ChatWindow from "./aiChatDialog/chat/ChatWindow";
 import ChatTitle from "./aiChatDialog/title/ChatTitle";
 import ChatSidebar from "./aiChatDialog/sidebar/ChatSidebar";
 import { useChatStore } from "@/features/chatStore";
+import { ForgotPasswordDialog } from "../auth/forgotPasswordPage/ForgotPasswordDialog";
 
 const FloatingActionButtons = () => {
   const {
@@ -42,6 +43,8 @@ const FloatingActionButtons = () => {
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
   const [isSignupOpen, setIsSignupOpen] = useState<boolean>(false);
   const [isLogoutOpen, setIsLogoutOpen] = useState<boolean>(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] =
+    useState<boolean>(false);
 
   const { checkAuth, isUserAuthenticated } = useUserStore();
 
@@ -343,6 +346,10 @@ const FloatingActionButtons = () => {
           setIsLoginOpen(false);
           setIsSignupOpen(true);
         }}
+        openForgotPassword={() => {
+          setIsLoginOpen(false);
+          setIsForgotPasswordOpen(true);
+        }}
         onSuccessfulAuth={checkAuth}
       />
 
@@ -354,6 +361,15 @@ const FloatingActionButtons = () => {
           setIsLoginOpen(true);
         }}
         onSuccessfulAuth={checkAuth}
+      />
+
+      <ForgotPasswordDialog
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        openLogin={() => {
+          setIsForgotPasswordOpen(false);
+          setIsLoginOpen(true);
+        }}
       />
 
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>

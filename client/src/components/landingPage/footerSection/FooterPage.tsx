@@ -5,6 +5,8 @@ import { UserPlus, UserRoundPen } from "lucide-react";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
 import { Button } from "@/components/ui/button";
+import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/ForgotPasswordDialog";
+import { useUserStore } from "@/features/userStore";
 
 type FooterPageProps = {};
 
@@ -14,6 +16,11 @@ const FooterPage: React.FC<FooterPageProps> = () => {
 
   // State to control the signup dialog
   const [isSignupOpen, setIsSignupOpen] = useState(false);
+
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] =
+    useState<boolean>(false);
+
+  const { checkAuth } = useUserStore();
 
   return (
     <>
@@ -61,7 +68,6 @@ const FooterPage: React.FC<FooterPageProps> = () => {
         </div>
       </div>
       {/* Login Dialog */}
-      {/* Login Dialog */}
       <LoginDialog
         isOpen={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
@@ -69,6 +75,11 @@ const FooterPage: React.FC<FooterPageProps> = () => {
           setIsLoginOpen(false);
           setIsSignupOpen(true);
         }}
+        openForgotPassword={() => {
+          setIsLoginOpen(false);
+          setIsForgotPasswordOpen(true);
+        }}
+        onSuccessfulAuth={checkAuth}
       />
 
       {/* Signup Dialog */}
@@ -77,6 +88,15 @@ const FooterPage: React.FC<FooterPageProps> = () => {
         onClose={() => setIsSignupOpen(false)}
         openLogin={() => {
           setIsSignupOpen(false);
+          setIsLoginOpen(true);
+        }}
+        onSuccessfulAuth={checkAuth}
+      />
+      <ForgotPasswordDialog
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        openLogin={() => {
+          setIsForgotPasswordOpen(false);
           setIsLoginOpen(true);
         }}
       />

@@ -37,6 +37,7 @@ import { useSubmissionStore } from "@/features/submissionStore";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import ShortcutDialog from "./shortcuts/ShortcutDialog";
 import NotesButton from "./stickyNotesSystem/StickyNotesButton";
+import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/ForgotPasswordDialog";
 
 type ProblemNavbarProps = {
   onResetLayout?: () => void;
@@ -62,6 +63,8 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [isShortcutDialogOpen, setIsShortcutDialogOpen] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] =
+    useState<boolean>(false);
   const timerRef = useRef<TimerRef>(null);
 
   const { checkAuth, userData, isUserAuthenticated } = useUserStore();
@@ -324,6 +327,10 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
           setIsLoginOpen(false);
           setIsSignupOpen(true);
         }}
+        openForgotPassword={() => {
+          setIsLoginOpen(false);
+          setIsForgotPasswordOpen(true);
+        }}
         onSuccessfulAuth={checkAuth}
       />
 
@@ -336,6 +343,15 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
           setIsLoginOpen(true);
         }}
         onSuccessfulAuth={checkAuth}
+      />
+
+      <ForgotPasswordDialog
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        openLogin={() => {
+          setIsForgotPasswordOpen(false);
+          setIsLoginOpen(true);
+        }}
       />
     </>
   );
