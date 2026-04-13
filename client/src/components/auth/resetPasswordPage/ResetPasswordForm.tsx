@@ -106,11 +106,6 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
         </div>
       </div>
 
-      {/* Strength meter — always visible here since there's no swap zone */}
-      {newPassword.length > 0 && (
-        <PasswordStrengthMeter password={newPassword} />
-      )}
-
       {/* Confirm password */}
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="confirm-password">
@@ -144,6 +139,11 @@ export const ResetPasswordForm: React.FC<ResetPasswordFormProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Strength meter — always visible here since there's no swap zone */}
+      {newPassword.length > 0 && (
+        <PasswordStrengthMeter password={newPassword} />
+      )}
 
       {/* Validation / API errors */}
       {(validationError || error) && (
