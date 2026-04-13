@@ -36,14 +36,6 @@ const mailtrap = new MailtrapClient({
   testInboxId: Number(process.env.MAILTRAP_INBOX_ID),
 });
 
-console.log(
-  "Mailtrap token loaded:",
-  process.env.MAILTRAP_TOKEN
-    ? `...${process.env.MAILTRAP_TOKEN.slice(-6)}`
-    : "NOT SET",
-);
-console.log("Mailtrap inbox ID:", process.env.MAILTRAP_INBOX_ID ?? "NOT SET");
-
 const sendEmail = async (
   to: string,
   subject: string,
