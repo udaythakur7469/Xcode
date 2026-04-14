@@ -19,6 +19,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useSubmissionStore } from "@/features/submissionStore";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CodeDialog from "../dialogBoxes/CodeDialog";
+import { AllSubmissionsTableSkeleton } from "./SubmissionTableSkeleton";
 
 const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
   problemTitle,
@@ -58,9 +59,7 @@ const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
     <>
       <ScrollArea className="h-[550px] w-full">
         {isLoading ? (
-          <div className="h-[550px] w-full flex justify-center items-center">
-            <MoonLoader size={200} color="#ffffff" />
-          </div>
+          <AllSubmissionsTableSkeleton />
         ) : error ? (
           <div className="text-red-500 text-center">Error: {error}</div>
         ) : (
