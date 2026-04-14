@@ -3,7 +3,16 @@ import validator from "validator";
 import prisma from "../configs/db.js";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
+import { uniqueNamesGenerator, adjectives, animals, } from "unique-names-generator";
 import { encryptPassword } from "../utils/passwordUtil.js";
+const generateDisplayName = () => {
+    return uniqueNamesGenerator({
+        dictionaries: [adjectives, animals],
+        separator: " ",
+        style: "capital",
+        length: 2,
+    });
+};
 export const createUser = async ({ name, email, password, }) => {
     if (!name || !email || !password) {
         throw createHttpError.BadRequest("Please fill all fields");
@@ -67,6 +76,7 @@ export const createMagicLinkToken = async (email) => {
         user = await prisma.user.create({
             data: {
                 email,
+                name: generateDisplayName(),
                 provider: "magic-link",
             },
         });

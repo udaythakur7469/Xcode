@@ -3,6 +3,11 @@ import validator from "validator";
 import prisma from "../configs/db.js";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
+import {
+  uniqueNamesGenerator,
+  adjectives,
+  animals,
+} from "unique-names-generator";
 import { encryptPassword } from "../utils/passwordUtil.js";
 
 interface CreateUser {
@@ -27,6 +32,15 @@ interface loginUser {
   email: string;
   password: string;
 }
+
+const generateDisplayName = (): string => {
+  return uniqueNamesGenerator({
+    dictionaries: [adjectives, animals],
+    separator: " ",
+    style: "capital", 
+    length: 2,
+  });
+};
 
 export const createUser = async ({
   name,
@@ -125,6 +139,7 @@ export const createMagicLinkToken = async (email: string): Promise<string> => {
     user = await prisma.user.create({
       data: {
         email,
+        name: generateDisplayName(),
         provider: "magic-link",
       },
     });
