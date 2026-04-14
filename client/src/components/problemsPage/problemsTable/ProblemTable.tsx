@@ -3,7 +3,6 @@ import { useProblemStore } from "@/features/problemStore";
 import { columns } from "./ProblemColumns";
 import { Button } from "@/components/ui/button";
 import {
-  ColumnDef,
   flexRender,
   getCoreRowModel,
   useReactTable,
@@ -16,9 +15,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MoonLoader } from "react-spinners";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation"; // Import useRouter
+import { ProblemTableSkeleton } from "./ProblemTableSkeleton";
 
 const ProblemTable: React.FC = () => {
   const {
@@ -40,7 +39,7 @@ const ProblemTable: React.FC = () => {
   useEffect(() => {
     console.log("Fetching problems with difficulty filter:", difficultyFilter); // Debug log
     getPaginatedProblems(pagination.currentPage);
-  }, [pagination.currentPage, getPaginatedProblems, difficultyFilter]);
+  }, [pagination.currentPage]);
 
   // Create the table instance
   const table = useReactTable({
@@ -52,14 +51,14 @@ const ProblemTable: React.FC = () => {
   // Handle row click to navigate to the problem details page
   const handleRowClick = (problemTitle: string) => {
     router.push(
-      `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}`
+      `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}`,
     ); // Navigate to the problem details page with query parameter
   };
 
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64 mt-32">
-        <MoonLoader color="#ffffff" size={250} />
+        <ProblemTableSkeleton />
       </div>
     );
   }
@@ -90,7 +89,7 @@ const ProblemTable: React.FC = () => {
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
-                          header.getContext()
+                          header.getContext(),
                         )}
                   </TableHead>
                 ))}
@@ -118,7 +117,7 @@ const ProblemTable: React.FC = () => {
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
@@ -130,9 +129,7 @@ const ProblemTable: React.FC = () => {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  {searchResults.length === 0
-                    ? "No problems found."
-                    : "Loading..."}
+                  No problems found.
                 </TableCell>
               </TableRow>
             )}
