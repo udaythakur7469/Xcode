@@ -97,7 +97,7 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
   problem: null,
   editorial: null,
   testCases: null,
-  isLoading: false,
+  isLoading: true,
   isReacting: false,
   isLoadingTestCases: false,
   testCasesError: null,
