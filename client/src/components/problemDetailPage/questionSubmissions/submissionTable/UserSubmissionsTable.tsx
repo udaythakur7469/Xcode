@@ -19,6 +19,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useSubmissionStore } from "@/features/submissionStore";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import CodeDialog from "../dialogBoxes/CodeDialog";
+import { UserSubmissionsTableSkeleton } from "./SubmissionTableSkeleton";
 
 const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
   problemTitle,
@@ -56,9 +57,7 @@ const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
     <>
       <ScrollArea className="h-[550px] w-full">
         {isLoading ? (
-          <div className="h-[550px] w-full flex justify-center items-center">
-            <MoonLoader size={200} color="#ffffff" />
-          </div>
+          <UserSubmissionsTableSkeleton />
         ) : error ? (
           <div className="text-red-500 text-center">Error: {error}</div>
         ) : (
@@ -79,7 +78,7 @@ const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
                             ? null
                             : flexRender(
                                 header.column.columnDef.header,
-                                header.getContext()
+                                header.getContext(),
                               )}
                         </TableHead>
                       ))}
@@ -102,7 +101,7 @@ const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
                           >
                             {flexRender(
                               cell.column.columnDef.cell,
-                              cell.getContext()
+                              cell.getContext(),
                             )}
                           </TableCell>
                         ))}
@@ -129,7 +128,7 @@ const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
                   onClick={() =>
                     getUserSubmissions(
                       submissionPagination.currentPage - 1,
-                      problemTitle
+                      problemTitle,
                     )
                   }
                   disabled={submissionPagination.currentPage === 1}
@@ -145,7 +144,7 @@ const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
                   onClick={() =>
                     getUserSubmissions(
                       submissionPagination.currentPage + 1,
-                      problemTitle
+                      problemTitle,
                     )
                   }
                   disabled={
