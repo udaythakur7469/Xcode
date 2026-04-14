@@ -135,6 +135,10 @@ p, h1 {
   background: #f0f0f0;
 }
 
+.dark .animate-pulse {
+  background-color: #3a3a3e;
+}
+
 /* React Calendar Heatmap Styles 
 .react-calendar-heatmap {
   width: 100%;
