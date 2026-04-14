@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useProblemStore } from "@/features/problemStore";
-import { MoonLoader } from "react-spinners";
 import { CircleCheckBig, Lightbulb, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
@@ -11,6 +10,7 @@ import HintsDialog from "../dialogBoxes/HintsDialog";
 import StatsDialog from "../dialogBoxes/StatsDialog";
 import { formatCount } from "@/services/countService";
 import { useSocket } from "@/context/socketContext";
+import { QuestionDataSkeleton } from "./QuestionDataSkeleton";
 
 type QuestionDataProps = {};
 
@@ -130,9 +130,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
   return (
     <div className="h-[610px] w-full overflow-y-auto">
       {isLoading ? (
-        <div className="h-full w-full flex justify-center items-center">
-          <MoonLoader size={200} color="#ffffff" />
-        </div>
+        <QuestionDataSkeleton />
       ) : error ? (
         <div className="text-red-500 text-center">{error}</div>
       ) : !problem ? (
