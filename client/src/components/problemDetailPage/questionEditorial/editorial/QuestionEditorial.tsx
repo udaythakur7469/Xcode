@@ -7,6 +7,7 @@ import ReactPlayer from "react-player";
 import { Separator } from "@/components/ui/separator";
 import CodeTabs from "../tabs/CodeTabs";
 import { Circle } from "lucide-react";
+import { QuestionEditorialSkeleton } from "./QuestionEditorialSkeleton";
 
 interface EditorialData {
   id: number;
@@ -82,9 +83,7 @@ const QuestionEditorial: React.FC<QuestionEditorialProps> = () => {
   return (
     <ScrollArea className="h-[610px] w-full">
       {isLoading ? (
-        <div className="h-[610px] w-full flex justify-center items-center">
-          <MoonLoader size={200} color="#ffffff" />
-        </div>
+        <QuestionEditorialSkeleton />
       ) : error ? (
         <div className="text-red-500 text-center">{error}</div>
       ) : !editorial ? (
