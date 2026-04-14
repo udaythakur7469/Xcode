@@ -158,9 +158,23 @@ export const forgotPassword = async (req, res, next) => {
             await sendEmail(email, "Reset your Xcode password", forgotPasswordEmail({ resetUrl, name: user.name }));
         }
         catch (serviceError) {
-            // Silently swallow NO_USER — prevents email enumeration attacks
-            if (serviceError?.status !== 404)
-                throw serviceError;
+            // Swallow NO_USER silently — prevents email enumeration
+            if (serviceError?.status === 404) {
+                res.status(200).json({
+                    success: true,
+                    message: "If an account exists for that email, a reset link has been sent.",
+                });
+                return;
+            }
+            // Surface OAuth provider error clearly to the frontend
+            if (serviceError?.status === 400) {
+                res.status(400).json({
+                    success: false,
+                    message: serviceError.message,
+                });
+                return;
+            }
+            throw serviceError;
         }
         // Always return the same response whether the email exists or not
         res.status(200).json({
