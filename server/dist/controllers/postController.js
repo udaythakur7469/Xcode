@@ -560,7 +560,6 @@ export const getCombinedTags = async (req, res, next) => {
         throw createHttpError.BadRequest("Please provide problem title");
     }
     try {
-        // Find the problem first
         const problem = await prisma.problem.findFirst({
             where: { title: problemTitle },
             select: {
@@ -571,28 +570,21 @@ export const getCombinedTags = async (req, res, next) => {
         if (!problem) {
             throw createHttpError.BadRequest("Unable to find problem for the requested problemTitle");
         }
-        // Get all posts for this problem and their tags
-        const posts = await prisma.post.findMany({
+        const postTags = await prisma.postTags.findMany({
             where: {
-                problemId: problem.id,
-                isDraftPost: false,
-            },
-            select: {
-                tags: {
-                    select: {
-                        name: true,
-                    },
+                Post: {
+                    problemId: problem.id,
+                    isDraftPost: false,
                 },
             },
+            select: {
+                name: true,
+            },
+            distinct: ["name"],
         });
-        // Combine and deduplicate all tags
-        const allTagsSet = new Set(problem.tags || []);
-        posts.forEach((post) => {
-            post.tags.forEach((tag) => {
-                allTagsSet.add(tag.name);
-            });
-        });
-        const combinedTags = Array.from(allTagsSet);
+        const combinedTags = [
+            ...new Set([...(problem.tags ?? []), ...postTags.map((tag) => tag.name)]),
+        ];
         res.status(200).json({
             success: true,
             message: "Combined tags fetched successfully",
