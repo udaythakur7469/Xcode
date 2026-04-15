@@ -7,10 +7,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export interface Submission {
   id: number;
   problemId: number;
-  problem: {
-    title: string;
-    difficulty: "easy" | "medium" | "hard";
-  };
+  problem: { title: string; difficulty: "easy" | "medium" | "hard" };
   userId: number;
   user?: User;
   code: string;
@@ -30,44 +27,108 @@ interface PaginationState {
   totalSubmissions: number | null;
 }
 
+// ─── Per-test-case result (new) ───────────────────────────────────────────────
+
+export interface TestCaseResult {
+  index: number;                  // 1-based
+  status: "accepted" | "wrong_answer";
+  input: string;
+  expectedOutput: string;
+  actualOutput: string | null;
+  runtimeInMilliseconds: number;
+  memoryInMegabytes: number;
+}
+
+// ─── Runtime distribution bucket (new) ───────────────────────────────────────
+
+export interface RuntimeBucket {
+  bucketLabel: string;            // e.g. "0-10ms"
+  count: number;
+  isUserBucket: boolean;
+}
+
+// ─── runCode types ────────────────────────────────────────────────────────────
+
 export interface RunCodeSuccess {
   message: string;
   stdout: string;
-  time: string;
-  memory: number;
-  testCase: {
-    input: string;
-    userOutput: string;
-  };
-}
-
-export interface SubmitCodeSuccess {
-  message: string; // "All test cases passed"
-  code: string;
+  time: string;                   // seconds as string e.g. "0.004"
+  memory: number;                 // KB
+  status: "accepted";
   language: string;
-  runtimeInMilliseconds: number;
-  memoryInMegabytes: number;
-  testCasesPassed: number;
-  totalTestCases: number;
+  code: string;
+  submittedAt: string;
+  totalTestCasesInProblem: number;
+  testCase: { input: string; userOutput: string | null };
 }
 
 export interface RunCodeError {
-  error: string;
+  success: false;
+  status: "runtime_error" | "compilation_error" | "time_limit_exceeded";
+  statusDescription: string;
   stderr: string | null;
-  compile_output: string;
-  errorInfo: ErrorInfo[];
+  compile_output: string | null;
+  errorInfo: ErrorInfo[] | null;
+  message?: string;
+  time?: string | null;
+  memory?: number | null;
+  language: string;
+  code: string;
+  submittedAt: string;
+  totalTestCasesInProblem: number;
+  testCase: { input: string; userOutput: string | null } | null;
 }
 
-export interface SubmitCodeError {
-  message: string; // "Code failed for a test case"
-  failedTestCase: FailedTestCase;
-  code: string;
+export type RunCodeResponse = RunCodeSuccess | RunCodeError;
+
+// ─── submitCode types ─────────────────────────────────────────────────────────
+
+export interface SubmitCodeSuccess {
+  message: string;
   language: string;
+  code: string;
   runtimeInMilliseconds: number;
   memoryInMegabytes: number;
   testCasesPassed: number;
   totalTestCases: number;
+  passRate: string;               // e.g. "80.0"
+  avgRuntimeInMilliseconds: number;
+  submittedAt: string;
+  testCaseResults: TestCaseResult[];
+  percentile: number;             // only on success
+  runtimeDistribution: RuntimeBucket[];  // only on success
 }
+
+export interface FailedTestCase {
+  input: string | null;
+  expectedOutput: string | null;
+  actualOutput: string | null;
+  status: "wrong_answer" | "runtime_error" | "compilation_error" | "time_limit_exceeded";
+  statusDescription: string;
+  message?: string | null;
+  stderr: string | null;
+  compile_output?: string | null;
+  errorInfo?: ErrorInfo[] | null;
+  runtime: number;
+  memory: number;
+}
+
+export interface SubmitCodeError {
+  message: string;
+  failedTestCase: FailedTestCase;
+  language: string;
+  code: string;
+  runtimeInMilliseconds: number;
+  memoryInMegabytes: number;
+  testCasesPassed: number;
+  totalTestCases: number;
+  passRate: string;
+  avgRuntimeInMilliseconds: number;
+  submittedAt: string;
+  testCaseResults: TestCaseResult[];
+}
+
+export type SubmitCodeResponse = SubmitCodeSuccess | SubmitCodeError;
 
 export interface ErrorInfo {
   file: string;
@@ -77,18 +138,7 @@ export interface ErrorInfo {
   message: string;
 }
 
-export interface FailedTestCase {
-  input: string;
-  expectedOutput: string;
-  actualOutput: string | null;
-  stderr: string | null;
-  runtime: number;
-  memory: number;
-}
-
-export type RunCodeResponse = RunCodeSuccess | RunCodeError;
-
-export type SubmitCodeResponse = SubmitCodeSuccess | SubmitCodeError;
+// ─── Store ────────────────────────────────────────────────────────────────────
 
 interface SubmissionStore {
   baseCode: string | null;
@@ -107,16 +157,8 @@ interface SubmissionStore {
   fetchBaseClassCode: (problemId: number, language: string) => Promise<void>;
   getUserSubmissions: (page: number, problemTitle?: string) => Promise<void>;
   getAllSubmissions: (problemTitle: string, page: number) => Promise<void>;
-  runCode: (
-    language: string,
-    code: string,
-    problemTitle: string
-  ) => Promise<void>;
-  submitCode: (
-    language: string,
-    code: string,
-    problemTitle: string
-  ) => Promise<void>;
+  runCode: (language: string, code: string, problemTitle: string) => Promise<void>;
+  submitCode: (language: string, code: string, problemTitle: string) => Promise<void>;
   clearRunCodeResult: () => void;
   clearSubmitCodeResult: () => void;
 }
@@ -129,53 +171,33 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
   baseCodeError: null,
   userSubmissions: [],
   allSubmissions: [],
-  submissionPagination: {
-    currentPage: 1,
-    totalPages: null,
-    totalSubmissions: null,
-  },
-  allSubmissionsPagination: {
-    currentPage: 1,
-    totalPages: null,
-    totalSubmissions: null,
-  },
+  submissionPagination: { currentPage: 1, totalPages: null, totalSubmissions: null },
+  allSubmissionsPagination: { currentPage: 1, totalPages: null, totalSubmissions: null },
   runCodeResult: null,
   submitCodeResult: null,
   isRunningCode: false,
   isSubmittingCode: false,
 
-  // Function to fetch base class code
-  fetchBaseClassCode: async (problemId: number, language: string) => {
+  fetchBaseClassCode: async (problemId, language) => {
     set({ isBaseCodeLoading: true, baseCodeError: null });
     try {
       const response = await axios.get(`${API_URL}/submission/get-base-code`, {
-        params: { problemId, language }, // Send problemId and language as query parameters
+        params: { problemId, language },
       });
       set({ baseCode: response.data.baseClassCode, isBaseCodeLoading: false });
     } catch (error: any) {
-      const errMsg =
-        error.response?.data?.message || "Failed to fetch base class code";
+      const errMsg = error.response?.data?.message || "Failed to fetch base class code";
       set({ baseCodeError: errMsg, isBaseCodeLoading: false });
       throw error;
     }
   },
 
-  // Get user submissions (either all or filtered by problem title)
-  getUserSubmissions: async (page: number, problemTitle?: string) => {
+  getUserSubmissions: async (page, problemTitle) => {
     set({ isLoading: true, error: null });
     try {
       const params: any = { page };
-
-      // Add problem title to params if provided
-      if (problemTitle) {
-        params.title = problemTitle;
-      }
-
-      const response = await axios.get(
-        `${API_URL}/submission/getUserSubmissions`,
-        { params }
-      );
-
+      if (problemTitle) params.title = problemTitle;
+      const response = await axios.get(`${API_URL}/submission/getUserSubmissions`, { params });
       set({
         userSubmissions: response.data.data,
         isLoading: false,
@@ -186,29 +208,17 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
         },
       });
     } catch (error: any) {
-      const errMsg =
-        error.response?.data?.message ||
-        "An error occurred while fetching user submissions.";
+      const errMsg = error.response?.data?.message || "An error occurred while fetching user submissions.";
       set({ error: errMsg, isLoading: false });
     }
   },
 
-  // Get all submissions for a specific problem
-  getAllSubmissions: async (problemTitle: string, page: number) => {
+  getAllSubmissions: async (problemTitle, page) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await axios.get(
-        `${API_URL}/submission/getAllSubmissions`,
-        {
-          params: {
-            title: problemTitle,
-            page,
-          },
-        }
-      );
-
-      console.log(response);
-
+      const response = await axios.get(`${API_URL}/submission/getAllSubmissions`, {
+        params: { title: problemTitle, page },
+      });
       set({
         allSubmissions: response.data.data,
         isLoading: false,
@@ -219,97 +229,39 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
         },
       });
     } catch (error: any) {
-      const errMsg =
-        error.response?.data?.message ||
-        "An error occurred while fetching all submissions.";
+      const errMsg = error.response?.data?.message || "An error occurred while fetching all submissions.";
       set({ error: errMsg, isLoading: false });
     }
   },
-  runCode: async (language: string, code: string, problemTitle: string) => {
+
+  runCode: async (language, code, problemTitle) => {
     set({ isRunningCode: true, error: null, runCodeResult: null });
     try {
       const response = await axios.post(
         `${API_URL}/submission/runCode`,
-        {
-          language,
-          code,
-        },
-        {
-          params: {
-            title: problemTitle,
-          },
-        }
+        { language, code },
+        { params: { title: problemTitle } },
       );
-
-      set({
-        runCodeResult: response.data as RunCodeSuccess,
-        isRunningCode: false,
-      });
+      set({ runCodeResult: response.data as RunCodeSuccess, isRunningCode: false });
     } catch (error: any) {
-      const errorData = error.response?.data as RunCodeError;
-      set({
-        runCodeResult: errorData || {
-          error: "Failed to run code",
-          stderr: null,
-          compile_output: "",
-          errorInfo: [],
-        },
-        isRunningCode: false,
-      });
+      set({ runCodeResult: (error.response?.data as RunCodeError) || null, isRunningCode: false });
     }
   },
-  submitCode: async (language: string, code: string, problemTitle: string) => {
+
+  submitCode: async (language, code, problemTitle) => {
     set({ isSubmittingCode: true, error: null, submitCodeResult: null });
     try {
       const response = await axios.post(
         `${API_URL}/submission/submitCode`,
-        {
-          language,
-          code,
-        },
-        {
-          params: {
-            title: problemTitle,
-          },
-        }
+        { language, code },
+        { params: { title: problemTitle } },
       );
-
-      set({
-        submitCodeResult: response.data as SubmitCodeSuccess,
-        isSubmittingCode: false,
-      });
+      set({ submitCodeResult: response.data as SubmitCodeSuccess, isSubmittingCode: false });
     } catch (error: any) {
-      const errorData = error.response?.data as SubmitCodeError;
-      set({
-        submitCodeResult: errorData || {
-          message: "Failed to submit code",
-          failedTestCase: {
-            input: "",
-            expectedOutput: "",
-            actualOutput: null,
-            stderr: null,
-            runtime: 0,
-            memory: 0,
-          },
-          code: "",
-          language: "",
-          runtimeInMilliseconds: 0,
-          memoryInMegabytes: 0,
-          testCasesPassed: 0,
-          totalTestCases: 0,
-        },
-        isSubmittingCode: false,
-      });
+      set({ submitCodeResult: (error.response?.data as SubmitCodeError) || null, isSubmittingCode: false });
     }
   },
 
-  // Clear run code result
-  clearRunCodeResult: () => {
-    set({ runCodeResult: null });
-  },
-
-  // Clear submit code result
-  clearSubmitCodeResult: () => {
-    set({ submitCodeResult: null });
-  },
+  clearRunCodeResult: () => set({ runCodeResult: null }),
+  clearSubmitCodeResult: () => set({ submitCodeResult: null }),
 }));
