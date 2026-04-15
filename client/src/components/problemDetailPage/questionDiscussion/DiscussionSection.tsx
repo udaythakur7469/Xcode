@@ -5,7 +5,7 @@ import TopSection from "./topSection/TopSection";
 import MiddleSection from "./middleSection/MiddleSection";
 import BottomSection from "./bottomSection/BottomSection";
 import { usePostStore } from "@/features/postStore";
-import { MoonLoader } from "react-spinners";
+import { DiscussionSectionSkeleton } from "./DiscussionSectionSkeleton";
 
 const DiscussionSection: React.FC = () => {
   const { isGettingPostCardData, isFetchingCombinedTags } = usePostStore();
@@ -16,9 +16,7 @@ const DiscussionSection: React.FC = () => {
     <div className="flex flex-col h-full w-full gap-2 px-3 relative">
       {/* Loading Overlay */}
       {isLoading && (
-        <div className="absolute inset-0 bg-background z-50 flex justify-center items-center">
-          <MoonLoader size={200} color="#ffffff" />
-        </div>
+        <DiscussionSectionSkeleton />
       )}
 
       <div className="h-[50px]">
