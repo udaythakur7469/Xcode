@@ -7,7 +7,7 @@ import {
   PostCardData,
   usePostStore,
 } from "@/features/postStore";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { MoonLoader } from "react-spinners";
 import { List } from "lucide-react";
 import DraftPostDropdown from "./postCard/postCardDropdown/DraftPostDropdown";
@@ -27,8 +27,12 @@ const SCROLL_THRESHOLD = 80;
 type BottomSectionProps = {};
 
 const BottomSection: React.FC<BottomSectionProps> = () => {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const problemTitle = searchParams.get("title") as string;
+
+  // Read post ID from URL — this is the source of truth for which post is open
+  const postIdFromUrl = searchParams.get("post");
 
   const {
     getPostCards,
@@ -59,8 +63,6 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   const [hasFetched, setHasFetched] = useState(false);
   const [isPostDialogBoxOpen, setIsPostDialogBoxOpen] = useState(false);
   const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null);
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  const [isFullPostPanelOpen, setIsFullPostPanelOpen] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -74,8 +76,26 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   const problemTitleRef = useRef(problemTitle);
   const loadMoreRef = useRef<() => void>(() => {});
 
-  const { setPostId } = useCommentPanel();
+  const { setPostId, setIsOpen } = useCommentPanel();
   const { socket } = useSocket();
+
+  // ── Derive panel open state from URL ─────────────────────────────────────
+  // isFullPostPanelOpen and selectedPostId are now derived from the URL,
+  // not from local state. This makes them reload-proof and shareable.
+  const isFullPostPanelOpen = postIdFromUrl !== null;
+  const selectedPostId = postIdFromUrl;
+
+  // ── Sync comment panel context when URL post param changes ────────────────
+  // On initial load with ?post=123 in URL: open comment panel + set postId.
+  // On close (post param removed): close comment panel.
+  useEffect(() => {
+    if (postIdFromUrl) {
+      setPostId(postIdFromUrl);
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  }, [postIdFromUrl]);
 
   // ── Socket ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -95,6 +115,9 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   }, [socket, getPostCardData, applyRemotePostReaction]);
 
   // ── Initial fetch ─────────────────────────────────────────────────────────
+  // Post list fetch is non-blocking — FullPostPanel fetches its own data
+  // independently via getFullPostById, so even if this hasn't completed,
+  // the panel can load and display the post.
   useEffect(() => {
     if (
       problemTitle &&
@@ -147,16 +170,7 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
   };
 
   // ── Attach scroll listener + check if content fits ───────────────────────
-  // This effect runs whenever isSearchingPosts flips to false (search done)
-  // AND whenever displayPosts.length changes (new page loaded).
-  // That covers all three cases:
-  //   1. Normal first load
-  //   2. After a search completes (container remounts)
-  //   3. After a tag click triggers search
   useEffect(() => {
-    // While searching the container is unmounted (early return renders spinner)
-    // so we have nothing to attach to — bail out and wait for the next run
-    // when isSearchingPosts becomes false.
     if (isSearchingPosts) return;
 
     const container = scrollContainerRef.current;
@@ -171,15 +185,13 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
 
     container.addEventListener("scroll", handleScroll, { passive: true });
 
-    // Also immediately check if content already fits without scrolling
-    // (fewer posts than container height — user can never scroll)
     const { scrollHeight, clientHeight } = container;
     if (scrollHeight <= clientHeight) {
       loadMoreRef.current();
     }
 
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [isSearchingPosts, displayPosts.length]); // re-run when search ends or list grows
+  }, [isSearchingPosts, displayPosts.length]);
 
   // ── Click-outside closes draft dropdown ───────────────────────────────────
   useEffect(() => {
@@ -212,15 +224,19 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
     if (problemTitle) getDraftPosts(problemTitle);
   };
 
+  // Opening a post: router.push so back button closes the panel naturally
   const handlePostCardClick = (postId: string) => {
-    setSelectedPostId(postId);
-    setIsFullPostPanelOpen(true);
-    setPostId(postId);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", "discussion");
+    params.set("post", postId);
+    router.push(`?${params.toString()}`);
   };
 
+  // Closing a post: router.replace so it doesn't add a history entry
   const handleFullPostPanelClose = () => {
-    setIsFullPostPanelOpen(false);
-    setSelectedPostId(null);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("post");
+    router.replace(`?${params.toString()}`);
   };
 
   if (isSearchingPosts) {
@@ -286,6 +302,7 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
                     key={index}
                     data={post}
                     onClick={() => handlePostCardClick(post.id)}
+                    onCommentsClick={() => handlePostCardClick(post.id)}
                   />
                 ))}
 
