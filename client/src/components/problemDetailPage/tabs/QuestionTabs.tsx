@@ -23,6 +23,7 @@ import DiscussionSection from "../questionDiscussion/DiscussionSection";
 import QuestionCodeResults from "../questionResults/QuestionResults";
 import { useSubmissionStore } from "@/features/submissionStore";
 import { useCommentPanel } from "@/context/commentPanelContext";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type QuestionTabsProps = {
   showResultsTab?: boolean;
@@ -31,7 +32,21 @@ type QuestionTabsProps = {
   isMaximized?: boolean;
 };
 
-const SESSION_KEY = "lastOpenedTab";
+// Valid tabs that can appear in the URL
+const VALID_URL_TABS = [
+  "description",
+  "editorial",
+  "submissions",
+  "discussion",
+] as const;
+type ValidUrlTab = (typeof VALID_URL_TABS)[number];
+
+const resolveTabFromParam = (param: string | null): string => {
+  if (param && (VALID_URL_TABS as readonly string[]).includes(param)) {
+    return param;
+  }
+  return "description";
+};
 
 const QuestionTabs: React.FC<QuestionTabsProps> = ({
   showResultsTab = false,
@@ -39,64 +54,66 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   onMaximize,
   isMaximized = false,
 }) => {
-  const [activeTab, setActiveTab] = useState("description");
-  const [previousTab, setPreviousTab] = useState("description");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Derive active tab from URL. `results` is never in URL — it's driven by showResultsTab prop.
+  const tabParam = searchParams.get("tab");
+  const activeTab =
+    showResultsTab && tabParam === null
+      ? "results"
+      : resolveTabFromParam(tabParam);
+
+  // previousTab is local state only — used for slide animation direction
+  const [previousTab, setPreviousTab] = useState(activeTab);
+
   const { clearSubmitCodeResult } = useSubmissionStore();
   const { setIsOpen } = useCommentPanel();
 
   const handleMaximizeMinimize = useCallback(() => {
-    if (onMaximize) {
-      onMaximize();
-    }
+    if (onMaximize) onMaximize();
   }, [onMaximize]);
 
-  // Get tab order index for animation direction
-  const getTabIndex = (tabValue: string) => {
-    const tabs = showResultsTab
-      ? ["description", "editorial", "results", "submissions", "discussion"]
-      : ["description", "editorial", "submissions", "discussion"];
-    return tabs.indexOf(tabValue);
-  };
-
-  // Determine slide direction based on tab order
-  const getSlideDirection = () => {
-    const currentIndex = getTabIndex(activeTab);
-    const previousIndex = getTabIndex(previousTab);
-    return currentIndex > previousIndex ? 1 : -1;
+  // Build updated URL with new tab param, preserving all other params
+  const buildTabUrl = (newTab: string): string => {
+    const params = new URLSearchParams(searchParams.toString());
+    if ((VALID_URL_TABS as readonly string[]).includes(newTab)) {
+      params.set("tab", newTab);
+    } else {
+      params.delete("tab");
+    }
+    // Remove post param when switching away from discussion
+    if (newTab !== "discussion") {
+      params.delete("post");
+    }
+    return `?${params.toString()}`;
   };
 
   const handleTabChange = (newTab: string) => {
     setPreviousTab(activeTab);
-    setActiveTab(newTab);
-    if (activeTab == "discussion") {
+
+    // Close comment panel when leaving discussion tab
+    if (activeTab === "discussion") {
       setIsOpen(false);
     }
+
+    // `results` tab is ephemeral — don't write it to URL
+    if (newTab === "results") {
+      return;
+    }
+
+    router.replace(buildTabUrl(newTab));
   };
 
+  // When showResultsTab becomes true, visually switch to results
+  // (no URL change — results is not a shareable state)
   useEffect(() => {
     if (showResultsTab) {
       setPreviousTab(activeTab);
-      setActiveTab("results");
     }
   }, [showResultsTab]);
 
-  useEffect(() => {
-    const savedTab = sessionStorage.getItem("lastOpenedTab");
-    if (savedTab && savedTab !== "results") {
-      setActiveTab(savedTab);
-      setPreviousTab(savedTab);
-    } else {
-      setActiveTab("description");
-      setPreviousTab("description");
-    }
-  }, []);
-
-  useEffect(() => {
-    if (activeTab && activeTab !== "results") {
-      sessionStorage.setItem("lastOpenedTab", activeTab);
-    }
-  }, [activeTab]);
-
+  // Keyboard shortcut: Alt+W closes results tab, falls back to description
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
       const isAlt = e.altKey;
@@ -104,29 +121,24 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
 
       if (isAlt && isW && showResultsTab) {
         e.preventDefault();
-        if (onCloseResultsTab) {
-          onCloseResultsTab();
-        }
+        if (onCloseResultsTab) onCloseResultsTab();
         clearSubmitCodeResult();
-        const lastOpenedTab =
-          sessionStorage.getItem(SESSION_KEY) || "description";
-        handleTabChange(lastOpenedTab);
+        // Fall back to whatever the URL currently says (or description)
+        const fallback = resolveTabFromParam(searchParams.get("tab"));
+        setPreviousTab("results");
+        router.replace(buildTabUrl(fallback));
       }
     };
 
     window.addEventListener("keydown", keyboardShortcut);
+    return () => window.removeEventListener("keydown", keyboardShortcut);
+  }, [showResultsTab, onCloseResultsTab, clearSubmitCodeResult, searchParams]);
 
-    return () => {
-      window.removeEventListener("keydown", keyboardShortcut);
-    };
-  }, [showResultsTab, onCloseResultsTab, clearSubmitCodeResult, activeTab]);
-
+  // Keyboard shortcut: Ctrl+Right to maximize
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
       const isControl = e.ctrlKey || e.metaKey;
       const isRightArrow = e.key === "ArrowRight";
-
-      // Ctrl + Right Arrow to maximize (when not maximized)
       if (isControl && isRightArrow && !isMaximized) {
         e.preventDefault();
         handleMaximizeMinimize();
@@ -134,91 +146,69 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     };
 
     window.addEventListener("keydown", keyboardShortcut);
-
-    return () => {
-      window.removeEventListener("keydown", keyboardShortcut);
-    };
+    return () => window.removeEventListener("keydown", keyboardShortcut);
   }, [isMaximized, handleMaximizeMinimize]);
 
+  // Keyboard shortcuts: Alt+1..5 to switch tabs
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
-      const isAlt = e.altKey;
-      const key = e.key;
+      if (!e.altKey) return;
+      e.preventDefault();
 
-      if (isAlt) {
-        e.preventDefault();
+      const tabsWithResults = [
+        "description",
+        "editorial",
+        "results",
+        "submissions",
+        "discussion",
+      ];
+      const tabsWithout = [
+        "description",
+        "editorial",
+        "submissions",
+        "discussion",
+      ];
+      const tabList = showResultsTab ? tabsWithResults : tabsWithout;
+      const index = parseInt(e.key) - 1;
 
-        // If results tab is showing
-        if (showResultsTab) {
-          switch (key) {
-            case "1":
-              handleTabChange("description");
-              break;
-            case "2":
-              handleTabChange("editorial");
-              break;
-            case "3":
-              handleTabChange("results");
-              break;
-            case "4":
-              handleTabChange("submissions");
-              break;
-            case "5":
-              handleTabChange("discussion");
-              break;
-          }
-        } else {
-          // If results tab is not showing
-          switch (key) {
-            case "1":
-              handleTabChange("description");
-              break;
-            case "2":
-              handleTabChange("editorial");
-              break;
-            case "3":
-              handleTabChange("submissions");
-              break;
-            case "4":
-              handleTabChange("discussion");
-              break;
-          }
-        }
+      if (index >= 0 && index < tabList.length) {
+        handleTabChange(tabList[index]);
       }
     };
 
     window.addEventListener("keydown", keyboardShortcut);
-
-    return () => {
-      window.removeEventListener("keydown", keyboardShortcut);
-    };
-  }, [showResultsTab, activeTab]);
+    return () => window.removeEventListener("keydown", keyboardShortcut);
+  }, [showResultsTab, activeTab, searchParams]);
 
   const onResultsClose = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent triggering the tab change
-    if (onCloseResultsTab) {
-      onCloseResultsTab(); // Call parent to hide the tab
-    }
+    e.stopPropagation();
+    if (onCloseResultsTab) onCloseResultsTab();
     clearSubmitCodeResult();
-    const lastOpenedTab = sessionStorage.getItem(SESSION_KEY) || "description";
-    handleTabChange(lastOpenedTab);
+    // Fall back to whatever tab the URL currently holds (or description)
+    const fallback = resolveTabFromParam(searchParams.get("tab"));
+    setPreviousTab("results");
+    router.replace(buildTabUrl(fallback));
   };
 
-  // Animation variants for tab content - Pure slide with no fade
+  // Animation direction
+  const getTabIndex = (tabValue: string) => {
+    const tabs = showResultsTab
+      ? ["description", "editorial", "results", "submissions", "discussion"]
+      : ["description", "editorial", "submissions", "discussion"];
+    return tabs.indexOf(tabValue);
+  };
+
+  const getSlideDirection = () => {
+    const currentIndex = getTabIndex(activeTab);
+    const previousIndex = getTabIndex(previousTab);
+    return currentIndex > previousIndex ? 1 : -1;
+  };
+
   const slideDirection = getSlideDirection();
   const tabVariants = {
-    enter: {
-      x: slideDirection * 100 + "%",
-      opacity: 1,
-    },
-    center: {
-      x: 0,
-      opacity: 1,
-    },
-    exit: {
-      x: slideDirection * -100 + "%",
-      opacity: 1,
-    },
+    enter: { x: slideDirection * 100 + "%", opacity: 1 },
+    center: { x: 0, opacity: 1 },
+    exit: { x: slideDirection * -100 + "%", opacity: 1 },
   };
 
   return (
@@ -282,7 +272,6 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
             <Flame size={18} className="mr-1 text-orange-500" />
             <p className="text-md">Discussion</p>
           </TabsTrigger>
-          {/* Toggle between Maximize and Minimize icons */}
           {isMaximized ? (
             <HoverCard>
               <HoverCardTrigger asChild>
