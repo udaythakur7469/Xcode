@@ -1,10 +1,11 @@
-import React, { useEffect } from "react";
-import { ArrowLeft } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { ArrowLeft, Share2 } from "lucide-react";
 import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
 import { motion } from "framer-motion";
 import PostData from "./PostData";
 import { useCommentPanel } from "@/context/commentPanelContext";
+import ShareDialog from "../sharePost/ShareDialog";
 
 type FullPostPanelProps = {
   postId: string | null;
@@ -16,6 +17,7 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
     usePostStore();
 
   const { setIsOpen } = useCommentPanel();
+  const [isShareOpen, setIsShareOpen] = useState(false);
 
   useEffect(() => {
     if (postId) {
@@ -45,15 +47,11 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
         initial={{ x: "100%" }}
         animate={{ x: 0 }}
         exit={{ x: "100%" }}
-        transition={{
-          type: "tween",
-          duration: 0.3,
-          ease: "easeInOut",
-        }}
+        transition={{ type: "tween", duration: 0.3, ease: "easeInOut" }}
         className="absolute right-0 top-0 h-full w-full bg-background shadow-2xl flex flex-col pointer-events-auto overflow-x-hidden"
       >
-        {/* Header — fixed, never scrolls */}
-        <div className="flex items-center justify-start pb-1 border-b shrink-0">
+        {/* Header */}
+        <div className="flex items-center justify-between pb-1 border-b shrink-0 pr-2">
           <button
             onClick={() => closePanels()}
             className="flex flex-row items-center justify-center"
@@ -62,19 +60,24 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
             <ArrowLeft size={18} className="mx-1" />
             All solutions
           </button>
+
+          {/* Share button — passes prefetchedPost so dialog skips the fetch */}
+          {fullPostData && !isGettingFullPost && (
+            <button
+              onClick={() => setIsShareOpen(true)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-secondary"
+              aria-label="Share post"
+            >
+              <Share2 size={14} className="text-purple-400" />
+              Share
+            </button>
+          )}
         </div>
 
-        {/* 
-          ✅ THE ONE AND ONLY scroll container for the entire panel.
-          Everything inside — title, meta, tags, markdown, comments — 
-          scrolls together as one unified page.
-        */}
+        {/* Scroll container */}
         <div
           className="flex-1 overflow-y-auto overflow-x-hidden"
-          style={{
-            scrollbarWidth: "thin",
-            scrollbarColor: "#888 transparent",
-          }}
+          style={{ scrollbarWidth: "thin", scrollbarColor: "#888 transparent" }}
         >
           {isGettingFullPost && (
             <div className="flex justify-center items-center h-full">
@@ -99,6 +102,16 @@ const FullPostPanel: React.FC<FullPostPanelProps> = ({ postId, onClose }) => {
           )}
         </div>
       </motion.div>
+
+      {/* Share dialog — prefetchedPost avoids a redundant API call */}
+      {postId && (
+        <ShareDialog
+          isOpen={isShareOpen}
+          onClose={() => setIsShareOpen(false)}
+          postId={postId}
+          prefetchedPost={fullPostData}
+        />
+      )}
     </div>
   );
 };
