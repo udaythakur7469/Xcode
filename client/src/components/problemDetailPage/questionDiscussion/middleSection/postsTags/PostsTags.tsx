@@ -119,7 +119,7 @@ const PostsTags: React.FC<PostsTagsProps> = () => {
 
   // Show loading message if no tags
   if (!combinedTags || combinedTags.length === 0) {
-    return <div className="py-2">No tags available</div>;
+    return <div className="py-2 w-full text-center">No tags available</div>;
   }
 
   const displayTags =
