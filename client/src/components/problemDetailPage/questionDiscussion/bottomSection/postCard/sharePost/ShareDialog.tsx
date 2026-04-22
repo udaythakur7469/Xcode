@@ -279,7 +279,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
           <div className="px-5 py-4 space-y-5 max-h-[90vh] overflow-y-auto">
             {/* ── Loading / error state ─────────────────────────────── */}
             {isFetching && (
-              <div className="flex items-center justify-center py-8 gap-2 text-muted-foreground text-sm">
+              <div className="flex items-center justify-center px-10 py-10 gap-2 text-muted-foreground text-sm">
                 <Loader2 size={16} className="animate-spin" />
                 Loading post…
               </div>
