@@ -10,7 +10,7 @@ export const buildPostShareUrl = (
 ): string => {
   const base =
     typeof window !== "undefined"
-      ? `${window.location.origin}/problems/problemdetail`
+      ? `${window.location.origin}/problems/problem-detail`
       : "";
   const params = new URLSearchParams({
     title: problemTitle,
