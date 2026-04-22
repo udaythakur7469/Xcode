@@ -150,7 +150,7 @@ const SharePreviewModal: React.FC<SharePreviewModalProps> = ({
               <div
                 onClick={() => setAutoOpen((v) => !v)}
                 className={`w-8 h-4 rounded-full transition-colors relative ${
-                  autoOpen ? "bg-primary" : "bg-secondary"
+                  autoOpen ? "bg-blue-500" : "bg-secondary"
                 }`}
               >
                 <div
@@ -169,12 +169,12 @@ const SharePreviewModal: React.FC<SharePreviewModalProps> = ({
             <Button
               onClick={handleCopy}
               className="flex-1 gap-2"
-              variant={copied ? "outline" : "default"}
+              variant={copied ? "outline" : "secondary"}
             >
               {copied ? (
                 <>
-                  <Check size={15} />
-                  Copied!
+                  <Check size={15} color="#22C55E" strokeWidth={3} />
+                  <span className="text-green-500">Copied!</span>
                 </>
               ) : (
                 <>
@@ -185,11 +185,6 @@ const SharePreviewModal: React.FC<SharePreviewModalProps> = ({
                 </>
               )}
             </Button>
-            {copied && !showAutoOpenOption && (
-              <p className="text-xs text-muted-foreground">
-                Paste it wherever you want
-              </p>
-            )}
           </div>
         </div>
       </DialogContent>
