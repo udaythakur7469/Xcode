@@ -16,7 +16,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { History, Maximize, Minimize } from "lucide-react";
-import { MoonLoader } from "react-spinners";
+import { CodeEditorSkeleton } from "./CodeEditorSkeleton";
 import { useProblemStore } from "@/features/problemStore";
 import { useSearchParams } from "next/navigation";
 import { useSubmissionStore } from "@/features/submissionStore";
@@ -387,9 +387,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         {/* CodeMirror Editor */}
         <div className="flex-grow h-[calc(100%-90px)]">
           {isBaseCodeLoading ? (
-            <div className="h-full flex items-center justify-center">
-              <MoonLoader color="#ffffff" size={50} />
-            </div>
+            <CodeEditorSkeleton />
           ) : baseCodeError ? (
             <div className="h-full flex items-center justify-center text-red-500">
               {baseCodeError}
