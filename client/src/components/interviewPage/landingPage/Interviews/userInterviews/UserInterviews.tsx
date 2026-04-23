@@ -71,15 +71,25 @@ const UserInterviews: React.FC<UserInterviewsProps> = () => {
   }, [cardWidth, userInterviews.length, isLoadingUserInterviews]);
 
   if (isLoadingUserInterviews) {
-    return <div className="py-2 ml-5 mt-5">Loading interviews...</div>;
+    return (
+      <div className="py-2 ml-5 mt-5 text-center">Loading interviews...</div>
+    );
   }
 
   if (interviewError) {
-    return <div className="py-2 ml-5 mt-5 text-red-500">{interviewError}</div>;
+    return (
+      <div className="py-2 ml-5 mt-5 text-red-500 text-center">
+        {interviewError}
+      </div>
+    );
   }
 
   if (userInterviews.length === 0) {
-    return <p className="py-2 ml-5 mt-5">There are no interviews available</p>;
+    return (
+      <p className="py-2 ml-5 mt-5 text-center">
+        There are no interviews available
+      </p>
+    );
   }
 
   return (
