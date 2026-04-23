@@ -57,15 +57,15 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // previousTab is local state only — used for slide animation direction
+  const [previousTab, setPreviousTab] = useState("description");
+  const [resultsVisible, setResultsVisible] = useState(false);
+
   // Derive active tab from URL. `results` is never in URL — it's driven by showResultsTab prop.
   const tabParam = searchParams.get("tab");
+  const urlResolvedTab = resolveTabFromParam(tabParam);
   const activeTab =
-    showResultsTab && tabParam === null
-      ? "results"
-      : resolveTabFromParam(tabParam);
-
-  // previousTab is local state only — used for slide animation direction
-  const [previousTab, setPreviousTab] = useState(activeTab);
+    resultsVisible && showResultsTab ? "results" : urlResolvedTab;
 
   const { clearSubmitCodeResult } = useSubmissionStore();
   const { setIsOpen } = useCommentPanel();
@@ -92,16 +92,16 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   const handleTabChange = (newTab: string) => {
     setPreviousTab(activeTab);
 
-    // Close comment panel when leaving discussion tab
     if (activeTab === "discussion") {
       setIsOpen(false);
     }
 
-    // `results` tab is ephemeral — don't write it to URL
     if (newTab === "results") {
+      setResultsVisible(true);
       return;
     }
 
+    setResultsVisible(false);
     router.replace(buildTabUrl(newTab));
   };
 
@@ -109,7 +109,10 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   // (no URL change — results is not a shareable state)
   useEffect(() => {
     if (showResultsTab) {
-      setPreviousTab(activeTab);
+      setPreviousTab(urlResolvedTab);
+      setResultsVisible(true);
+    } else {
+      setResultsVisible(false);
     }
   }, [showResultsTab]);
 
@@ -123,10 +126,8 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
         e.preventDefault();
         if (onCloseResultsTab) onCloseResultsTab();
         clearSubmitCodeResult();
-        // Fall back to whatever the URL currently says (or description)
-        const fallback = resolveTabFromParam(searchParams.get("tab"));
+        setResultsVisible(false);
         setPreviousTab("results");
-        router.replace(buildTabUrl(fallback));
       }
     };
 
@@ -184,10 +185,8 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     e.stopPropagation();
     if (onCloseResultsTab) onCloseResultsTab();
     clearSubmitCodeResult();
-    // Fall back to whatever tab the URL currently holds (or description)
-    const fallback = resolveTabFromParam(searchParams.get("tab"));
+    setResultsVisible(false);
     setPreviousTab("results");
-    router.replace(buildTabUrl(fallback));
   };
 
   // Animation direction
