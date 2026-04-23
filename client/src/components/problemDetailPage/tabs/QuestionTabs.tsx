@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   HoverCard,
@@ -60,12 +60,15 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   // previousTab is local state only — used for slide animation direction
   const [previousTab, setPreviousTab] = useState("description");
   const [resultsVisible, setResultsVisible] = useState(false);
+  const pendingTabRef = useRef<string | null>(null);
 
   // Derive active tab from URL. `results` is never in URL — it's driven by showResultsTab prop.
   const tabParam = searchParams.get("tab");
   const urlResolvedTab = resolveTabFromParam(tabParam);
   const activeTab =
-    resultsVisible && showResultsTab ? "results" : urlResolvedTab;
+    resultsVisible && showResultsTab
+      ? "results"
+      : (pendingTabRef.current ?? urlResolvedTab);
 
   const { clearSubmitCodeResult } = useSubmissionStore();
   const { setIsOpen } = useCommentPanel();
@@ -97,10 +100,14 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     }
 
     if (newTab === "results") {
+      pendingTabRef.current = null;
       setResultsVisible(true);
       return;
     }
 
+    // Set the destination tab synchronously in a ref so activeTab
+    // snaps directly to newTab without flashing urlResolvedTab first
+    pendingTabRef.current = newTab;
     setResultsVisible(false);
     router.replace(buildTabUrl(newTab));
   };
@@ -115,6 +122,14 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
       setResultsVisible(false);
     }
   }, [showResultsTab]);
+
+  // Once the URL catches up to the pending tab, clear the ref
+  // so future urlResolvedTab changes drive activeTab normally
+  useEffect(() => {
+    if (pendingTabRef.current && urlResolvedTab === pendingTabRef.current) {
+      pendingTabRef.current = null;
+    }
+  }, [urlResolvedTab]);
 
   // Keyboard shortcut: Alt+W closes results tab, falls back to description
   useEffect(() => {
