@@ -1,24 +1,45 @@
-import axios from "@/lib/axiosInstance";
+import axios from "axios";
 import { create } from "zustand";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-interface ChatCreationResponse {
-  success: boolean;
-  message: string;
-  chatId: string;
+axios.defaults.withCredentials = true;
+
+// ─────────────────────────────────────────────
+// localStorage helpers
+// Drafts are persisted per chatId.
+// Key format: nova_input_draft_{chatId}
+// ─────────────────────────────────────────────
+
+const LS_PREFIX = "nova_input_draft_";
+
+function lsGetDraft(chatId: string): string {
+  try {
+    return localStorage.getItem(LS_PREFIX + chatId) ?? "";
+  } catch {
+    return "";
+  }
 }
 
-interface ChatDeletionResponse {
-  success: boolean;
-  message: string;
+function lsSetDraft(chatId: string, text: string) {
+  try {
+    if (text) {
+      localStorage.setItem(LS_PREFIX + chatId, text);
+    } else {
+      localStorage.removeItem(LS_PREFIX + chatId);
+    }
+  } catch {}
 }
 
-interface SendMessageResponse {
-  success: boolean;
-  userMessage: Message;
-  aiMessage: Message;
+function lsRemoveDraft(chatId: string) {
+  try {
+    localStorage.removeItem(LS_PREFIX + chatId);
+  } catch {}
 }
+
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
 
 export interface Message {
   id: string;
@@ -26,724 +47,755 @@ export interface Message {
   role: "user" | "assistant";
   status: "sent" | "sending" | "thinking" | "error" | "aborted";
   updatedAt: string;
+  createdAt: string;
 }
 
-export interface getChatsResponse {
+export interface ChatListItem {
   id: string;
   title: string;
 }
 
-interface ChatDetails {
-  // View state
+export type AiModel = "chatgpt" | "claude" | "gemini";
+
+export interface EditingState {
+  chatId: string;
+  messageId: string;
+}
+
+interface ChatState {
+  // View
   activeChatId: string | null;
+  aiModel: AiModel;
 
-  // Data state - chat-scoped
+  // Data
   chatMessageMap: Record<string, Message[]>;
-
-  // Derived UI state (computed from activeChatId)
   chatMessage: Message[];
 
-  // Deletion tracking
+  // Guards
   deletedChatIds: Set<string>;
+  activePollingSessions: Map<string, string>; // messageId → chatId
 
-  // Polling management - message-scoped
-  activePollingSessions: Map<string, string>; // messageId -> chatId
-
-  // Loading states
-  chatCreation: ChatCreationResponse | null;
-  isCreatingChat: boolean;
-  chatCreationError: string | null;
-  chatDeletion: ChatDeletionResponse | null;
-  isDeletingChat: boolean;
-  chatDeletionError: string | null;
-  sentMessage: SendMessageResponse | null;
-  isSendingMessage: boolean;
-  messageSendingError: string | null;
-  isGettingChatMessages: boolean;
-  chatMessagesError: string | null;
-  userChats: getChatsResponse[];
+  // Chats list
+  userChats: ChatListItem[];
   isLoadingUserChats: boolean;
   UserChatsError: string | null;
+
+  // Loading flags
+  isCreatingChat: boolean;
+  isDeletingChat: boolean;
+  isSendingMessage: boolean;
+  isGettingChatMessages: boolean;
   isAIGenerating: boolean;
 
+  // Error flags
+  chatCreationError: string | null;
+  chatDeletionError: string | null;
+  messageSendingError: string | null;
+  chatMessagesError: string | null;
+
+  // Draft & edit state
+  inputDrafts: Record<string, string>;
+  editingState: EditingState | null;
+
   // Actions
+  setAiModel: (model: AiModel) => void;
+  setActiveChatId: (chatId: string | null) => void;
+
+  // Draft actions
+  setInputDraft: (chatId: string, text: string) => void;
+  clearInputDraft: (chatId: string) => void;
+  getInputDraft: (chatId: string) => string;
+
+  // Edit state
+  setEditingState: (state: EditingState | null) => void;
+
+  // Chat actions
   createChat: () => Promise<string | null>;
   deleteChat: (chatId: string) => Promise<void>;
-  sendMessage: (
+  sendMessage: (chatId: string, message: string) => Promise<void>;
+  regenerateMessage: (chatId: string, userMessageId: string) => Promise<void>;
+  editAndResendMessage: (
     chatId: string,
-    message: string,
-    regenerate: boolean,
-    aiModel: string
+    userMessageId: string,
+    newText: string,
   ) => Promise<void>;
   getChatMessages: (chatId: string) => Promise<void>;
   getUserChats: () => Promise<void>;
   moveChatToTop: (chatId: string) => void;
-  setActiveChatId: (chatId: string | null) => void;
+  abortAIGeneration: (messageId: string) => Promise<void>;
   resetStore: () => void;
-  abortAIGeneration: (messageId: string) => void;
 }
 
-export const useChatStore = create<ChatDetails>()((set, get) => ({
-  // View state
-  activeChatId: null,
+// ─────────────────────────────────────────────
+// Store
+// ─────────────────────────────────────────────
 
-  // Data state
+export const useChatStore = create<ChatState>()((set, get) => ({
+  activeChatId: null,
+  aiModel: "chatgpt",
   chatMessageMap: {},
   chatMessage: [],
-
-  // Deletion tracking
   deletedChatIds: new Set(),
-
-  // Polling
   activePollingSessions: new Map(),
-
-  // Loading states
-  chatCreation: null,
-  isCreatingChat: false,
-  chatCreationError: null,
-  chatDeletion: null,
-  isDeletingChat: false,
-  chatDeletionError: null,
-  sentMessage: null,
-  isSendingMessage: false,
-  messageSendingError: null,
-  isGettingChatMessages: false,
-  chatMessagesError: null,
   userChats: [],
   isLoadingUserChats: false,
   UserChatsError: null,
+  isCreatingChat: false,
+  isDeletingChat: false,
+  isSendingMessage: false,
+  isGettingChatMessages: false,
   isAIGenerating: false,
+  chatCreationError: null,
+  chatDeletionError: null,
+  messageSendingError: null,
+  chatMessagesError: null,
+  inputDrafts: {},
+  editingState: null,
+
+  // ── Setters ──────────────────────────────────
+
+  setAiModel: (model) => set({ aiModel: model }),
+
+  setActiveChatId: (chatId) => {
+    set((state) => ({
+      activeChatId: chatId,
+      chatMessage: chatId ? (state.chatMessageMap[chatId] ?? []) : [],
+    }));
+  },
+
+  // ── Draft actions ─────────────────────────────
+
+  setInputDraft: (chatId, text) => {
+    lsSetDraft(chatId, text);
+    set((state) => ({
+      inputDrafts: { ...state.inputDrafts, [chatId]: text },
+    }));
+  },
+
+  clearInputDraft: (chatId) => {
+    lsRemoveDraft(chatId);
+    set((state) => {
+      const next = { ...state.inputDrafts };
+      delete next[chatId];
+      return { inputDrafts: next };
+    });
+  },
+
+  getInputDraft: (chatId) => lsGetDraft(chatId),
+
+  // ── Edit state ────────────────────────────────
+
+  setEditingState: (editingState) => set({ editingState }),
+
+  // ── Create Chat ───────────────────────────────
 
   createChat: async () => {
-    const tempId = `temp-chat-${Date.now()}`;
-
-    const optimisticChat: getChatsResponse = {
-      id: tempId,
-      title: "New Chat",
-    };
-
+    const tempId = `temp-${Date.now()}`;
     set((state) => ({
       isCreatingChat: true,
       chatCreationError: null,
-      userChats: [optimisticChat, ...state.userChats],
+      userChats: [{ id: tempId, title: "New Chat" }, ...state.userChats],
     }));
 
     try {
-      const response = await axios.post(`${API_URL}/chat/createChat`);
-
+      const res = await axios.post(`${API_URL}/chat/createChat`);
+      const realId: string = res.data.chatId;
       set((state) => ({
-        chatCreation: response.data,
         isCreatingChat: false,
-        chatCreationError: null,
-        userChats: state.userChats.map((chat) =>
-          chat.id === tempId
-            ? { id: response.data.chatId, title: "New Chat" }
-            : chat
+        userChats: state.userChats.map((c) =>
+          c.id === tempId ? { id: realId, title: "New Chat" } : c,
         ),
       }));
-
-      return response.data.chatId;
-    } catch (error: any) {
-      const errMsg =
-        error.response?.data?.message ||
-        "An error occurred while creating chat";
-
+      return realId;
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? "Failed to create chat";
       set((state) => ({
         isCreatingChat: false,
-        chatCreationError: errMsg,
-        userChats: state.userChats.filter((chat) => chat.id !== tempId),
+        chatCreationError: msg,
+        userChats: state.userChats.filter((c) => c.id !== tempId),
       }));
-
-      throw new Error(errMsg);
+      throw new Error(msg);
     }
   },
+
+  // ── Delete Chat ───────────────────────────────
 
   deleteChat: async (chatId) => {
     const { activePollingSessions, deletedChatIds, activeChatId } = get();
 
-    set({ isDeletingChat: true, chatDeletionError: null });
-
-    // 1️⃣ MARK CHAT AS DELETED (ATOMIC & FINAL)
     const newDeletedIds = new Set(deletedChatIds);
     newDeletedIds.add(chatId);
 
-    // 2️⃣ KILL ALL POLLING FOR THIS CHAT
-    const newPollingSessions = new Map(activePollingSessions);
-    const sessionsToRemove: string[] = [];
-
-    activePollingSessions.forEach((chatIdForSession, messageId) => {
-      if (chatIdForSession === chatId) {
-        sessionsToRemove.push(messageId);
-      }
+    const newSessions = new Map(activePollingSessions);
+    newSessions.forEach((cId, msgId) => {
+      if (cId === chatId) newSessions.delete(msgId);
     });
 
-    sessionsToRemove.forEach((msgId) => newPollingSessions.delete(msgId));
+    lsRemoveDraft(chatId);
 
-    // 3️⃣ REMOVE FROM MESSAGE MAP
     set((state) => {
-      const newMessageMap = { ...state.chatMessageMap };
-      delete newMessageMap[chatId];
+      const newMap = { ...state.chatMessageMap };
+      delete newMap[chatId];
+
+      const newDrafts = { ...state.inputDrafts };
+      delete newDrafts[chatId];
 
       return {
+        isDeletingChat: true,
+        chatDeletionError: null,
         deletedChatIds: newDeletedIds,
-        activePollingSessions: newPollingSessions,
-        isAIGenerating: newPollingSessions.size > 0,
-        chatMessageMap: newMessageMap,
-        userChats: state.userChats.filter((chat) => chat.id !== chatId),
+        activePollingSessions: newSessions,
+        isAIGenerating: newSessions.size > 0,
+        chatMessageMap: newMap,
+        inputDrafts: newDrafts,
+        userChats: state.userChats.filter((c) => c.id !== chatId),
+        editingState:
+          state.editingState?.chatId === chatId ? null : state.editingState,
         ...(activeChatId === chatId
-          ? {
-              activeChatId: null,
-              chatMessage: [],
-            }
+          ? { activeChatId: null, chatMessage: [] }
           : {}),
       };
     });
 
     try {
-      const response = await axios.delete(`${API_URL}/chat/deleteChat`, {
-        params: { chatId },
-      });
-
-      set({
-        chatDeletion: response.data,
-        isDeletingChat: false,
-        chatDeletionError: null,
-      });
-    } catch (error: any) {
-      const errMsg =
-        error.response?.data?.message ||
-        "An error occurred during deleting chat";
-      set({ isDeletingChat: false, chatDeletionError: errMsg });
-
+      await axios.delete(`${API_URL}/chat/deleteChat`, { params: { chatId } });
+      set({ isDeletingChat: false });
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? "Failed to delete chat";
+      set({ isDeletingChat: false, chatDeletionError: msg });
       try {
-        const response = await axios.get(`${API_URL}/chat/getUserChats`);
-        set({ userChats: response.data.chats });
-      } catch (refetchError) {
-        console.error("Failed to refetch after delete error:", refetchError);
-      }
-
-      throw new Error(errMsg);
+        const res = await axios.get(`${API_URL}/chat/getUserChats`);
+        set({ userChats: res.data.chats });
+      } catch {}
+      throw new Error(msg);
     }
   },
 
-  sendMessage: async (chatId, message, regenerate, aiModel) => {
-    const { deletedChatIds, chatMessageMap } = get();
+  // ── Send Message ──────────────────────────────
 
-    if (deletedChatIds.has(chatId)) {
-      console.error("Cannot send message to deleted chat");
-      return;
-    }
+  sendMessage: async (chatId, message) => {
+    const { deletedChatIds, aiModel } = get();
+    if (deletedChatIds.has(chatId)) return;
 
-    const tempId = `temp-${Date.now()}`;
+    const tempId = `temp-msg-${Date.now()}`;
+    const now = new Date().toISOString();
 
-    const optimisticUserMessage: Message = {
+    const optimisticMsg: Message = {
       id: tempId,
       text: message,
       role: "user",
       status: "sending",
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
+      createdAt: now,
     };
 
     set((state) => {
-      const currentMessages = state.chatMessageMap[chatId] || [];
-      const newMessageMap = {
+      const current = state.chatMessageMap[chatId] ?? [];
+      const newMap = {
         ...state.chatMessageMap,
-        [chatId]: [...currentMessages, optimisticUserMessage],
+        [chatId]: [...current, optimisticMsg],
       };
-
       return {
         isSendingMessage: true,
         messageSendingError: null,
-        chatMessageMap: newMessageMap,
+        chatMessageMap: newMap,
         ...(state.activeChatId === chatId
-          ? {
-              chatMessage: newMessageMap[chatId],
-            }
+          ? { chatMessage: newMap[chatId] }
           : {}),
       };
     });
 
     try {
-      const response = await axios.post(
+      const res = await axios.post(
         `${API_URL}/chat/sendMessage`,
-        { message, regenerate, aiModel},
-        { params: { chatId } }
+        { message, regenerate: false, aiModel },
+        { params: { chatId } },
       );
 
-      const currentState = get();
+      if (get().deletedChatIds.has(chatId)) return;
 
-      if (currentState.deletedChatIds.has(chatId)) {
-        console.log("Chat was deleted during send, discarding response");
-        return;
-      }
+      const { userMessage, aiMessage } = res.data;
 
       set((state) => {
-        const currentMessages = state.chatMessageMap[chatId] || [];
-        const messagesWithoutTemp = currentMessages.filter(
-          (m) => m.id !== tempId
-        );
-
-        const newMessageMap = {
+        const current = state.chatMessageMap[chatId] ?? [];
+        const withoutTemp = current.filter((m) => m.id !== tempId);
+        const newMap = {
           ...state.chatMessageMap,
-          [chatId]: [
-            ...messagesWithoutTemp,
-            response.data.userMessage,
-            response.data.aiMessage,
-          ],
+          [chatId]: [...withoutTemp, userMessage, aiMessage],
         };
-
         return {
-          sentMessage: response.data,
           isSendingMessage: false,
           messageSendingError: null,
-          chatMessageMap: newMessageMap,
           isAIGenerating: true,
+          chatMessageMap: newMap,
           ...(state.activeChatId === chatId
-            ? {
-                chatMessage: newMessageMap[chatId],
-              }
+            ? { chatMessage: newMap[chatId] }
             : {}),
         };
       });
 
-      // 🔥 START MESSAGE-SCOPED POLLING (NOT CHAT-SCOPED)
-      if (!response.data.isGuest) {
-        const aiMessageId = response.data.aiMessage.id;
-        startPollingForSingleMessage(chatId, aiMessageId, set, get);
-      }
-    } catch (error: any) {
-      const errMsg =
-        error.response?.data?.message ||
-        "An error occurred while sending message";
-
+      startPolling(chatId, aiMessage.id, set, get);
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? "Failed to send message";
       set((state) => {
-        const currentMessages = state.chatMessageMap[chatId] || [];
-        const newMessageMap = {
+        const current = state.chatMessageMap[chatId] ?? [];
+        const newMap = {
           ...state.chatMessageMap,
-          [chatId]: currentMessages.map((msg) =>
-            msg.id === tempId ? { ...msg, status: "error" as const } : msg
+          [chatId]: current.map((m) =>
+            m.id === tempId ? { ...m, status: "error" as const } : m,
           ),
         };
-
         return {
           isSendingMessage: false,
-          messageSendingError: errMsg,
+          messageSendingError: msg,
           isAIGenerating: false,
-          chatMessageMap: newMessageMap,
+          chatMessageMap: newMap,
           ...(state.activeChatId === chatId
-            ? {
-                chatMessage: newMessageMap[chatId],
-              }
+            ? { chatMessage: newMap[chatId] }
             : {}),
         };
       });
-
-      throw new Error(errMsg);
+      throw new Error(msg);
     }
   },
 
-  // 🔥 CRITICAL: This is THE ONLY place that fetches full message list
-  getChatMessages: async (chatId) => {
-    const { deletedChatIds } = get();
+  // ── Regenerate Message ────────────────────────
 
-    if (deletedChatIds.has(chatId)) {
-      console.log("Chat is deleted, skipping fetch");
-      return;
+  regenerateMessage: async (chatId, userMessageId) => {
+    const { deletedChatIds, aiModel, chatMessageMap } = get();
+    if (deletedChatIds.has(chatId)) return;
+
+    const msgs = chatMessageMap[chatId] ?? [];
+    const userMsgIndex = msgs.findIndex((m) => m.id === userMessageId);
+    if (userMsgIndex === -1) return;
+
+    const userMsg = msgs[userMsgIndex];
+    const now = new Date().toISOString();
+    const tempAiId = `temp-ai-${Date.now()}`;
+
+    const thinkingPlaceholder: Message = {
+      id: tempAiId,
+      text: "",
+      role: "assistant",
+      status: "thinking",
+      updatedAt: now,
+      createdAt: now,
+    };
+
+    const keptMessages = msgs.slice(0, userMsgIndex + 1);
+
+    set((state) => {
+      const newMap = {
+        ...state.chatMessageMap,
+        [chatId]: [...keptMessages, thinkingPlaceholder],
+      };
+      return {
+        isSendingMessage: true,
+        messageSendingError: null,
+        isAIGenerating: true,
+        chatMessageMap: newMap,
+        ...(state.activeChatId === chatId
+          ? { chatMessage: newMap[chatId] }
+          : {}),
+      };
+    });
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/chat/sendMessage`,
+        { message: userMsg.text, regenerate: true, aiModel, userMessageId },
+        { params: { chatId } },
+      );
+
+      if (get().deletedChatIds.has(chatId)) return;
+
+      const { userMessage, aiMessage } = res.data;
+
+      set((state) => {
+        const current = state.chatMessageMap[chatId] ?? [];
+        const synced = current
+          .filter((m) => m.id !== tempAiId)
+          .map((m) => (m.id === userMessageId ? userMessage : m));
+        const newMap = {
+          ...state.chatMessageMap,
+          [chatId]: [...synced, aiMessage],
+        };
+        return {
+          isSendingMessage: false,
+          chatMessageMap: newMap,
+          ...(state.activeChatId === chatId
+            ? { chatMessage: newMap[chatId] }
+            : {}),
+        };
+      });
+
+      startPolling(chatId, aiMessage.id, set, get);
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? "Failed to regenerate message";
+      set((state) => {
+        const newMap = { ...state.chatMessageMap, [chatId]: msgs };
+        return {
+          isSendingMessage: false,
+          messageSendingError: msg,
+          isAIGenerating: get().activePollingSessions.size > 0,
+          chatMessageMap: newMap,
+          ...(state.activeChatId === chatId
+            ? { chatMessage: newMap[chatId] }
+            : {}),
+        };
+      });
+      throw new Error(msg);
     }
+  },
 
+  // ── Edit and Resend ───────────────────────────
+
+  editAndResendMessage: async (chatId, userMessageId, newText) => {
+    const { deletedChatIds, aiModel, chatMessageMap } = get();
+    if (deletedChatIds.has(chatId)) return;
+
+    const msgs = chatMessageMap[chatId] ?? [];
+    const userMsgIndex = msgs.findIndex((m) => m.id === userMessageId);
+    if (userMsgIndex === -1) return;
+
+    const now = new Date().toISOString();
+    const tempAiId = `temp-ai-${Date.now()}`;
+
+    const thinkingPlaceholder: Message = {
+      id: tempAiId,
+      text: "",
+      role: "assistant",
+      status: "thinking",
+      updatedAt: now,
+      createdAt: now,
+    };
+
+    const keptMessages = msgs
+      .slice(0, userMsgIndex + 1)
+      .map((m) => (m.id === userMessageId ? { ...m, text: newText } : m));
+
+    set((state) => {
+      const newMap = {
+        ...state.chatMessageMap,
+        [chatId]: [...keptMessages, thinkingPlaceholder],
+      };
+      return {
+        isSendingMessage: true,
+        messageSendingError: null,
+        isAIGenerating: true,
+        editingState: null,
+        chatMessageMap: newMap,
+        ...(state.activeChatId === chatId
+          ? { chatMessage: newMap[chatId] }
+          : {}),
+      };
+    });
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/chat/sendMessage`,
+        { message: newText, regenerate: true, aiModel, userMessageId },
+        { params: { chatId } },
+      );
+
+      if (get().deletedChatIds.has(chatId)) return;
+
+      const { userMessage, aiMessage } = res.data;
+
+      set((state) => {
+        const current = state.chatMessageMap[chatId] ?? [];
+        const synced = current
+          .filter((m) => m.id !== tempAiId)
+          .map((m) => (m.id === userMessageId ? userMessage : m));
+        const newMap = {
+          ...state.chatMessageMap,
+          [chatId]: [...synced, aiMessage],
+        };
+        return {
+          isSendingMessage: false,
+          chatMessageMap: newMap,
+          ...(state.activeChatId === chatId
+            ? { chatMessage: newMap[chatId] }
+            : {}),
+        };
+      });
+
+      startPolling(chatId, aiMessage.id, set, get);
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? "Failed to edit message";
+      set((state) => {
+        const newMap = { ...state.chatMessageMap, [chatId]: msgs };
+        return {
+          isSendingMessage: false,
+          messageSendingError: msg,
+          isAIGenerating: get().activePollingSessions.size > 0,
+          chatMessageMap: newMap,
+          ...(state.activeChatId === chatId
+            ? { chatMessage: newMap[chatId] }
+            : {}),
+        };
+      });
+      throw new Error(msg);
+    }
+  },
+
+  // ── Get Messages ──────────────────────────────
+
+  getChatMessages: async (chatId) => {
+    if (get().deletedChatIds.has(chatId)) return;
     set({ isGettingChatMessages: true, chatMessagesError: null });
 
     try {
-      const response = await axios.get(`${API_URL}/chat/getMessages`, {
+      const res = await axios.get(`${API_URL}/chat/getMessages`, {
         params: { chatId },
       });
 
-      const currentState = get();
-
-      if (currentState.deletedChatIds.has(chatId)) {
-        console.log("Chat was deleted during fetch, discarding messages");
+      if (get().deletedChatIds.has(chatId)) {
         set({ isGettingChatMessages: false });
         return;
       }
 
-      const messages: Message[] = response.data;
+      const messages: Message[] = res.data;
 
-      // Store in chat-scoped map
       set((state) => {
-        const newMessageMap = {
-          ...state.chatMessageMap,
-          [chatId]: messages,
-        };
-
+        const newMap = { ...state.chatMessageMap, [chatId]: messages };
         return {
-          chatMessageMap: newMessageMap,
           isGettingChatMessages: false,
           chatMessagesError: null,
+          chatMessageMap: newMap,
           ...(state.activeChatId === chatId
-            ? {
-                chatMessage: newMessageMap[chatId],
-              }
+            ? { chatMessage: newMap[chatId] }
             : {}),
         };
       });
 
-      // Resume polling for any thinking messages
-      const thinkingMessages = messages.filter(
-        (msg) => msg.status === "thinking" && msg.role === "assistant"
+      const thinking = messages.filter(
+        (m) => m.role === "assistant" && m.status === "thinking",
       );
-
-      if (thinkingMessages.length > 0) {
-        console.log(
-          `Found ${thinkingMessages.length} thinking message(s), resuming polling...`
-        );
-
+      if (thinking.length > 0) {
         set({ isAIGenerating: true });
-
-        thinkingMessages.forEach((msg) => {
-          startPollingForSingleMessage(chatId, msg.id, set, get);
-        });
+        thinking.forEach((m) => startPolling(chatId, m.id, set, get));
       }
-    } catch (error: any) {
-      const errMsg =
-        error.response?.data?.message ||
-        "An error occurred while getting chat messages";
-      set({ isGettingChatMessages: false, chatMessagesError: errMsg });
-      throw new Error(errMsg);
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? "Failed to load messages";
+      set({ isGettingChatMessages: false, chatMessagesError: msg });
+      throw new Error(msg);
     }
   },
+
+  // ── Get User Chats ────────────────────────────
 
   getUserChats: async () => {
     set({ isLoadingUserChats: true, UserChatsError: null });
-
     try {
-      const response = await axios.get(`${API_URL}/chat/getUserChats`);
-
-      set({
-        userChats: response.data.chats,
-        isLoadingUserChats: false,
-        UserChatsError: null,
-      });
-    } catch (error: any) {
-      const errMsg =
-        error.response?.data?.message ||
-        "An error occurred while getting user chats";
-      set({ isLoadingUserChats: false, UserChatsError: errMsg });
-      throw new Error(errMsg);
+      const res = await axios.get(`${API_URL}/chat/getUserChats`);
+      set({ userChats: res.data.chats, isLoadingUserChats: false });
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? "Failed to load chats";
+      set({ isLoadingUserChats: false, UserChatsError: msg });
+      throw new Error(msg);
     }
   },
 
-  moveChatToTop: (chatId: string) => {
+  // ── Move Chat To Top ──────────────────────────
+
+  moveChatToTop: (chatId) => {
     set((state) => {
-      const chatIndex = state.userChats.findIndex((chat) => chat.id === chatId);
-      if (chatIndex === -1 || chatIndex === 0) return state;
-
-      const newChats = [...state.userChats];
-      const [movedChat] = newChats.splice(chatIndex, 1);
-      newChats.unshift(movedChat);
-
-      return { userChats: newChats };
+      const idx = state.userChats.findIndex((c) => c.id === chatId);
+      if (idx <= 0) return state;
+      const next = [...state.userChats];
+      next.unshift(...next.splice(idx, 1));
+      return { userChats: next };
     });
   },
 
-  setActiveChatId: (chatId: string | null) => {
-    set((state) => {
-      const chatMessage = chatId ? state.chatMessageMap[chatId] || [] : [];
+  // ── Abort Generation ──────────────────────────
 
-      return {
-        activeChatId: chatId,
-        chatMessage,
-      };
-    });
-  },
+  abortAIGeneration: async (messageId) => {
+    const chatId = get().activePollingSessions.get(messageId);
+    if (!chatId) return;
 
-  resetStore: () => {
-    const { activePollingSessions } = get();
-    activePollingSessions.clear();
-
-    set({
-      activeChatId: null,
-      chatMessageMap: {},
-      chatMessage: [],
-      deletedChatIds: new Set(),
-      activePollingSessions: new Map(),
-      chatCreation: null,
-      isCreatingChat: false,
-      chatCreationError: null,
-      chatDeletion: null,
-      isDeletingChat: false,
-      chatDeletionError: null,
-      sentMessage: null,
-      isSendingMessage: false,
-      messageSendingError: null,
-      isGettingChatMessages: false,
-      chatMessagesError: null,
-      userChats: [],
-      isLoadingUserChats: false,
-      UserChatsError: null,
-      isAIGenerating: false,
-    });
-  },
-
-  abortAIGeneration: async (messageId: string) => {
-    const { activePollingSessions } = get();
-
-    const chatId = activePollingSessions.get(messageId);
-    if (!chatId) {
-      console.log("No active polling session for message", messageId);
-      return;
-    }
-
-    // 🔥 CRITICAL: Update UI state FIRST, then cancel polling
-    // This ensures UI shows "aborted" before polling loop checks cancellation
     set((state) => {
       const newSessions = new Map(state.activePollingSessions);
       newSessions.delete(messageId);
-
-      const currentMessages = state.chatMessageMap[chatId] || [];
-      const newMessageMap = {
+      const current = state.chatMessageMap[chatId] ?? [];
+      const newMap = {
         ...state.chatMessageMap,
-        [chatId]: currentMessages.map((msg) =>
-          msg.id === messageId
+        [chatId]: current.map((m) =>
+          m.id === messageId
             ? {
-                ...msg,
+                ...m,
                 status: "aborted" as const,
                 text: "AI generation aborted",
               }
-            : msg
+            : m,
         ),
       };
-
       return {
         activePollingSessions: newSessions,
         isAIGenerating: newSessions.size > 0,
-        chatMessageMap: newMessageMap,
+        chatMessageMap: newMap,
         ...(state.activeChatId === chatId
-          ? {
-              chatMessage: newMessageMap[chatId],
-            }
+          ? { chatMessage: newMap[chatId] }
           : {}),
       };
     });
 
-    // Call backend to persist abort (non-blocking)
     try {
       await axios.post(`${API_URL}/chat/abortMessage`, null, {
         params: { messageId },
       });
-      console.log(`Aborted AI generation for message ${messageId}`);
-    } catch (error) {
-      console.error("Failed to abort message on server:", error);
+    } catch (err) {
+      console.error("Failed to persist abort on server:", err);
     }
+  },
+
+  // ── Reset ─────────────────────────────────────
+  // Deliberately does NOT clear inputDrafts — drafts survive dialog close/open.
+  // editingState IS cleared on reset.
+
+  resetStore: () => {
+    get().activePollingSessions.clear();
+    set({
+      activeChatId: null,
+      aiModel: "chatgpt",
+      chatMessageMap: {},
+      chatMessage: [],
+      deletedChatIds: new Set(),
+      activePollingSessions: new Map(),
+      userChats: [],
+      isLoadingUserChats: false,
+      UserChatsError: null,
+      isCreatingChat: false,
+      isDeletingChat: false,
+      isSendingMessage: false,
+      isGettingChatMessages: false,
+      isAIGenerating: false,
+      chatCreationError: null,
+      chatDeletionError: null,
+      messageSendingError: null,
+      chatMessagesError: null,
+      editingState: null,
+      // inputDrafts intentionally preserved
+    });
   },
 }));
 
-// =========================================================
-// 🔥 MESSAGE-SCOPED POLLING - FETCHES ONLY ONE MESSAGE
-// =========================================================
-const startPollingForSingleMessage = async (
+// ─────────────────────────────────────────────
+// Message-Scoped Polling
+// ─────────────────────────────────────────────
+
+const POLL_INTERVAL_MS = 1000;
+const POLL_MAX_ATTEMPTS = 60;
+
+async function startPolling(
   chatId: string,
   messageId: string,
   set: any,
-  get: any
-) => {
-  const { activePollingSessions, deletedChatIds } = get();
+  get: any,
+) {
+  const state = get();
+  if (state.deletedChatIds.has(chatId)) return;
+  if (state.activePollingSessions.has(messageId)) return;
 
-  if (deletedChatIds.has(chatId)) {
-    console.log(`Chat ${chatId} is deleted, not starting polling`);
-    return;
-  }
-
-  if (activePollingSessions.has(messageId)) {
-    console.log(`Polling already active for message ${messageId}`);
-    return;
-  }
-
-  // Register polling session
-  const newSessions = new Map(activePollingSessions);
+  const newSessions = new Map(state.activePollingSessions);
   newSessions.set(messageId, chatId);
+  set({ activePollingSessions: newSessions, isAIGenerating: true });
 
-  set({
-    activePollingSessions: newSessions,
-    isAIGenerating: true,
-  });
-
-  const maxAttempts = 60;
-  const pollInterval = 1000;
   let attempts = 0;
 
   const poll = async () => {
     try {
       attempts++;
+      const current = get();
 
-      const currentState = get();
-
-      // Check if chat was deleted
-      if (currentState.deletedChatIds.has(chatId)) {
-        console.log(`Chat ${chatId} was deleted, stopping polling`);
-
-        const updatedSessions = new Map(currentState.activePollingSessions);
-        updatedSessions.delete(messageId);
-
-        set({
-          activePollingSessions: updatedSessions,
-          isAIGenerating: updatedSessions.size > 0,
-        });
-        return;
+      if (current.deletedChatIds.has(chatId)) {
+        return stopPolling(messageId, set, get);
       }
+      if (!current.activePollingSessions.has(messageId)) return;
 
-      // Check if polling was cancelled
-      if (!currentState.activePollingSessions.has(messageId)) {
-        console.log(`Polling session ${messageId} was cancelled`);
-        return;
-      }
+      const res = await axios.get(`${API_URL}/chat/message/${messageId}`);
+      const after = get();
 
-      // 🔥 CRITICAL: Fetch ONLY this single message (not entire chat)
-      const response = await axios.get(`${API_URL}/chat/message/${messageId}`);
+      if (after.deletedChatIds.has(chatId)) return;
+      if (!after.activePollingSessions.has(messageId)) return;
 
-      // Handle chat deletion response
-      if (response.status === 410) {
-        console.log(`Chat was deleted for message ${messageId}`);
+      const local = (after.chatMessageMap[chatId] ?? []).find(
+        (m: Message) => m.id === messageId,
+      );
+      if (local?.status === "aborted") return;
 
-        const updatedSessions = new Map(currentState.activePollingSessions);
-        updatedSessions.delete(messageId);
+      const updated: Message = res.data.message;
 
-        set({
-          activePollingSessions: updatedSessions,
-          isAIGenerating: updatedSessions.size > 0,
-        });
-        return;
-      }
-
-      const stateAfterFetch = get();
-
-      if (stateAfterFetch.deletedChatIds.has(chatId)) {
-        console.log(`Chat ${chatId} was deleted during fetch, stopping`);
-        return;
-      }
-
-      const updatedMessage: Message = response.data.message;
-
-      // 🔥 CRITICAL: Check if message was aborted while we were fetching
-      const stateAfterFetch2 = get();
-      if (!stateAfterFetch2.activePollingSessions.has(messageId)) {
-        console.log(
-          `Message ${messageId} was aborted during fetch, not updating`
-        );
-        return;
-      }
-
-      // Also check the current state - if already aborted, don't overwrite
-      const currentMessages = stateAfterFetch2.chatMessageMap[chatId] || [];
-      const existingMessage = currentMessages.find((m) => m.id === messageId);
-      if (existingMessage?.status === "aborted") {
-        console.log(`Message ${messageId} is already aborted, not updating`);
-        return;
-      }
-
-      // 🔥 UPDATE ONLY THIS ONE MESSAGE (never replace entire array)
       set((state: any) => {
-        const currentMessages = state.chatMessageMap[chatId] || [];
-        const newMessageMap = {
+        const msgs = state.chatMessageMap[chatId] ?? [];
+        const newMap = {
           ...state.chatMessageMap,
-          [chatId]: currentMessages.map((msg: Message) =>
-            msg.id === messageId ? updatedMessage : msg
+          [chatId]: msgs.map((m: Message) =>
+            m.id === messageId ? updated : m,
           ),
         };
-
         return {
-          chatMessageMap: newMessageMap,
+          chatMessageMap: newMap,
           ...(state.activeChatId === chatId
-            ? {
-                chatMessage: newMessageMap[chatId],
-              }
+            ? { chatMessage: newMap[chatId] }
             : {}),
         };
       });
 
-      // Stop if complete
       if (
-        updatedMessage.status === "sent" ||
-        updatedMessage.status === "error" ||
-        updatedMessage.status === "aborted"
+        updated.status === "sent" ||
+        updated.status === "error" ||
+        updated.status === "aborted"
       ) {
-        console.log(`Message ${messageId} completed: ${updatedMessage.status}`);
-
-        const finalState = get();
-        const finalSessions = new Map(finalState.activePollingSessions);
-        finalSessions.delete(messageId);
-
-        set({
-          activePollingSessions: finalSessions,
-          isAIGenerating: finalSessions.size > 0,
-        });
-        return;
+        return stopPolling(messageId, set, get);
       }
 
-      // Continue polling
-      if (attempts < maxAttempts && updatedMessage.status === "thinking") {
-        setTimeout(poll, pollInterval);
-      } else if (attempts >= maxAttempts) {
-        console.warn(`Polling timeout for message ${messageId}`);
-
+      if (attempts >= POLL_MAX_ATTEMPTS) {
         set((state: any) => {
-          const finalSessions = new Map(state.activePollingSessions);
-          finalSessions.delete(messageId);
-
-          const currentMessages = state.chatMessageMap[chatId] || [];
-          const newMessageMap = {
+          const msgs = state.chatMessageMap[chatId] ?? [];
+          const newMap = {
             ...state.chatMessageMap,
-            [chatId]: currentMessages.map((msg: Message) =>
-              msg.id === messageId
-                ? { ...msg, status: "error" as const, text: "Response timeout" }
-                : msg
+            [chatId]: msgs.map((m: Message) =>
+              m.id === messageId
+                ? { ...m, status: "error" as const, text: "Response timed out" }
+                : m,
             ),
           };
-
           return {
-            chatMessageMap: newMessageMap,
-            activePollingSessions: finalSessions,
-            isAIGenerating: finalSessions.size > 0,
+            chatMessageMap: newMap,
             ...(state.activeChatId === chatId
-              ? {
-                  chatMessage: newMessageMap[chatId],
-                }
+              ? { chatMessage: newMap[chatId] }
               : {}),
           };
         });
-      }
-    } catch (error: any) {
-      console.error("Error polling for message:", error);
-
-      // Handle 404/410 (message or chat deleted)
-      if (error.response?.status === 404 || error.response?.status === 410) {
-        console.log(`Message or chat no longer exists: ${messageId}`);
-
-        const errorState = get();
-        const errorSessions = new Map(errorState.activePollingSessions);
-        errorSessions.delete(messageId);
-
-        set({
-          activePollingSessions: errorSessions,
-          isAIGenerating: errorSessions.size > 0,
-        });
-        return;
+        return stopPolling(messageId, set, get);
       }
 
-      // Retry on network errors
+      setTimeout(poll, POLL_INTERVAL_MS);
+    } catch (err: any) {
+      const status = err.response?.status;
+      if (status === 404 || status === 410) {
+        return stopPolling(messageId, set, get);
+      }
       if (attempts < 3) {
-        setTimeout(poll, pollInterval * 2);
+        setTimeout(poll, POLL_INTERVAL_MS * 2);
       } else {
-        const errorState = get();
-        const errorSessions = new Map(errorState.activePollingSessions);
-        errorSessions.delete(messageId);
-
-        set({
-          activePollingSessions: errorSessions,
-          isAIGenerating: errorSessions.size > 0,
-        });
+        stopPolling(messageId, set, get);
       }
     }
   };
 
-  setTimeout(poll, pollInterval);
-};
+  setTimeout(poll, POLL_INTERVAL_MS);
+}
+
+function stopPolling(messageId: string, set: any, get: any) {
+  set((state: any) => {
+    const newSessions = new Map(state.activePollingSessions);
+    newSessions.delete(messageId);
+    return {
+      activePollingSessions: newSessions,
+      isAIGenerating: newSessions.size > 0,
+    };
+  });
+}
