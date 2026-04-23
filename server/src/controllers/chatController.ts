@@ -55,6 +55,7 @@ export const getMessageById = async (req, res, next) => {
         text: message.text,
         role: message.role,
         status: message.status,
+        createdAt: message.createdAt,
         updatedAt: message.updatedAt,
       },
     });
@@ -180,7 +181,6 @@ export const sendMessage = async (req, res, next) => {
 
     // Handle user message based on regenerate flag
     if (regenerate) {
-      // Regenerate: verify the user message exists and belongs to this chat
       const existingUserMessage = await prisma.message.findUnique({
         where: { id: userMessageId },
         select: {
@@ -189,6 +189,7 @@ export const sendMessage = async (req, res, next) => {
           role: true,
           text: true,
           status: true,
+          createdAt: true, // needed for the messagesAfter query
           updatedAt: true,
         },
       });
@@ -196,21 +197,62 @@ export const sendMessage = async (req, res, next) => {
       if (!existingUserMessage) {
         throw createHttpError.NotFound("User message not found");
       }
-
       if (existingUserMessage.ChatId !== chatId) {
         throw createHttpError.BadRequest(
           "User message does not belong to this chat",
         );
       }
-
       if (existingUserMessage.role !== "user") {
         throw createHttpError.BadRequest(
           "Provided messageId is not a user message",
         );
       }
 
+      // Update user message text if it changed (edit flow)
+      if (message !== existingUserMessage.text) {
+        await prisma.message.update({
+          where: { id: userMessageId },
+          data: { text: message, updatedAt: new Date() },
+        });
+      }
+
+      // Delete all messages after this user message (both edit and regenerate flows)
+      // Uses createdAt with id as tiebreaker for same-millisecond collisions
+      const messagesAfter = await prisma.message.findMany({
+        where: {
+          ChatId: chatId,
+          OR: [
+            { createdAt: { gt: existingUserMessage.createdAt } },
+            {
+              createdAt: { equals: existingUserMessage.createdAt },
+              id: { gt: existingUserMessage.id },
+            },
+          ],
+        },
+        select: { id: true },
+      });
+
+      if (messagesAfter.length > 0) {
+        await prisma.message.deleteMany({
+          where: { id: { in: messagesAfter.map((m) => m.id) } },
+        });
+      }
+
+      // Fetch fresh user message data after potential text update
+      const refreshedUserMessage = await prisma.message.findUnique({
+        where: { id: userMessageId },
+        select: {
+          id: true,
+          role: true,
+          text: true,
+          status: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
       finalUserMessageId = existingUserMessage.id;
-      userMessageData = existingUserMessage;
+      userMessageData = refreshedUserMessage;
     } else {
       // New message: create user message
       const userMessage = await prisma.message.create({
@@ -260,11 +302,13 @@ export const sendMessage = async (req, res, next) => {
     // Respond immediately
     res.status(200).json({
       success: true,
+      chatId,
       userMessage: {
         id: userMessageData.id,
         role: userMessageData.role,
         text: userMessageData.text,
         status: userMessageData.status,
+        createdAt: userMessageData.createdAt,
         updatedAt: userMessageData.updatedAt,
       },
       aiMessage: {
@@ -272,6 +316,7 @@ export const sendMessage = async (req, res, next) => {
         role: aiPlaceholder.role,
         text: aiPlaceholder.text,
         status: aiPlaceholder.status,
+        createdAt: aiPlaceholder.createdAt,
         updatedAt: aiPlaceholder.updatedAt,
       },
     });
@@ -393,14 +438,14 @@ export const getMessages = async (req, res, next) => {
       },
       include: {
         messages: {
-          orderBy: { createdAt: "asc" },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
           select: {
             id: true,
             text: true,
             role: true,
             status: true,
-            updatedAt: true,
             createdAt: true,
+            updatedAt: true,
           },
         },
       },
@@ -437,6 +482,7 @@ export const getMessages = async (req, res, next) => {
             text: "Response generation interrupted",
             role: msg.role,
             status: "error",
+            createdAt: msg.createdAt,
             updatedAt: msg.updatedAt,
           };
         }
@@ -447,6 +493,7 @@ export const getMessages = async (req, res, next) => {
         text: msg.text,
         role: msg.role,
         status: msg.status,
+        createdAt: msg.createdAt,
         updatedAt: msg.updatedAt,
       };
     });
