@@ -51,7 +51,7 @@ const ProblemTable: React.FC = () => {
   // Handle row click to navigate to the problem details page
   const handleRowClick = (problemTitle: string) => {
     router.push(
-      `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}`,
+      `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}&tab=description`,
     ); // Navigate to the problem details page with query parameter
   };
 
