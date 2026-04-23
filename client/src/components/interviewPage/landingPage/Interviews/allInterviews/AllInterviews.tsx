@@ -70,15 +70,25 @@ const AllInterviews: React.FC<AllInterviewsProps> = () => {
   }, [cardWidth, latestInterviews.length, isLoadingLatestInterviews]);
 
   if (isLoadingLatestInterviews) {
-    return <div className="py-2 ml-5 mt-5">Loading interviews...</div>;
+    return (
+      <div className="py-2 ml-5 mt-5 text-center">Loading interviews...</div>
+    );
   }
 
   if (interviewError) {
-    return <div className="py-2 ml-5 mt-5 text-red-500">{interviewError}</div>;
+    return (
+      <div className="py-2 ml-5 mt-5 text-red-500 text-center">
+        {interviewError}
+      </div>
+    );
   }
 
   if (latestInterviews.length === 0) {
-    return <p className="py-2 ml-5 mt-5">There are no interviews available</p>;
+    return (
+      <p className="py-2 ml-5 mt-5 text-center">
+        There are no interviews available
+      </p>
+    );
   }
 
   return (
