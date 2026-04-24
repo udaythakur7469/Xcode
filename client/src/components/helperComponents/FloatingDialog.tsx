@@ -390,7 +390,12 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   // Handle click outside to trigger blink effect
   const handleOverlayClick = (e: React.MouseEvent) => {
     // Only trigger if clicking directly on the overlay (not on dialog)
-    if (e.target === e.currentTarget && !isResizing && !isDragging && !isResizingSidebar) {
+    if (
+      e.target === e.currentTarget &&
+      !isResizing &&
+      !isDragging &&
+      !isResizingSidebar
+    ) {
       setIsBlinking(true);
       // Remove blinking class after animation completes
       setTimeout(() => setIsBlinking(false), 1800);
@@ -590,7 +595,10 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                 <div
                   className="flex-1 min-w-0"
                   onMouseDown={(e) => {
-                    if (dialogType === "CommandPalette") {
+                    if (
+                      dialogType === "CommandPalette" ||
+                      dialogType === "AIChat"
+                    ) {
                       e.stopPropagation();
                     }
                   }}
