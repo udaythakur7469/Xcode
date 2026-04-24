@@ -5,8 +5,12 @@ import ResizablePanels from "@/components/problemDetailPage/resizablePanels/Resi
 import ProblemNavbar from "@/components/problemDetailPage/navbar/ProblemNavbar";
 import ProblemSidebar from "@/components/problemDetailPage/navbar/sidebar/ProblemSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { useProblemContext } from "@/hooks/useProblemContext";
 
 const ProblemDetailsPage: React.FC = () => {
+
+  useProblemContext();
+
   const [resetLayoutTrigger, setResetLayoutTrigger] = useState(0);
 
   // Add triggers for code actions
