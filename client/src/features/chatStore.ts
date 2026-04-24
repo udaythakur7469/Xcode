@@ -97,8 +97,15 @@ interface ChatState {
   inputDrafts: Record<string, string>;
   editingState: EditingState | null;
 
+  // Problem context — set by the problem detail page on mount,
+  // cleared on unmount. Passed to the backend RAG pipeline on every sendMessage.
+  problemTitle: string | null;
+
   // Actions
   setAiModel: (model: AiModel) => void;
+
+  setProblemTitle: (title: string | null) => void;
+
   setActiveChatId: (chatId: string | null) => void;
 
   // Draft actions
@@ -151,10 +158,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   chatMessagesError: null,
   inputDrafts: {},
   editingState: null,
+  problemTitle: null,
 
   // ── Setters ──────────────────────────────────
 
   setAiModel: (model) => set({ aiModel: model }),
+
+  setProblemTitle: (title: string | null) => set({ problemTitle: title }),
 
   setActiveChatId: (chatId) => {
     set((state) => ({
@@ -274,7 +284,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   // ── Send Message ──────────────────────────────
 
   sendMessage: async (chatId, message) => {
-    const { deletedChatIds, aiModel } = get();
+    const { deletedChatIds, aiModel, problemTitle } = get();
     if (deletedChatIds.has(chatId)) return;
 
     const tempId = `temp-msg-${Date.now()}`;
@@ -308,7 +318,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     try {
       const res = await axios.post(
         `${API_URL}/chat/sendMessage`,
-        { message, regenerate: false, aiModel },
+        { message, regenerate: false, aiModel, problemTitle },
         { params: { chatId } },
       );
 
@@ -362,7 +372,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   // ── Regenerate Message ────────────────────────
 
   regenerateMessage: async (chatId, userMessageId) => {
-    const { deletedChatIds, aiModel, chatMessageMap } = get();
+    const { deletedChatIds, aiModel, chatMessageMap, problemTitle } = get();
     if (deletedChatIds.has(chatId)) return;
 
     const msgs = chatMessageMap[chatId] ?? [];
@@ -403,7 +413,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     try {
       const res = await axios.post(
         `${API_URL}/chat/sendMessage`,
-        { message: userMsg.text, regenerate: true, aiModel, userMessageId },
+        {
+          message: userMsg.text,
+          regenerate: true,
+          aiModel,
+          userMessageId,
+          problemTitle,
+        },
         { params: { chatId } },
       );
 
@@ -451,7 +467,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   // ── Edit and Resend ───────────────────────────
 
   editAndResendMessage: async (chatId, userMessageId, newText) => {
-    const { deletedChatIds, aiModel, chatMessageMap } = get();
+    const { deletedChatIds, aiModel, chatMessageMap, problemTitle } = get();
     if (deletedChatIds.has(chatId)) return;
 
     const msgs = chatMessageMap[chatId] ?? [];
@@ -494,7 +510,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     try {
       const res = await axios.post(
         `${API_URL}/chat/sendMessage`,
-        { message: newText, regenerate: true, aiModel, userMessageId },
+        {
+          message: newText,
+          regenerate: true,
+          aiModel,
+          userMessageId,
+          problemTitle,
+        },
         { params: { chatId } },
       );
 
@@ -558,7 +580,17 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       const messages: Message[] = res.data;
 
       set((state) => {
-        const newMap = { ...state.chatMessageMap, [chatId]: messages };
+        const existing = state.chatMessageMap[chatId] ?? [];
+
+        // Preserve locally-aborted state — the server may have written "sent"
+        // before the abort POST arrived (race condition when generation is fast).
+        const merged = messages.map((serverMsg) => {
+          const localMsg = existing.find((m) => m.id === serverMsg.id);
+          if (localMsg?.status === "aborted") return localMsg;
+          return serverMsg;
+        });
+
+        const newMap = { ...state.chatMessageMap, [chatId]: merged };
         return {
           isGettingChatMessages: false,
           chatMessagesError: null,
