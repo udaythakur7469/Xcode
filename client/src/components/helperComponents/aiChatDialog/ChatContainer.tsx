@@ -16,16 +16,10 @@ import { useUserStore } from "@/features/userStore";
 import ChatSidebar from "./sidebar/ChatSidebar";
 import ChatWindow from "./chat/ChatWindow";
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // ChatContainerSidebar
-//
-// Owns all sidebar orchestration:
-// - Load chats on dialog open
-// - Reset store on dialog close
-// - Auto-select first chat
-// - Chat switch guard (checks editingState before switching)
-// - New chat / select chat / delete chat handlers
-// ─────────────────────────────────────────────
+// Owns all sidebar orchestration: load, reset, auto-select, chat-switch guard.
+// ─────────────────────────────────────────────────────────────────────────────
 
 type SidebarProps = {
   isDialogOpen: boolean;
@@ -54,16 +48,12 @@ export const ChatContainerSidebar: React.FC<SidebarProps> = ({
 
   const prevOpen = useRef(false);
 
-  // ── Unsaved edit guard ────────────────────────
-  // When the user tries to switch chats or close the dialog while editing,
-  // this dialog intercepts the action.
+  // ── Unsaved edit guard ─────────────────────────────────────────────────────
   const [unsavedAlertOpen, setUnsavedAlertOpen] = useState(false);
   const pendingNavigation = useRef<
     { type: "switchChat"; chatId: string } | { type: "closeDialog" } | null
   >(null);
 
-  // Returns true if navigation should proceed immediately.
-  // Returns false and shows the dialog if an edit is in progress.
   const checkUnsavedEdit = useCallback(
     (
       navigation:
@@ -81,7 +71,6 @@ export const ChatContainerSidebar: React.FC<SidebarProps> = ({
   const handleUnsavedContinue = () => {
     setUnsavedAlertOpen(false);
     pendingNavigation.current = null;
-    // User chose to keep editing — do nothing
   };
 
   const handleUnsavedExit = () => {
@@ -102,7 +91,7 @@ export const ChatContainerSidebar: React.FC<SidebarProps> = ({
     }
   };
 
-  // ── Load chats when dialog opens ─────────────
+  // ── Load chats when dialog opens ───────────────────────────────────────────
   useEffect(() => {
     const justOpened = isDialogOpen && !prevOpen.current;
     if (justOpened) {
@@ -115,7 +104,7 @@ export const ChatContainerSidebar: React.FC<SidebarProps> = ({
     prevOpen.current = isDialogOpen;
   }, [isDialogOpen, isUserAuthenticated, getUserChats, resetStore]);
 
-  // ── Clear store when dialog closes ───────────
+  // ── Clear store when dialog closes ─────────────────────────────────────────
   useEffect(() => {
     if (!isDialogOpen) {
       const t = setTimeout(() => {
@@ -126,7 +115,7 @@ export const ChatContainerSidebar: React.FC<SidebarProps> = ({
     }
   }, [isDialogOpen, resetStore, setEditingState]);
 
-  // ── Auto-select first real chat ───────────────
+  // ── Auto-select first real chat ────────────────────────────────────────────
   useEffect(() => {
     if (
       isDialogOpen &&
@@ -153,7 +142,7 @@ export const ChatContainerSidebar: React.FC<SidebarProps> = ({
 
   if (!isUserAuthenticated) return null;
 
-  // ── Chat switch ───────────────────────────────
+  // ── Chat switch ─────────────────────────────────────────────────────────────
   const performChatSwitch = async (chatId: string) => {
     setActiveChatId(chatId);
     await getChatMessages(chatId);
@@ -213,9 +202,9 @@ export const ChatContainerSidebar: React.FC<SidebarProps> = ({
         onDeleteChat={handleDeleteChat}
       />
 
-      {/* Unsaved changes dialog */}
+      {/* Unsaved changes dialog — triggered when switching chats/closing mid-edit */}
       <AlertDialog open={unsavedAlertOpen} onOpenChange={setUnsavedAlertOpen}>
-        <AlertDialogContent className="bg-zinc-900 border-zinc-700 text-white">
+        <AlertDialogContent className="bg-zinc-900 border-zinc-700 text-white z-[10001]">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               You have unsaved changes
@@ -244,14 +233,10 @@ export const ChatContainerSidebar: React.FC<SidebarProps> = ({
   );
 };
 
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 // ChatContainerWindow
-//
-// Owns message send orchestration:
-// - Create chat if none exists
-// - Move to top + refresh title on first message
-// - Clear input draft on send
-// ─────────────────────────────────────────────
+// Owns message send orchestration.
+// ─────────────────────────────────────────────────────────────────────────────
 
 type WindowProps = {
   onOpenLogin: () => void;
@@ -264,11 +249,11 @@ export const ChatContainerWindow: React.FC<WindowProps> = ({
 }) => {
   const { isUserAuthenticated } = useUserStore();
 
-  const chatMessage = useChatStore((s) => s.chatMessage);
   const activeChatId = useChatStore((s) => s.activeChatId);
   const isSendingMessage = useChatStore((s) => s.isSendingMessage);
   const isGettingChatMessages = useChatStore((s) => s.isGettingChatMessages);
   const chatMessagesError = useChatStore((s) => s.chatMessagesError);
+  const nodeMap = useChatStore((s) => s.nodeMap);
 
   const sendMessage = useChatStore((s) => s.sendMessage);
   const createChat = useChatStore((s) => s.createChat);
@@ -293,7 +278,8 @@ export const ChatContainerWindow: React.FC<WindowProps> = ({
     }
 
     try {
-      const isFirst = chatMessage.length === 0;
+      // isFirst = no messages loaded yet in this chat
+      const isFirst = Object.keys(nodeMap).length === 0;
       moveChatToTop(activeChatId);
       clearInputDraft(activeChatId);
       await sendMessage(activeChatId, text);
@@ -307,7 +293,6 @@ export const ChatContainerWindow: React.FC<WindowProps> = ({
 
   return (
     <ChatWindow
-      messages={chatMessage}
       activeChatId={activeChatId}
       isLoading={isGettingChatMessages}
       error={chatMessagesError}
