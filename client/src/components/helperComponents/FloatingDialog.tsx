@@ -596,8 +596,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                   className="flex-1 min-w-0"
                   onMouseDown={(e) => {
                     if (
-                      dialogType === "CommandPalette" ||
-                      dialogType === "AIChat"
+                      dialogType === "CommandPalette"
                     ) {
                       e.stopPropagation();
                     }
