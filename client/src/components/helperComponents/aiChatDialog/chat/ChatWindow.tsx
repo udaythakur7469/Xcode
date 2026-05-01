@@ -2,12 +2,10 @@
 
 import React from "react";
 import { LogIn, MessageSquare, UserPlus } from "lucide-react";
-import { Message } from "@/features/chatStore";
 import ChatMessageList from "./ChatMessageList";
 import ChatInput from "./ChatInput";
 
 type ChatWindowProps = {
-  messages: Message[];
   activeChatId: string | null;
   isLoading: boolean;
   error: string | null;
@@ -19,7 +17,6 @@ type ChatWindowProps = {
 };
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
-  messages,
   activeChatId,
   isLoading,
   error,
@@ -29,7 +26,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   onOpenLogin,
   onOpenSignup,
 }) => {
-  // ── Guest state ───────────────────────────────
+  // ── Guest state ────────────────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
       <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center">
@@ -86,19 +83,19 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
     );
   }
 
-  // ── Authenticated ─────────────────────────────
+  // ── Authenticated ──────────────────────────────────────────────────────────
   return (
     <div className="h-full w-full flex flex-col">
       <div className="flex-1 overflow-hidden">
+        {/* ChatMessageList reads directly from the store via selectVisibleMessages */}
         <ChatMessageList
-          messages={messages}
           activeChatId={activeChatId}
           isLoading={isLoading}
           error={error}
         />
       </div>
 
-      {/* activeChatId passed so ChatInput can seed/persist its draft per chat */}
+      {/* ChatInput reads isActivePathGenerating from store for Stop/Send toggle */}
       <ChatInput
         onSend={onSend}
         disabled={isSendingMessage}
