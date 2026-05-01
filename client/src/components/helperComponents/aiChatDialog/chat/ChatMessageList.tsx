@@ -2,45 +2,38 @@
 
 import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { MoonLoader } from "react-spinners";
-import { Message, useChatStore } from "@/features/chatStore";
+import { useChatStore, selectVisibleMessages } from "@/features/chatStore";
 import ChatBubble from "./ChatBubble";
 
 type ChatMessageListProps = {
-  messages: Message[];
   activeChatId: string | null;
   isLoading: boolean;
   error: string | null;
 };
 
 const ChatMessageList: React.FC<ChatMessageListProps> = ({
-  messages,
   activeChatId,
   isLoading,
   error,
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // true = next message render is the first load for this chat,
-  // so we snap instantly before paint instead of smooth scrolling.
   const isInitialLoad = useRef(true);
 
-  const isAIGenerating = useChatStore((s) => s.isAIGenerating);
-  const abortAIGeneration = useChatStore((s) => s.abortAIGeneration);
-  const regenerateMessage = useChatStore((s) => s.regenerateMessage);
-  const editAndResendMessage = useChatStore((s) => s.editAndResendMessage);
+  // Subscribe to the flat visible message list derived from activePath + nodeMap
+  const messages = useChatStore(selectVisibleMessages);
+  const isActivePathGenerating = useChatStore((s) => s.isActivePathGenerating);
+  const createRegenerateBranch = useChatStore((s) => s.createRegenerateBranch);
+  const createEditBranch = useChatStore((s) => s.createEditBranch);
 
-  // Reset the flag whenever the active chat changes so every chat
-  // switch gets an instant snap regardless of prior scroll position.
+  // Reset initial-load flag whenever the active chat changes
   useLayoutEffect(() => {
     isInitialLoad.current = true;
   }, [activeChatId]);
 
-  // Fires BEFORE the browser paints — user never sees the top of
-  // the conversation on initial load (WhatsApp behaviour).
+  // Snap to bottom before paint on initial load (WhatsApp-like behavior)
   useLayoutEffect(() => {
     if (messages.length === 0) return;
-
     if (isInitialLoad.current) {
       if (containerRef.current) {
         containerRef.current.scrollTop = containerRef.current.scrollHeight;
@@ -49,8 +42,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
     }
   }, [messages]);
 
-  // Fires AFTER paint — smooth scroll for each new message that
-  // arrives after the initial load (e.g. AI response, user send).
+  // Smooth scroll when new messages arrive after initial load
   useEffect(() => {
     if (isInitialLoad.current) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -90,12 +82,12 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
   const handleRegenerate = (userMessageId: string) => {
     if (!activeChatId) return;
-    regenerateMessage(activeChatId, userMessageId);
+    createRegenerateBranch(activeChatId, userMessageId);
   };
 
   const handleEditSave = (userMessageId: string, newText: string) => {
     if (!activeChatId) return;
-    editAndResendMessage(activeChatId, userMessageId, newText);
+    createEditBranch(activeChatId, userMessageId, newText);
   };
 
   return (
@@ -104,12 +96,10 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
         <ChatBubble
           key={msg.id}
           message={msg}
-          allMessages={messages}
-          chatId={activeChatId}
-          isAIGenerating={isAIGenerating}
-          onAbort={abortAIGeneration}
+          isActivePathGenerating={isActivePathGenerating}
           onRegenerate={handleRegenerate}
           onEditSave={handleEditSave}
+          chatId={activeChatId}
         />
       ))}
       <div ref={bottomRef} />
