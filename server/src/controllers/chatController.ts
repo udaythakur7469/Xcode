@@ -3,6 +3,86 @@ import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
 import { generateAIResponse } from "../services/rag/aiService.js";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Walk the message tree from a given node to its deepest "latest" leaf.
+ * At each level, picks the child with the latest createdAt timestamp.
+ * Returns the ordered path of message IDs from the given node to the leaf.
+ *
+ * Used to compute the default active path when no persisted path exists,
+ * and when auto-switching to a newly created branch.
+ */
+async function walkToLatestLeaf(
+  startId: string,
+  chatId: string,
+  visited = new Set<string>(),
+): Promise<string[]> {
+  if (visited.has(startId)) return [startId]; // cycle guard
+  visited.add(startId);
+
+  const children = await prisma.message.findMany({
+    where: { ChatId: chatId, parentId: startId },
+    orderBy: { createdAt: "desc" },
+    select: { id: true },
+    take: 1,
+  });
+
+  if (children.length === 0) return [startId];
+
+  const tail = await walkToLatestLeaf(children[0].id, chatId, visited);
+  return [startId, ...tail];
+}
+
+/**
+ * Compute the full active path for a chat — from the root message to the
+ * current leaf — following the persisted activePath from the Chat table.
+ *
+ * If activePath is empty (new chat) or stale, falls back to latest-leaf walk.
+ * Returns the validated, complete path as an array of message IDs.
+ */
+async function resolveActivePath(
+  chatId: string,
+  persistedPath: string[],
+): Promise<string[]> {
+  // Find the root message (parentId is null)
+  const root = await prisma.message.findFirst({
+    where: { ChatId: chatId, parentId: null },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+
+  if (!root) return []; // empty chat
+
+  if (persistedPath.length === 0) {
+    // New chat or no saved path — walk to latest leaf from root
+    return walkToLatestLeaf(root.id, chatId);
+  }
+
+  // Validate that the persisted path still exists in the DB
+  // (nodes could have been deleted by admin, etc.)
+  const existingIds = await prisma.message.findMany({
+    where: { id: { in: persistedPath }, ChatId: chatId },
+    select: { id: true },
+  });
+  const existingSet = new Set(existingIds.map((m) => m.id));
+
+  const validPath = persistedPath.filter((id) => existingSet.has(id));
+
+  if (validPath.length !== persistedPath.length) {
+    // Path was partially stale — fall back to latest-leaf walk
+    return walkToLatestLeaf(root.id, chatId);
+  }
+
+  return validPath;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getMessageById — used by polling
+// Returns a single message. Polling contract unchanged.
+// ─────────────────────────────────────────────────────────────────────────────
 export const getMessageById = async (req, res, next) => {
   const { messageId } = req.params;
   const userId = req.user?.Id || req.user?.userId;
@@ -12,49 +92,38 @@ export const getMessageById = async (req, res, next) => {
       throw createHttpError.BadRequest("Please provide messageId");
     }
 
-    // Fetch the single message with its chat
     const message = await prisma.message.findUnique({
       where: { id: messageId },
       include: {
-        Chat: {
-          select: {
-            id: true,
-            userId: true,
-          },
-        },
+        Chat: { select: { id: true, userId: true } },
       },
     });
 
-    // Message doesn't exist
     if (!message) {
-      return res.status(404).json({
-        success: false,
-        message: "Message not found",
-      });
+      return res
+        .status(404)
+        .json({ success: false, message: "Message not found" });
     }
-
-    // Chat was deleted (message exists but chat doesn't)
     if (!message.Chat) {
-      return res.status(410).json({
-        success: false,
-        message: "Chat has been deleted",
-      });
+      return res
+        .status(410)
+        .json({ success: false, message: "Chat has been deleted" });
     }
-
-    // Verify ownership
     if (message.Chat.userId !== userId) {
       throw createHttpError.Forbidden("Access denied");
     }
 
-    // Return ONLY this message
     return res.status(200).json({
       success: true,
       message: {
         id: message.id,
         chatId: message.ChatId,
+        parentId: message.parentId,
         text: message.text,
         role: message.role,
         status: message.status,
+        aiModel: message.aiModel,
+        feedback: message.feedback,
         createdAt: message.createdAt,
         updatedAt: message.updatedAt,
       },
@@ -65,16 +134,14 @@ export const getMessageById = async (req, res, next) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// createChat — unchanged
+// ─────────────────────────────────────────────────────────────────────────────
 export const createChat = async (req, res, next) => {
   const userId = req.user?.Id || req.user?.userId;
 
   try {
-    const Chat = await prisma.chat.create({
-      data: {
-        userId,
-      },
-    });
-
+    const Chat = await prisma.chat.create({ data: { userId } });
     return res.status(200).json({
       success: true,
       message: "Chat created successfully",
@@ -86,6 +153,9 @@ export const createChat = async (req, res, next) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// deleteChat — unchanged
+// ─────────────────────────────────────────────────────────────────────────────
 export const deleteChat = async (req, res, next) => {
   const { chatId } = req.query;
   const userId = req.user?.id || req.user?.userId;
@@ -94,22 +164,11 @@ export const deleteChat = async (req, res, next) => {
     if (!chatId || typeof chatId !== "string") {
       throw createHttpError.BadRequest("Please provide chatId");
     }
-
     const chat = await prisma.chat.findUnique({ where: { id: chatId } });
-
     if (!chat || chat.userId !== userId) {
       throw createHttpError.NotFound("Chat not found");
     }
-
     await prisma.chat.delete({ where: { id: chatId } });
-
-    try {
-      if (req.cache) {
-        await req.cache.invalidateByTags(["chat:messages", "chat:list"]);
-      }
-    } catch (cacheErr) {
-      logger.error("Cache invalidation error in deleteChat", cacheErr);
-    }
     return res
       .status(200)
       .json({ success: true, message: "Chat deleted successfully" });
@@ -119,43 +178,26 @@ export const deleteChat = async (req, res, next) => {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// sendMessage — linear (first message in a chat, no branching)
+// Used ONLY for new messages. Edit/Regenerate use POST /branch.
+// ─────────────────────────────────────────────────────────────────────────────
 export const sendMessage = async (req, res, next) => {
   const { chatId } = req.query;
-  const {
-    message,
-    regenerate = false,
-    aiModel,
-    userMessageId,
-    problemTitle,
-  } = req.body;
+  const { message, aiModel, problemTitle } = req.body;
   const userId = req.user?.Id || req.user?.userId;
 
   try {
-    // Validate inputs
     if (!chatId || typeof chatId !== "string") {
       throw createHttpError.BadRequest("Please provide chatId");
     }
-
     if (!message || typeof message !== "string") {
       throw createHttpError.BadRequest("Please provide message");
     }
-
     if (!aiModel || typeof aiModel !== "string") {
       throw createHttpError.BadRequest("Please provide aiModel");
     }
 
-    if (typeof regenerate !== "boolean") {
-      throw createHttpError.BadRequest("regenerate must be a boolean");
-    }
-
-    // If regenerating, userMessageId is required
-    if (regenerate && (!userMessageId || typeof userMessageId !== "string")) {
-      throw createHttpError.BadRequest(
-        "userMessageId is required when regenerate is true",
-      );
-    }
-
-    // Verify chat exists and belongs to user
     const chat = await prisma.chat.findUnique({
       where: { id: chatId },
       include: {
@@ -173,129 +215,66 @@ export const sendMessage = async (req, res, next) => {
     }
 
     const isFirstMessage = chat.messages.length === 0;
-
     const lastMessageModel = chat.messages[0]?.aiModel || "gpt-4";
 
-    let finalUserMessageId: string;
-    let userMessageData: any;
+    // Find the current tail of the active path — the new user message's parent
+    // is the last message on the active path (null if this is the first message)
+    let parentId: string | null = null;
 
-    // Handle user message based on regenerate flag
-    if (regenerate) {
-      const existingUserMessage = await prisma.message.findUnique({
-        where: { id: userMessageId },
-        select: {
-          id: true,
-          ChatId: true,
-          role: true,
-          text: true,
-          status: true,
-          createdAt: true, // needed for the messagesAfter query
-          updatedAt: true,
-        },
-      });
-
-      if (!existingUserMessage) {
-        throw createHttpError.NotFound("User message not found");
-      }
-      if (existingUserMessage.ChatId !== chatId) {
-        throw createHttpError.BadRequest(
-          "User message does not belong to this chat",
-        );
-      }
-      if (existingUserMessage.role !== "user") {
-        throw createHttpError.BadRequest(
-          "Provided messageId is not a user message",
-        );
-      }
-
-      // Update user message text if it changed (edit flow)
-      if (message !== existingUserMessage.text) {
-        await prisma.message.update({
-          where: { id: userMessageId },
-          data: { text: message, updatedAt: new Date() },
-        });
-      }
-
-      // Delete all messages after this user message (both edit and regenerate flows)
-      // Uses createdAt with id as tiebreaker for same-millisecond collisions
-      const messagesAfter = await prisma.message.findMany({
-        where: {
-          ChatId: chatId,
-          OR: [
-            { createdAt: { gt: existingUserMessage.createdAt } },
-            {
-              createdAt: { equals: existingUserMessage.createdAt },
-              id: { gt: existingUserMessage.id },
-            },
-          ],
-        },
+    if (chat.activePath.length > 0) {
+      parentId = chat.activePath[chat.activePath.length - 1];
+    } else {
+      // Find the most recent leaf message in the chat (if any)
+      const latestMsg = await prisma.message.findFirst({
+        where: { ChatId: chatId },
+        orderBy: { createdAt: "desc" },
         select: { id: true },
       });
-
-      if (messagesAfter.length > 0) {
-        await prisma.message.deleteMany({
-          where: { id: { in: messagesAfter.map((m) => m.id) } },
-        });
-      }
-
-      // Fetch fresh user message data after potential text update
-      const refreshedUserMessage = await prisma.message.findUnique({
-        where: { id: userMessageId },
-        select: {
-          id: true,
-          role: true,
-          text: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      finalUserMessageId = existingUserMessage.id;
-      userMessageData = refreshedUserMessage;
-    } else {
-      // New message: create user message
-      const userMessage = await prisma.message.create({
-        data: {
-          ChatId: chatId,
-          role: "user",
-          text: message,
-          status: "sent",
-          aiModel: null, // User messages don't have aiModel
-        },
-      });
-
-      finalUserMessageId = userMessage.id;
-      userMessageData = userMessage;
+      parentId = latestMsg?.id ?? null;
     }
 
-    // Create AI placeholder
-    const aiPlaceholder = await prisma.message.create({
+    // Create user message as a child of the current tail
+    const userMessage = await prisma.message.create({
       data: {
         ChatId: chatId,
-        role: "assistant",
-        text: "",
-        status: "thinking",
-        aiModel: aiModel,
+        parentId,
+        role: "user",
+        text: message,
+        status: "sent",
+        aiModel: null,
       },
     });
 
-    // Update chat title if first message
-    if (isFirstMessage && !regenerate) {
+    // Create AI placeholder as a child of the user message
+    const aiPlaceholder = await prisma.message.create({
+      data: {
+        ChatId: chatId,
+        parentId: userMessage.id,
+        role: "assistant",
+        text: "",
+        status: "thinking",
+        aiModel,
+      },
+    });
+
+    // Update chat title on first message + persist new activePath
+    const newActivePath = [
+      ...(chat.activePath || []),
+      userMessage.id,
+      aiPlaceholder.id,
+    ];
+
+    if (isFirstMessage) {
       const title =
         message.length > 50 ? message.substring(0, 50) + "..." : message;
-
       await prisma.chat.update({
         where: { id: chatId },
-        data: {
-          title: title,
-          updatedAt: new Date(),
-        },
+        data: { title, activePath: newActivePath, updatedAt: new Date() },
       });
     } else {
       await prisma.chat.update({
         where: { id: chatId },
-        data: { updatedAt: new Date() },
+        data: { activePath: newActivePath, updatedAt: new Date() },
       });
     }
 
@@ -303,126 +282,269 @@ export const sendMessage = async (req, res, next) => {
     res.status(200).json({
       success: true,
       chatId,
-      userMessage: {
-        id: userMessageData.id,
-        role: userMessageData.role,
-        text: userMessageData.text,
-        status: userMessageData.status,
-        createdAt: userMessageData.createdAt,
-        updatedAt: userMessageData.updatedAt,
-      },
-      aiMessage: {
-        id: aiPlaceholder.id,
-        role: aiPlaceholder.role,
-        text: aiPlaceholder.text,
-        status: aiPlaceholder.status,
-        createdAt: aiPlaceholder.createdAt,
-        updatedAt: aiPlaceholder.updatedAt,
-      },
+      userMessage: formatMessage(userMessage),
+      aiMessage: formatMessage(aiPlaceholder),
+      activePath: newActivePath,
     });
 
-    try {
-      if (req.cache) {
-        await req.cache.invalidateByTags(["chat:messages", "chat:list"]);
-      }
-    } catch (cacheErr) {
-      logger.error("Cache invalidation error in sendMessage", cacheErr);
-    }
-
     // Generate AI response asynchronously
-    (async () => {
-      try {
-        // Check if message still exists
-        const messageCheck = await prisma.message.findUnique({
-          where: { id: aiPlaceholder.id },
-          include: { Chat: true },
-        });
-
-        if (!messageCheck || !messageCheck.Chat) {
-          logger.info(
-            `Message ${aiPlaceholder.id} or its chat was deleted before generation`,
-          );
-          return;
-        }
-
-        if (messageCheck.status === "aborted") {
-          logger.info(
-            `Message ${aiPlaceholder.id} was aborted before generation`,
-          );
-          return;
-        }
-
-        const aiResponse = await generateAIResponse({
-          chatId,
-          userMessageId: finalUserMessageId,
-          currentUserMessage: message,
-          regenerate,
-          aiModel,
-          lastMessageModel,
-          userId,
-          problemTitle,
-        });
-
-        // Final check before updating
-        const finalCheck = await prisma.message.findUnique({
-          where: { id: aiPlaceholder.id },
-          include: { Chat: true },
-        });
-
-        if (!finalCheck || !finalCheck.Chat) {
-          logger.info(
-            `Message ${aiPlaceholder.id} or its chat was deleted during generation`,
-          );
-          return;
-        }
-
-        if (finalCheck.status === "aborted") {
-          logger.info(
-            `Message ${aiPlaceholder.id} was aborted during generation`,
-          );
-          return;
-        }
-
-        // Update the message
-        await prisma.message.update({
-          where: { id: aiPlaceholder.id },
-          data: {
-            text: aiResponse,
-            status: "sent",
-            updatedAt: new Date(),
-          },
-        });
-
-        logger.info(`AI response generated for message ${aiPlaceholder.id}`);
-      } catch (error) {
-        logger.error("Error generating AI response:", error);
-
-        try {
-          const errorCheck = await prisma.message.findUnique({
-            where: { id: aiPlaceholder.id },
-          });
-
-          if (errorCheck) {
-            await prisma.message.update({
-              where: { id: aiPlaceholder.id },
-              data: {
-                text: "Failed to generate response",
-                status: "error",
-                updatedAt: new Date(),
-              },
-            });
-          }
-        } catch (updateError) {
-          logger.error("Failed to update error status:", updateError);
-        }
-      }
-    })();
+    generateAsync({
+      aiPlaceholderId: aiPlaceholder.id,
+      chatId,
+      userMessageId: userMessage.id,
+      currentUserMessage: message,
+      aiModel,
+      lastMessageModel,
+      userId,
+      problemTitle,
+    });
   } catch (error) {
     logger.error("error in sendMessage controller", error);
     next(error);
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// createBranch — POST /chat/branch
+//
+// Handles both Edit and Regenerate by creating a new sibling node:
+//
+// EDIT (role: "user"):
+//   Creates a new user message sibling (same parentId as the original user msg),
+//   then creates an AI placeholder as its child.
+//   Returns: { newUserMessage, aiPlaceholder, newActivePath }
+//
+// REGENERATE (role: "assistant"):
+//   Creates a new assistant message sibling (parentId = the user message),
+//   polling starts on the new AI placeholder.
+//   Returns: { aiPlaceholder, newActivePath }
+// ─────────────────────────────────────────────────────────────────────────────
+export const createBranch = async (req, res, next) => {
+  const {
+    chatId,
+    // The ID of the message being branched FROM:
+    // - For EDIT: the original user message whose text is being changed
+    // - For REGENERATE: the user message whose AI response is being regenerated
+    sourceMessageId,
+    message, // New text (for edit: new user text; for regenerate: same user text)
+    branchType, // "edit" | "regenerate"
+    aiModel,
+    problemTitle,
+  } = req.body;
+  const userId = req.user?.Id || req.user?.userId;
+
+  try {
+    if (!chatId || !sourceMessageId || !message || !branchType || !aiModel) {
+      throw createHttpError.BadRequest(
+        "Missing required fields: chatId, sourceMessageId, message, branchType, aiModel",
+      );
+    }
+    if (branchType !== "edit" && branchType !== "regenerate") {
+      throw createHttpError.BadRequest(
+        "branchType must be 'edit' or 'regenerate'",
+      );
+    }
+
+    const chat = await prisma.chat.findUnique({ where: { id: chatId } });
+    if (!chat || chat.userId !== userId) {
+      throw createHttpError.NotFound("Chat not found");
+    }
+
+    const sourceMessage = await prisma.message.findUnique({
+      where: { id: sourceMessageId },
+      include: { Chat: { select: { userId: true } } },
+    });
+    if (!sourceMessage || sourceMessage.Chat.userId !== userId) {
+      throw createHttpError.NotFound("Source message not found");
+    }
+    if (sourceMessage.ChatId !== chatId) {
+      throw createHttpError.BadRequest(
+        "Source message does not belong to this chat",
+      );
+    }
+
+    // Get the last assistant model for context
+    const lastAssistantMsg = await prisma.message.findFirst({
+      where: { ChatId: chatId, role: "assistant" },
+      orderBy: { createdAt: "desc" },
+      select: { aiModel: true },
+    });
+    const lastMessageModel = lastAssistantMsg?.aiModel || "gpt-4";
+
+    let newActivePath: string[];
+    let responsePayload: any;
+
+    if (branchType === "edit") {
+      // ── EDIT: branch at user level ────────────────────────────────────────
+      // sourceMessage is the original user message.
+      // New sibling shares the same parentId.
+
+      if (sourceMessage.role !== "user") {
+        throw createHttpError.BadRequest(
+          "Edit branches must target a user message",
+        );
+      }
+
+      // Create new user message sibling
+      const newUserMessage = await prisma.message.create({
+        data: {
+          ChatId: chatId,
+          parentId: sourceMessage.parentId, // same parent = sibling
+          role: "user",
+          text: message,
+          status: "sent",
+          aiModel: null,
+        },
+      });
+
+      // Create AI placeholder as child of the new user message
+      const aiPlaceholder = await prisma.message.create({
+        data: {
+          ChatId: chatId,
+          parentId: newUserMessage.id,
+          role: "assistant",
+          text: "",
+          status: "thinking",
+          aiModel,
+        },
+      });
+
+      // Build new active path: path up to (not including) source message,
+      // then the new user message, then the AI placeholder
+      const pathUpToParent = buildPathUpToParent(
+        chat.activePath,
+        sourceMessageId,
+      );
+      newActivePath = [...pathUpToParent, newUserMessage.id, aiPlaceholder.id];
+
+      responsePayload = {
+        success: true,
+        branchType: "edit",
+        newUserMessage: formatMessage(newUserMessage),
+        aiPlaceholder: formatMessage(aiPlaceholder),
+        activePath: newActivePath,
+      };
+
+      // Persist new active path
+      await prisma.chat.update({
+        where: { id: chatId },
+        data: { activePath: newActivePath, updatedAt: new Date() },
+      });
+
+      // Respond immediately, then generate async
+      res.status(200).json(responsePayload);
+
+      generateAsync({
+        aiPlaceholderId: aiPlaceholder.id,
+        chatId,
+        userMessageId: newUserMessage.id,
+        currentUserMessage: message,
+        aiModel,
+        lastMessageModel,
+        userId,
+        problemTitle,
+      });
+    } else {
+      // ── REGENERATE: branch at assistant level ─────────────────────────────
+      // sourceMessage is the user message whose response we're regenerating.
+      // New assistant message is a sibling of the existing AI response
+      // (both have parentId = sourceMessage.id).
+
+      if (sourceMessage.role !== "user") {
+        throw createHttpError.BadRequest(
+          "Regenerate branches must target a user message",
+        );
+      }
+
+      // Create new assistant message sibling
+      const aiPlaceholder = await prisma.message.create({
+        data: {
+          ChatId: chatId,
+          parentId: sourceMessageId, // sibling of existing AI response
+          role: "assistant",
+          text: "",
+          status: "thinking",
+          aiModel,
+        },
+      });
+
+      // Build new active path: path up to and including source user message,
+      // then the new AI placeholder
+      const pathUpToSource = buildPathUpToSource(
+        chat.activePath,
+        sourceMessageId,
+      );
+      newActivePath = [...pathUpToSource, aiPlaceholder.id];
+
+      responsePayload = {
+        success: true,
+        branchType: "regenerate",
+        aiPlaceholder: formatMessage(aiPlaceholder),
+        activePath: newActivePath,
+      };
+
+      await prisma.chat.update({
+        where: { id: chatId },
+        data: { activePath: newActivePath, updatedAt: new Date() },
+      });
+
+      res.status(200).json(responsePayload);
+
+      generateAsync({
+        aiPlaceholderId: aiPlaceholder.id,
+        chatId,
+        userMessageId: sourceMessageId,
+        currentUserMessage: message,
+        aiModel,
+        lastMessageModel,
+        userId,
+        problemTitle,
+      });
+    }
+  } catch (error) {
+    logger.error("error in createBranch controller", error);
+    next(error);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// updateActivePath — PATCH /chat/activePath
+// Called when the user navigates between branches (chevron clicks).
+// Persists the new activePath to the Chat table.
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateActivePath = async (req, res, next) => {
+  const { chatId, activePath } = req.body;
+  const userId = req.user?.Id || req.user?.userId;
+
+  try {
+    if (!chatId || !Array.isArray(activePath)) {
+      throw createHttpError.BadRequest(
+        "Please provide chatId and activePath array",
+      );
+    }
+
+    const chat = await prisma.chat.findUnique({ where: { id: chatId } });
+    if (!chat || chat.userId !== userId) {
+      throw createHttpError.NotFound("Chat not found");
+    }
+
+    await prisma.chat.update({
+      where: { id: chatId },
+      data: { activePath },
+    });
+
+    return res.status(200).json({ success: true, activePath });
+  } catch (error) {
+    logger.error("error in updateActivePath controller", error);
+    next(error);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getMessages — GET /chat/getMessages?chatId=
+// Returns all message nodes for a chat (full tree) plus the resolved activePath.
+// Frontend builds the nodeMap and renders the activePath as the visible list.
+// ─────────────────────────────────────────────────────────────────────────────
 export const getMessages = async (req, res, next) => {
   const { chatId } = req.query;
   const userId = req.user?.Id || req.user?.userId;
@@ -433,9 +555,7 @@ export const getMessages = async (req, res, next) => {
     }
 
     const chat = await prisma.chat.findUnique({
-      where: {
-        id: chatId,
-      },
+      where: { id: chatId },
       include: {
         messages: {
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
@@ -444,6 +564,9 @@ export const getMessages = async (req, res, next) => {
             text: true,
             role: true,
             status: true,
+            parentId: true,
+            aiModel: true,
+            feedback: true,
             createdAt: true,
             updatedAt: true,
           },
@@ -455,79 +578,90 @@ export const getMessages = async (req, res, next) => {
       throw createHttpError.NotFound("Chat not found");
     }
 
-    // Check for stale "thinking" messages
     const now = new Date();
-    const THINKING_TIMEOUT_MS = 120000; // 2 minutes
+    const THINKING_TIMEOUT_MS = 120_000; // 2 minutes
 
-    const processedMessages = chat.messages.map((msg) => {
-      if (msg.status === "thinking" && msg.role === "assistant") {
-        const timeSinceCreation =
-          now.getTime() - new Date(msg.createdAt).getTime();
+    // Handle stale thinking messages
+    const processedMessages = await Promise.all(
+      chat.messages.map(async (msg) => {
+        if (msg.status === "thinking" && msg.role === "assistant") {
+          const timeSince = now.getTime() - new Date(msg.createdAt).getTime();
+          if (timeSince > THINKING_TIMEOUT_MS) {
+            prisma.message
+              .update({
+                where: { id: msg.id },
+                data: {
+                  status: "error",
+                  text: "Response generation interrupted",
+                },
+              })
+              .catch((err) =>
+                logger.error("Failed to update stale message:", err),
+              );
 
-        if (timeSinceCreation > THINKING_TIMEOUT_MS) {
-          prisma.message
-            .update({
-              where: { id: msg.id },
-              data: {
-                status: "error",
-                text: "Response generation interrupted",
-              },
-            })
-            .catch((err) =>
-              logger.error("Failed to update stale message:", err),
-            );
-
-          return {
-            id: msg.id,
-            text: "Response generation interrupted",
-            role: msg.role,
-            status: "error",
-            createdAt: msg.createdAt,
-            updatedAt: msg.updatedAt,
-          };
+            return {
+              id: msg.id,
+              parentId: msg.parentId,
+              text: "Response generation interrupted",
+              role: msg.role,
+              status: "error" as const,
+              aiModel: msg.aiModel,
+              feedback: msg.feedback,
+              createdAt: msg.createdAt,
+              updatedAt: msg.updatedAt,
+            };
+          }
         }
-      }
+        return msg;
+      }),
+    );
 
-      return {
-        id: msg.id,
-        text: msg.text,
-        role: msg.role,
-        status: msg.status,
-        createdAt: msg.createdAt,
-        updatedAt: msg.updatedAt,
-      };
+    // Resolve the active path (validate persisted path or walk to latest leaf)
+    const activePath = await resolveActivePath(chatId, chat.activePath);
+
+    // If resolved path differs from persisted (e.g. first load), persist it
+    if (
+      activePath.join(",") !== chat.activePath.join(",") &&
+      activePath.length > 0
+    ) {
+      prisma.chat
+        .update({ where: { id: chatId }, data: { activePath } })
+        .catch((err) => logger.error("Failed to persist activePath:", err));
+    }
+
+    return res.status(200).json({
+      success: true,
+      nodes: processedMessages,
+      activePath,
     });
-
-    return res.status(200).json(processedMessages);
   } catch (error) {
     logger.error("error in getMessages controller", error);
     next(error);
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// getChats — unchanged
+// ─────────────────────────────────────────────────────────────────────────────
 export const getChats = async (req, res, next) => {
   const userId = req.user?.Id || req.user?.userId;
-
   try {
     const chats = await prisma.chat.findMany({
-      where: { userId: userId },
+      where: { userId },
       orderBy: { updatedAt: "desc" },
       select: { id: true, title: true },
     });
-
-    if (!chats) {
-      throw createHttpError.NotFound("No chats found for the user");
-    }
-
-    res.status(200).json({
-      chats,
-    });
+    if (!chats) throw createHttpError.NotFound("No chats found for the user");
+    res.status(200).json({ chats });
   } catch (error) {
     logger.error("Error in getChats controller", error);
     next(error);
   }
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// abortMessage — unchanged in contract
+// ─────────────────────────────────────────────────────────────────────────────
 export const abortMessage = async (req, res, next) => {
   const { messageId } = req.query;
   const userId = req.user?.Id || req.user?.userId;
@@ -537,7 +671,6 @@ export const abortMessage = async (req, res, next) => {
       throw createHttpError.BadRequest("Please provide messageId");
     }
 
-    // Find message and verify ownership
     const message = await prisma.message.findUnique({
       where: { id: messageId },
       include: { Chat: true },
@@ -547,7 +680,6 @@ export const abortMessage = async (req, res, next) => {
       throw createHttpError.NotFound("Message not found");
     }
 
-    // Only abort if message is in "thinking" state
     if (message.status === "thinking") {
       await prisma.message.update({
         where: { id: messageId },
@@ -557,11 +689,9 @@ export const abortMessage = async (req, res, next) => {
           updatedAt: new Date(),
         },
       });
-
-      return res.status(200).json({
-        success: true,
-        message: "Message generation aborted",
-      });
+      return res
+        .status(200)
+        .json({ success: true, message: "Message generation aborted" });
     }
 
     return res.status(400).json({
@@ -573,3 +703,186 @@ export const abortMessage = async (req, res, next) => {
     next(error);
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// updateFeedback — PATCH /chat/message/:messageId/feedback
+// Sets LIKE / DISLIKE / null on an AI message.
+// ─────────────────────────────────────────────────────────────────────────────
+export const updateFeedback = async (req, res, next) => {
+  const { messageId } = req.params;
+  const { feedback } = req.body; // "LIKE" | "DISLIKE" | null
+  const userId = req.user?.Id || req.user?.userId;
+
+  try {
+    if (!messageId || typeof messageId !== "string") {
+      throw createHttpError.BadRequest("Please provide messageId");
+    }
+    if (feedback !== "LIKE" && feedback !== "DISLIKE" && feedback !== null) {
+      throw createHttpError.BadRequest(
+        "feedback must be 'LIKE', 'DISLIKE', or null",
+      );
+    }
+
+    const message = await prisma.message.findUnique({
+      where: { id: messageId },
+      include: { Chat: { select: { userId: true } } },
+    });
+
+    if (!message || message.Chat.userId !== userId) {
+      throw createHttpError.NotFound("Message not found");
+    }
+    if (message.role !== "assistant") {
+      throw createHttpError.BadRequest(
+        "Feedback can only be set on AI messages",
+      );
+    }
+
+    const updated = await prisma.message.update({
+      where: { id: messageId },
+      data: { feedback: feedback ?? null },
+    });
+
+    return res.status(200).json({
+      success: true,
+      feedback: updated.feedback,
+    });
+  } catch (error) {
+    logger.error("error in updateFeedback controller", error);
+    next(error);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Given the current activePath and a targetId, return the path up to
+ * (NOT including) the target. Used for edit branching.
+ */
+function buildPathUpToParent(activePath: string[], targetId: string): string[] {
+  const idx = activePath.indexOf(targetId);
+  if (idx === -1) return [];
+  return activePath.slice(0, idx);
+}
+
+/**
+ * Given the current activePath and a sourceId, return the path up to
+ * AND including the source. Used for regenerate branching.
+ */
+function buildPathUpToSource(activePath: string[], sourceId: string): string[] {
+  const idx = activePath.indexOf(sourceId);
+  if (idx === -1) return [sourceId];
+  return activePath.slice(0, idx + 1);
+}
+
+function formatMessage(msg: any) {
+  return {
+    id: msg.id,
+    chatId: msg.ChatId,
+    parentId: msg.parentId,
+    text: msg.text,
+    role: msg.role,
+    status: msg.status,
+    aiModel: msg.aiModel,
+    feedback: msg.feedback ?? null,
+    createdAt: msg.createdAt,
+    updatedAt: msg.updatedAt,
+  };
+}
+
+/**
+ * Shared async AI generation logic.
+ * Runs as a detached async IIFE — response has already been sent.
+ * Checks abort status before and after generation.
+ */
+function generateAsync({
+  aiPlaceholderId,
+  chatId,
+  userMessageId,
+  currentUserMessage,
+  aiModel,
+  lastMessageModel,
+  userId,
+  problemTitle,
+}: {
+  aiPlaceholderId: string;
+  chatId: string;
+  userMessageId: string;
+  currentUserMessage: string;
+  aiModel: string;
+  lastMessageModel: string;
+  userId: any;
+  problemTitle?: string;
+}) {
+  (async () => {
+    try {
+      const preCheck = await prisma.message.findUnique({
+        where: { id: aiPlaceholderId },
+        include: { Chat: true },
+      });
+      if (!preCheck || !preCheck.Chat) {
+        logger.info(
+          `Message ${aiPlaceholderId} or its chat was deleted before generation`,
+        );
+        return;
+      }
+      if (preCheck.status === "aborted") {
+        logger.info(`Message ${aiPlaceholderId} was aborted before generation`);
+        return;
+      }
+
+      const aiResponse = await generateAIResponse({
+        chatId,
+        userMessageId,
+        currentUserMessage,
+        regenerate: false,
+        aiModel,
+        lastMessageModel,
+        userId,
+        problemTitle,
+      });
+
+      const postCheck = await prisma.message.findUnique({
+        where: { id: aiPlaceholderId },
+        include: { Chat: true },
+      });
+      if (!postCheck || !postCheck.Chat) {
+        logger.info(
+          `Message ${aiPlaceholderId} or its chat was deleted during generation`,
+        );
+        return;
+      }
+      if (postCheck.status === "aborted") {
+        logger.info(`Message ${aiPlaceholderId} was aborted during generation`);
+        return;
+      }
+
+      await prisma.message.update({
+        where: { id: aiPlaceholderId },
+        data: { text: aiResponse, status: "sent", updatedAt: new Date() },
+      });
+
+      logger.info(`AI response generated for message ${aiPlaceholderId}`);
+    } catch (error) {
+      logger.error("Error generating AI response:", error);
+      try {
+        const errorCheck = await prisma.message.findUnique({
+          where: { id: aiPlaceholderId },
+        });
+        if (errorCheck) {
+          await prisma.message.update({
+            where: { id: aiPlaceholderId },
+            data: {
+              text: "Failed to generate response",
+              status: "error",
+              updatedAt: new Date(),
+            },
+          });
+        }
+      } catch (updateError) {
+        logger.error("Failed to update error status:", updateError);
+      }
+    }
+  })();
+}
