@@ -11,33 +11,28 @@ type UserProfileProps = {};
 
 const UserProfile: React.FC<UserProfileProps> = () => {
   return (
-    <div className="w-full h-screen px-5 mb-5">
-      <div className="w-full h-screen flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
-          {/* Scrollable area */}
-          <div className="h-full w-full flex flex-row gap-3">
-            {/* Prevent height inflation */}
-            <Sidebar />
-            <div className="flex-1 flex flex-col min-h-0">
-              {" "}
-              {/* Flexible column container */}
-              {/* Top Row (Pie Chart + Edit Profile) */}
-              <div className="h-[200px] min-h-[200px] w-full flex flex-row space-x-3 mb-3">
-                <div className="flex-[9] h-full">
-                  <QuestionFrequencyPieChart />
-                </div>
-                <div className="flex-[11] h-full">
-                  <EditProfileBar />
-                </div>
-              </div>
-              {/* Bar Charts */}
-              <div className="space-y-3 flex-1 min-h-0">
-                {/* Flexible space for charts */}
-                <SolvedQuestionsBarChart />
-                <SolvedQuestionsDataTable />
-              </div>
+    <div className="w-full min-h-screen px-4 sm:px-6 py-4 pb-10">
+      <div className="w-full flex flex-col lg:flex-row gap-3 items-start">
+        {/* Sidebar — full width on mobile, fixed width on desktop */}
+        <Sidebar />
+
+        {/* Main content — grows to fill remaining space */}
+        <div className="flex-1 w-full flex flex-col gap-3 min-w-0">
+          {/* Top Row: Pie Chart + Edit Profile */}
+          <div className="w-full flex flex-col sm:flex-row gap-3">
+            <div className="sm:flex-[9] w-full min-h-[180px]">
+              <QuestionFrequencyPieChart />
+            </div>
+            <div className="sm:flex-[11] w-full min-h-[180px]">
+              <EditProfileBar />
             </div>
           </div>
+
+          {/* Heatmap */}
+          <SolvedQuestionsBarChart />
+
+          {/* Submissions Table */}
+          <SolvedQuestionsDataTable />
         </div>
       </div>
     </div>
