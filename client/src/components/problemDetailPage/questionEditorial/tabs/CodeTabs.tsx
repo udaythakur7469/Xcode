@@ -7,10 +7,6 @@ import {
 } from "@/components/ui/editorialCodeTabs";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import {
-  EditorialScrollArea,
-  EditorialScrollBar,
-} from "@/components/ui/editorialCodeScrollArea";
 
 type CodeTabsProps = {
   cppCode: string;
@@ -47,7 +43,7 @@ const CodeTabs: React.FC<CodeTabsProps> = ({
         </TabsList>
         {/* C++ Tab */}
         <TabsContent value="Cpp" className="text-black">
-          <EditorialScrollArea className="h-[300px]">
+          <div className="overflow-auto max-h-[40vh]">
             <SyntaxHighlighter
               language="cpp"
               style={vscDarkPlus}
@@ -60,13 +56,12 @@ const CodeTabs: React.FC<CodeTabsProps> = ({
             >
               {cppCode}
             </SyntaxHighlighter>
-            <EditorialScrollBar orientation="vertical" />
-          </EditorialScrollArea>
+          </div>
         </TabsContent>
 
         {/* Java Tab */}
         <TabsContent value="Java" className="text-black">
-          <EditorialScrollArea className="h-[300px]">
+          <div className="overflow-auto max-h-[40vh]">
             <SyntaxHighlighter
               language="java"
               style={vscDarkPlus}
@@ -79,13 +74,12 @@ const CodeTabs: React.FC<CodeTabsProps> = ({
             >
               {javaCode}
             </SyntaxHighlighter>
-            <EditorialScrollBar orientation="vertical" />
-          </EditorialScrollArea>
+          </div>
         </TabsContent>
 
         {/* Python Tab */}
         <TabsContent value="Python" className="text-black">
-          <EditorialScrollArea className="h-[300px]">
+          <div className="overflow-auto max-h-[40vh]">
             <SyntaxHighlighter
               language="python"
               style={vscDarkPlus}
@@ -98,13 +92,12 @@ const CodeTabs: React.FC<CodeTabsProps> = ({
             >
               {pythonCode}
             </SyntaxHighlighter>
-            <EditorialScrollBar orientation="vertical" />
-          </EditorialScrollArea>
+          </div>
         </TabsContent>
 
         {/* JavaScript Tab */}
         <TabsContent value="JS" className="text-black">
-          <EditorialScrollArea className="h-[300px]">
+          <div className="overflow-auto max-h-[40vh]">
             <SyntaxHighlighter
               language="javascript"
               style={vscDarkPlus}
@@ -117,8 +110,7 @@ const CodeTabs: React.FC<CodeTabsProps> = ({
             >
               {jsCode}
             </SyntaxHighlighter>
-            <EditorialScrollBar orientation="vertical" />
-          </EditorialScrollArea>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
