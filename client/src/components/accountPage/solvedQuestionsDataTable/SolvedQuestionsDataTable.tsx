@@ -6,7 +6,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
-import { MoonLoader } from "react-spinners";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Submission, useSubmissionStore } from "@/features/submissionStore";
@@ -19,7 +18,6 @@ const SolvedQuestionsDataTable: React.FC<
 > = () => {
   const {
     userSubmissions,
-    isLoading,
     error,
     submissionPagination,
     getUserSubmissions,
@@ -27,15 +25,12 @@ const SolvedQuestionsDataTable: React.FC<
 
   const router = useRouter();
 
-  // Filter submissions to show only unique problems (based on problem title) in reverse chronological order
   const uniqueSubmissions = useMemo(() => {
-    // First sort all submissions by createdAt date (newest first)
     const sortedSubmissions = [...userSubmissions].sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
-    // Then filter for unique problem titles (keeping the first occurrence which will be the newest)
     const uniqueMap = new Map<string, Submission>();
     sortedSubmissions.forEach((submission) => {
       const title = submission.problem?.title;
@@ -47,12 +42,10 @@ const SolvedQuestionsDataTable: React.FC<
     return Array.from(uniqueMap.values());
   }, [userSubmissions]);
 
-  // Fetch user submissions when the component mounts or when page changes
   useEffect(() => {
     getUserSubmissions(submissionPagination.currentPage);
-  }, [submissionPagination.currentPage, getUserSubmissions]);
+  }, [submissionPagination.currentPage]);
 
-  // Create the table instance with unique submissions
   const table = useReactTable({
     data: uniqueSubmissions,
     columns: SolvedQuestionsDataTableColumns,
@@ -70,16 +63,16 @@ const SolvedQuestionsDataTable: React.FC<
 
   return (
     <>
-      <div className="w-full overflow-y-auto rounded-xl bg-accent border">
-        {isLoading ? (
-          <div className="h-[550px] w-full flex justify-center items-center">
-            <MoonLoader size={200} color="#ffffff" />
-          </div>
-        ) : error ? (
-          <div className="text-red-500 text-center">Error: {error}</div>
+      {/*
+        max-h caps the container so it doesn't grow infinitely.
+        min-h ensures it's not tiny when there are few rows or while loading.
+        overflow-y-auto keeps the scroll inside the box.
+      */}
+      <div className="w-full min-h-[200px] max-h-[420px] md:max-h-[540px] overflow-y-auto rounded-xl bg-accent border">
+        {error ? (
+          <div className="text-red-500 text-center p-4">Error: {error}</div>
         ) : (
           <div className="w-full h-full">
-            {/* Data Table */}
             <div className="rounded-md border w-full">
               <Table className="w-full">
                 <TableBody>
@@ -92,10 +85,10 @@ const SolvedQuestionsDataTable: React.FC<
                         onClick={() => handleRowClick(row.original)}
                       >
                         {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            style={{ width: `${cell.column.getSize()}px` }}
-                          >
+                          // Removed style={{ width: `${cell.column.getSize()}px` }}
+                          // Those were fixed pixel widths based on a 1000px reference table.
+                          // Let the browser distribute column widths naturally via CSS.
+                          <TableCell key={cell.id}>
                             {flexRender(
                               cell.column.columnDef.cell,
                               cell.getContext(),
@@ -118,9 +111,9 @@ const SolvedQuestionsDataTable: React.FC<
               </Table>
             </div>
 
-            {/* Pagination Controls */}
             {uniqueSubmissions.length > 0 && (
-              <div className="flex justify-between mt-2 mb-5">
+              // px-3 prevents buttons from touching the container edge on mobile
+              <div className="flex justify-between items-center mt-2 mb-5 px-3">
                 <Button
                   onClick={() =>
                     getUserSubmissions(submissionPagination.currentPage - 1)
@@ -130,7 +123,7 @@ const SolvedQuestionsDataTable: React.FC<
                   <ArrowLeft className="mr-2" />
                   Previous
                 </Button>
-                <span>
+                <span className="text-sm text-muted-foreground">
                   Page {submissionPagination.currentPage} of{" "}
                   {submissionPagination.totalPages || 1}
                 </span>
