@@ -1,13 +1,13 @@
 import React, { useEffect } from "react";
 import { useProblemStore } from "@/features/problemStore";
 import { useSearchParams } from "next/navigation";
-import { MoonLoader } from "react-spinners";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@/components/ui/testCasesTabs";
+import { TestCasesPanelSkeleton } from "./TestCasesPanelSkeleton";
 
 type TestCasesPanelProps = {};
 
@@ -33,11 +33,7 @@ const TestCasesPanel: React.FC<TestCasesPanelProps> = () => {
   }, [getTestCasesByTitle, problemTitle]);
 
   if (isLoadingTestCases) {
-    return (
-      <div className="h-full w-full flex justify-center items-center mt-10">
-        <MoonLoader size={100} color="#ffffff" />
-      </div>
-    );
+    return <TestCasesPanelSkeleton />;
   }
 
   if (testCasesError) {
