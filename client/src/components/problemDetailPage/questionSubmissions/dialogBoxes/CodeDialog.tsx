@@ -4,7 +4,6 @@ import { Submission } from "@/features/submissionStore";
 import { formatDate } from "@/services/dateService";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { EditorialScrollArea } from "@/components/ui/editorialCodeScrollArea";
 import { Button } from "@/components/ui/button";
 import { Clipboard, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -85,7 +84,7 @@ const CodeDialog: React.FC<CodeDialogProps> = ({
             >
               {isCopied ? <Check size={16} /> : <Clipboard size={16} />}
             </Button>
-            <EditorialScrollArea className="border rounded-md overflow-auto h-[400px]">
+            <div className="border rounded-md overflow-auto max-h-[50vh]">
               <SyntaxHighlighter
                 language={submission.language.toLowerCase()}
                 style={vscDarkPlus}
@@ -98,7 +97,7 @@ const CodeDialog: React.FC<CodeDialogProps> = ({
               >
                 {submission.code || "No code available"}
               </SyntaxHighlighter>
-            </EditorialScrollArea>
+            </div>
           </div>
         </div>
       </div>
