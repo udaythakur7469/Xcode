@@ -3,7 +3,7 @@
 import React from "react";
 import { MessageCirclePlus, Trash2 } from "lucide-react";
 import { getChatsResponse } from "@/features/chatStore";
-import { MoonLoader } from "react-spinners";
+import { ChatSidebarSkeleton } from "./ChatSidebarSkeleton";
 
 type ChatSidebarProps = {
   chats?: getChatsResponse[];
@@ -40,9 +40,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             {gettingChatsError}
           </div>
         ) : isLoading ? (
-          <div className="flex h-full justify-center items-center">
-            <MoonLoader color="#ffffff" />
-          </div>
+          <ChatSidebarSkeleton />
         ) : chats?.length === 0 ? (
           <div className="p-4 text-center text-gray-400 text-sm">
             No chats yet
