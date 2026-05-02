@@ -14,8 +14,8 @@ const SkillsBar: React.FC<SkillsBarProps> = () => {
   const solvedProblemTags = userData?.stats?.tags || [];
 
   return (
-    <div className="h-[200px] w-full rounded-xl bg-accent overflow-y-auto overflow-x-auto">
-      <div className="w-full h-full">
+    <div className="w-full rounded-xl bg-accent">
+      <div className="w-full">
         {/* Languages Section */}
         <div>
           <p className="text-lg font-semibold ">Languages</p>
