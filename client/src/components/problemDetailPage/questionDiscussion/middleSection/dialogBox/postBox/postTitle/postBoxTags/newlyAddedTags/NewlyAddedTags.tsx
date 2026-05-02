@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
 import PostTags from "./PostTags";
-import { ScrollArea } from "@/components/ui/postTagsScrollArea";
 
 type NewlyAddedTagsProps = {
   selectedTags: string[];
@@ -13,39 +12,30 @@ const NewlyAddedTags: React.FC<NewlyAddedTagsProps> = ({
 }) => {
   const [showTopFade, setShowTopFade] = useState(false);
   const [showBottomFade, setShowBottomFade] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  // replace the useEffect with:
   useEffect(() => {
     const checkScrollable = () => {
-      if (contentRef.current) {
-        const viewport = contentRef.current.closest(
-          "[data-radix-scroll-area-viewport]"
-        );
-        if (viewport) {
-          const contentHeight = contentRef.current.scrollHeight;
-          const containerHeight = viewport.clientHeight;
-
-          if (contentHeight > containerHeight) {
-            setShowBottomFade(true);
-          } else {
-            setShowTopFade(false);
-            setShowBottomFade(false);
-          }
+      if (contentRef.current && scrollRef.current) {
+        const contentHeight = contentRef.current.scrollHeight;
+        const containerHeight = scrollRef.current.clientHeight;
+        if (contentHeight > containerHeight) {
+          setShowBottomFade(true);
+        } else {
+          setShowTopFade(false);
+          setShowBottomFade(false);
         }
       }
     };
 
     checkScrollable();
 
-    // Add scroll listener to the viewport
-    const viewport = contentRef.current?.closest(
-      "[data-radix-scroll-area-viewport]"
-    );
-
+    const viewport = scrollRef.current;
     const handleScroll = () => {
       if (viewport) {
-        const { scrollTop, scrollHeight, clientHeight } =
-          viewport as HTMLElement;
+        const { scrollTop, scrollHeight, clientHeight } = viewport;
         setShowTopFade(scrollTop > 5);
         setShowBottomFade(scrollTop + clientHeight < scrollHeight - 5);
       }
@@ -63,7 +53,7 @@ const NewlyAddedTags: React.FC<NewlyAddedTagsProps> = ({
 
   return (
     <div className="relative h-[99px] w-full">
-      <ScrollArea className="h-full w-full">
+      <div ref={scrollRef} className="h-full w-full overflow-y-auto">
         <div
           ref={contentRef}
           className="min-h-[95px] w-full flex flex-row items-center justify-start p-2"
@@ -78,7 +68,7 @@ const NewlyAddedTags: React.FC<NewlyAddedTagsProps> = ({
             ))}
           </div>
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Top fade indicator - blends with dark background */}
       {showTopFade && (
