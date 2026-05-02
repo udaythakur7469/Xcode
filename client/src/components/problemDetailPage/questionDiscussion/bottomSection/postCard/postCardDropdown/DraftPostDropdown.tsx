@@ -2,7 +2,6 @@
 
 import React from "react";
 import { DraftPostData } from "@/features/postStore";
-import { ScrollArea } from "@/components/ui/questionDiscussionScrollArea";
 
 type DraftPostDropdownProps = {
   draftPosts: DraftPostData[];
@@ -39,7 +38,7 @@ const DraftPostDropdown: React.FC<DraftPostDropdownProps> = ({
       <div className="text-xl flex justify-center items-center mb-2">
         Saved Drafts
       </div>
-      <ScrollArea className="h-[180px] w-full pr-2">
+      <div className="max-h-[180px] w-full pr-2 overflow-y-auto">
         <div className="space-y-3">
           {draftPosts.map((draftPost) => (
             <div
@@ -55,7 +54,7 @@ const DraftPostDropdown: React.FC<DraftPostDropdownProps> = ({
             </div>
           ))}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 };
