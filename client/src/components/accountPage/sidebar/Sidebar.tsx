@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 type SidebarProps = {};
 
 const Sidebar: React.FC<SidebarProps> = () => {
-  const { userData, isLoading, updateProfilePicture, isDataUpdating } =
+  const { userData, updateProfilePicture, isDataUpdating } =
     useUserStore();
   const [showDescriptionDialogBox, setShowDescriptionDialogBox] =
     useState(false);
@@ -27,11 +27,9 @@ const Sidebar: React.FC<SidebarProps> = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Validate image file
   const validateImageFile = (
     file: File,
   ): { valid: boolean; error?: string } => {
-    // Check file type
     const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     if (!validTypes.includes(file.type)) {
       return {
@@ -39,27 +37,22 @@ const Sidebar: React.FC<SidebarProps> = () => {
         error: "Invalid file type. Please upload a JPEG, PNG, or WEBP image.",
       };
     }
-
-    // Check file size (5MB limit)
-    const maxSize = 5 * 1024 * 1024; // 5MB
+    const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       return {
         valid: false,
         error: "File size too large. Please upload an image smaller than 5MB.",
       };
     }
-
     return { valid: true };
   };
 
-  // Handle image file selection
   const handleImageSelect = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file
     const validation = validateImageFile(file);
     if (!validation.valid) {
       toast({
@@ -67,19 +60,13 @@ const Sidebar: React.FC<SidebarProps> = () => {
         description: validation.error,
         variant: "destructive",
       });
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
 
     setIsUploadingImage(true);
-
     try {
-      // Upload to backend (which handles Cloudinary)
       await updateProfilePicture(file);
-
       toast({
         title: "Success",
         description: "Profile picture updated successfully!",
@@ -96,25 +83,13 @@ const Sidebar: React.FC<SidebarProps> = () => {
       });
     } finally {
       setIsUploadingImage(false);
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  // Trigger file input click
   const handleEditPictureClick = () => {
     fileInputRef.current?.click();
   };
-
-  if (isLoading) {
-    return (
-      <div className="bg-accent border h-screen w-[400px] rounded-xl flex items-center justify-center">
-        <MoonLoader size={50} color="#ffffff" />
-      </div>
-    );
-  }
 
   const name = userData?.name;
   const capitalizedName = capitalizeFirstLetter(name);
@@ -123,17 +98,16 @@ const Sidebar: React.FC<SidebarProps> = () => {
   const description = userData?.description;
   const links = userData?.links;
 
-  // Check if any links exist
   const hasLinks =
     links && (links.LinkedIn || links.Github || links["Personal site"]);
 
   return (
-    <div className="bg-accent border h-screen w-[400px] rounded-xl">
-      <div className="h-full w-full flex flex-col items-center">
-        {/* Avatar and Email Section */}
-        <div className="w-full flex flex-row justify-around mt-8 px-10 pb-5">
+    <div className="bg-accent border rounded-xl w-full lg:w-80 xl:w-96 lg:flex-shrink-0 lg:self-stretch">
+      <div className="w-full flex flex-col items-center pb-6">
+        {/* Avatar and Name/Email */}
+        <div className="w-full flex flex-row justify-around mt-8 px-6 pb-5">
           {/* Avatar with Edit Button */}
-          <div className="relative w-20 h-20">
+          <div className="relative w-20 h-20 flex-shrink-0">
             {isUploadingImage ? (
               <div className="absolute inset-0 flex items-center justify-center rounded-full">
                 <MoonLoader size={28} color="#ffffff" />
@@ -153,8 +127,6 @@ const Sidebar: React.FC<SidebarProps> = () => {
                 </AvatarFallback>
               </Avatar>
             )}
-
-            {/* Edit Icon Button - positioned at bottom-right */}
             <button
               onClick={handleEditPictureClick}
               disabled={isUploadingImage || isDataUpdating}
@@ -168,8 +140,6 @@ const Sidebar: React.FC<SidebarProps> = () => {
                 <PencilLine className="h-3 w-3 text-white" />
               )}
             </button>
-
-            {/* Hidden file input */}
             <input
               ref={fileInputRef}
               type="file"
@@ -180,19 +150,24 @@ const Sidebar: React.FC<SidebarProps> = () => {
             />
           </div>
 
-          <div className="h-full w-full flex flex-col justify-start items-start px-8">
-            <p className="text-3xl font-bold mb-1">{capitalizedName}</p>
-            <p className="text-sm text-muted-foreground">{email}</p>
+          {/* Name + Email — min-w-0 prevents text overflow breaking layout */}
+          <div className="flex flex-col justify-start items-start px-4 min-w-0 flex-1">
+            <p className="text-2xl font-bold mb-1 truncate w-full">
+              {capitalizedName}
+            </p>
+            <p className="text-sm text-muted-foreground truncate w-full">
+              {email}
+            </p>
           </div>
         </div>
 
         <Separator />
 
         {/* Description Section */}
-        <div className="w-full px-10 mt-10">
+        <div className="w-full px-5 mt-8">
           {description ? (
             <div className="flex flex-col border rounded-md p-2">
-              <div className="flex justify-between items-center mb-2 ">
+              <div className="flex justify-between items-center mb-2">
                 <p className="text-lg font-semibold">Description</p>
                 <Button
                   variant="ghost"
@@ -202,7 +177,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
                   <PencilLine className="h-4 w-4" />
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words overflow-y-auto max-h-[230px] pr-2 scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-gray-400">
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words overflow-y-auto max-h-[200px] pr-2 scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-gray-400">
                 {description}
               </p>
             </div>
@@ -211,14 +186,14 @@ const Sidebar: React.FC<SidebarProps> = () => {
               className="w-full h-[40px]"
               onClick={() => setShowDescriptionDialogBox(true)}
             >
-              <PencilLine />
+              <PencilLine className="mr-2" />
               Add description
             </Button>
           )}
         </div>
 
         {/* Links Section */}
-        <div className="w-full px-10 mt-8">
+        <div className="w-full px-5 mt-6">
           {hasLinks ? (
             <div className="flex flex-col border rounded-md p-2">
               <div className="flex justify-between items-center mb-2">
@@ -233,7 +208,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
               </div>
               <div className="space-y-2">
                 {links?.LinkedIn && (
-                  <div className="flex items-center">
+                  <div className="flex items-center min-w-0">
                     <Linkedin className="h-4 w-4 mr-2 flex-shrink-0" />
                     <a
                       href={links.LinkedIn}
@@ -246,7 +221,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
                   </div>
                 )}
                 {links?.Github && (
-                  <div className="flex items-center">
+                  <div className="flex items-center min-w-0">
                     <Github className="h-4 w-4 mr-2 flex-shrink-0" />
                     <a
                       href={links.Github}
@@ -259,7 +234,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
                   </div>
                 )}
                 {links?.["Personal site"] && (
-                  <div className="flex items-center">
+                  <div className="flex items-center min-w-0">
                     <Link className="h-4 w-4 mr-2 flex-shrink-0" />
                     <a
                       href={links["Personal site"]}
@@ -275,24 +250,22 @@ const Sidebar: React.FC<SidebarProps> = () => {
             </div>
           ) : (
             <Button
-              className="w-full h-[40px] mt-8"
+              className="w-full h-[40px]"
               onClick={() => setShowLinksDialogBox(true)}
             >
-              <Link />
+              <Link className="mr-2" />
               Add profile links
             </Button>
           )}
         </div>
 
         {/* Skills Section */}
-        <div className="w-full px-10 mt-10">
+        <div className="w-full px-5 mt-6">
           <div className="flex flex-col border rounded-md p-2">
-            <div className="flex justify-between items-center mb-2 ">
+            <div className="flex justify-between items-center mb-2">
               <p className="text-lg font-semibold">Skills</p>
             </div>
-            <span className="text-sm text-muted-foreground whitespace-pre-wrap break-words overflow-y-auto max-h-[230px] pr-2 scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-gray-400">
-              <SkillsBar />
-            </span>
+            <SkillsBar />
           </div>
         </div>
       </div>
