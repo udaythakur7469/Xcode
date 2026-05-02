@@ -20,7 +20,6 @@ const LinkTextAreas: React.FC<LinkTextAreasProps> = ({
     onValueChange(inputPlaceholder, newValue);
   };
 
-  // Initialize value on mount
   useEffect(() => {
     if (onValueChange) {
       onValueChange(inputPlaceholder, value);
@@ -28,7 +27,7 @@ const LinkTextAreas: React.FC<LinkTextAreasProps> = ({
   }, []);
 
   return (
-    <div className="relative">
+    <div className="relative w-full max-w-[200px] sm:max-w-[250px]">
       {error && (
         <div className="absolute -top-6 left-0 right-0 text-sm text-red-500 text-center">
           {error}
@@ -36,7 +35,7 @@ const LinkTextAreas: React.FC<LinkTextAreasProps> = ({
       )}
       <Input
         placeholder={inputPlaceholder}
-        className="placeholder:text-center w-[250px]"
+        className="placeholder:text-center w-full"
         value={value}
         onChange={handleChange}
         aria-invalid={!!error}
