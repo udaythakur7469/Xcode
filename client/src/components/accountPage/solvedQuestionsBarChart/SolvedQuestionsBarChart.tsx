@@ -57,11 +57,11 @@ const getDateRange = () => {
 };
 
 const SolvedQuestionsBarChart: React.FC = () => {
-  const { heatmapData, fetchHeatmapData, isLoading } = useUserStore();
+  const { heatmapData, fetchHeatmapData } = useUserStore();
 
   useEffect(() => {
     fetchHeatmapData();
-  }, [fetchHeatmapData]);
+  }, []);
 
   const [tooltipData, setTooltipData] = useState<{
     date: string;
@@ -169,14 +169,6 @@ const SolvedQuestionsBarChart: React.FC = () => {
       });
     };
   }, [heatmapData, startDate]);
-
-  if (isLoading) {
-    return (
-      <div className="w-full h-[250px] rounded-xl mb-3 bg-accent p-6 border flex items-center justify-center">
-        <div className="text-white">Loading heatmap...</div>
-      </div>
-    );
-  }
 
   const handleClick = (value: HeatmapValue | undefined) => {
     if (value) {
