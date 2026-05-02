@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useRef } from "react";
 import PostMarkdownEditor from "../postMarkdownEditor/PostMarkdownEditor";
 import PostMarkdownPreview from "../postMarkdownPreview/PostMarkdownPreview";
-import { ScrollArea } from "@/components/ui/postTagsScrollArea";
 import { usePostStore } from "@/features/postStore";
 import { useSearchParams } from "next/navigation";
-import { MoonLoader } from "react-spinners";
+import { PostEditorPanelsSkeleton } from "./PostEditorPanelsSkeleton";
 
 type PostEditorPanelsProps = {
   content: string;
@@ -95,7 +94,7 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   if (isPostBaseTemplateLoading && content === "" && !isDraftMode) {
     return (
       <div className="h-full flex items-center justify-center">
-        <MoonLoader color="#ffffff" size={100} />
+        <PostEditorPanelsSkeleton />
       </div>
     );
   }
@@ -113,16 +112,14 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
     <div className="h-full w-full flex">
       {/* Left Panel (Editor) - Fixed 50% */}
       <div className="w-1/2 border mr-1 rounded-bl-xl overflow-hidden">
-        <ScrollArea className="h-[458px] w-[720px]">
-          <div className="h-[458px] w-[720px]">
-            <PostMarkdownEditor
-              content={content}
-              setContent={setContent}
-              onSelectionChange={onSelectionChange}
-              onReset={handleReset}
-            />
-          </div>
-        </ScrollArea>
+        <div className="h-full w-full overflow-y-auto overflow-x-hidden">
+          <PostMarkdownEditor
+            content={content}
+            setContent={setContent}
+            onSelectionChange={onSelectionChange}
+            onReset={handleReset}
+          />
+        </div>
       </div>
 
       {/* Divider */}
@@ -130,11 +127,9 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
 
       {/* Right Panel (Preview) - Fixed 50% */}
       <div className="w-1/2 border ml-1 rounded-br-xl overflow-hidden">
-        <ScrollArea className="h-[457px] w-[720px]">
-          <div className="h-[457px] w-[720px]">
-            <PostMarkdownPreview markdown={content} />
-          </div>
-        </ScrollArea>
+        <div className="h-full w-full overflow-y-auto overflow-x-hidden">
+          <PostMarkdownPreview markdown={content} />
+        </div>
       </div>
     </div>
   );
