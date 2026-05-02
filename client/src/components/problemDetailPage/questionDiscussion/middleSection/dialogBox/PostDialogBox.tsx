@@ -17,7 +17,7 @@ const PostDialogBox: React.FC<PostDialogBoxProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className="backdrop-blur-2xl border overflow-hidden"
+        className="backdrop-blur-2xl border overflow-hidden p-0"
         style={{
           width: "calc(100vw * 1460 / 1536)",
           height: "calc(100vh * 680 / 730)",
@@ -28,7 +28,7 @@ const PostDialogBox: React.FC<PostDialogBoxProps> = ({
         <VisuallyHidden.Root>
           <DialogTitle>Post Editor</DialogTitle>
         </VisuallyHidden.Root>
-        <div className="flex flex-wrap border rounded-xl">
+        <div className="h-full w-full border rounded-xl overflow-hidden">
           <PostBox onClose={onClose} draftId={draftId} />
         </div>
       </DialogContent>
