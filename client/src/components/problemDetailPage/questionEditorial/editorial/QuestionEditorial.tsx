@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useProblemStore } from "@/features/problemStore";
-import { MoonLoader } from "react-spinners";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import ReactPlayer from "react-player";
 import { Separator } from "@/components/ui/separator";
 import CodeTabs from "../tabs/CodeTabs";
@@ -81,7 +79,7 @@ const QuestionEditorial: React.FC<QuestionEditorialProps> = () => {
   }, [problemTitle, getEditorialsByTitle]);
 
   return (
-    <ScrollArea className="h-[610px] w-full">
+    <div className="h-full w-full overflow-y-auto">
       {isLoading ? (
         <QuestionEditorialSkeleton />
       ) : error ? (
@@ -89,7 +87,7 @@ const QuestionEditorial: React.FC<QuestionEditorialProps> = () => {
       ) : !editorial ? (
         <div className="text-red-500 text-center">Editorial not found.</div>
       ) : (
-        <div className="flex flex-col justify-center items-start p-5">
+        <div className="flex flex-col justify-center items-start p-5 mb-10">
           <div className="flex flex-row justify-start items-center ml-1">
             <p className="text-3xl">{editorial.problemId}.&nbsp;</p>
             <p className="text-3xl">{editorial.problemTitle}</p>
@@ -314,7 +312,7 @@ const QuestionEditorial: React.FC<QuestionEditorialProps> = () => {
         </div>
       )}
       <div className="h-[10px]" />
-    </ScrollArea>
+    </div>
   );
 };
 
