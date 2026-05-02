@@ -128,7 +128,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
   }
 
   return (
-    <div className="h-[610px] w-full overflow-y-auto">
+    <div className="h-full w-full overflow-y-auto">
       {isLoading ? (
         <QuestionDataSkeleton />
       ) : error ? (
