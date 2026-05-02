@@ -260,7 +260,7 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
         onClose={() => setShowMissingTitleDialog(false)}
       />
       {/* Title*/}
-      <div className="border-b rounded-t-xl flex-[2.5] border">
+      <div className="border-b rounded-t-xl flex-[2.5] min-h-0 border">
         <PostTitle
           onClose={handleCancelWithCheck}
           postTitle={postTitle}
@@ -273,11 +273,11 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
         />
       </div>
       {/* Toolbar*/}
-      <div className="border-b flex-[0.5] border">
+      <div className="border-b flex-none min-h-0 border">
         <PostToolbar onInsertText={handleInsertText} onReset={resetHandler} />
       </div>
       {/* Editor panels takes rest of the space */}
-      <div className="flex-[7] rounded-b-xl border">
+      <div className="flex-[7] min-h-0 h-full rounded-b-xl border">
         <PostEditor
           content={content}
           setContent={setContent}
