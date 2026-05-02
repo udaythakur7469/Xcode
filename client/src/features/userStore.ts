@@ -9,6 +9,8 @@ interface authData {
   isUserAuthenticated: boolean;
   error: string | null;
   isLoading: boolean;
+  isLanguagesLoading: boolean;
+  isHeatmapLoading: boolean;
   isDataUpdating: boolean;
   isCheckingUserAuth: boolean;
   message: string | null;
@@ -35,6 +37,8 @@ export const useUserStore = create<authData>()((set) => ({
   isUserAuthenticated: false,
   error: null,
   isLoading: false,
+  isLanguagesLoading: false,
+  isHeatmapLoading: false,
   isDataUpdating: false,
   isCheckingUserAuth: true,
   message: null,
@@ -163,45 +167,47 @@ export const useUserStore = create<authData>()((set) => ({
       throw error;
     }
   },
-  
+
   fetchSolvedLanguages: async () => {
     try {
-      set({ isLoading: true, error: null });
+      set({ isLanguagesLoading: true, error: null });
       const response = await axios.get(`${API_URL}/user/userLanguages`);
       set({
         solvedLanguages: response.data.languages,
-        isLoading: false,
+        isLanguagesLoading: false,
       });
     } catch (error: any) {
       const errMsg =
         error.response?.data?.message || "Failed to fetch solved languages";
       set({
         error: errMsg,
-        isLoading: false,
+        isLanguagesLoading: false,
         solvedLanguages: null,
       });
       throw error;
     }
   },
+
   fetchHeatmapData: async () => {
     try {
-      set({ isLoading: true, error: null });
+      set({ isHeatmapLoading: true, error: null });
       const response = await axios.get(`${API_URL}/user/heatmap`);
       set({
         heatmapData: response.data.heatmapData,
-        isLoading: false,
+        isHeatmapLoading: false,
       });
     } catch (error: any) {
       const errMsg =
         error.response?.data?.message || "Failed to fetch heatmap data";
       set({
         error: errMsg,
-        isLoading: false,
+        isHeatmapLoading: false,
         heatmapData: null,
       });
       throw error;
     }
   },
+  
   updateProfilePicture: async (file: File) => {
     try {
       set({ isDataUpdating: true });
