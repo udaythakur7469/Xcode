@@ -21,31 +21,25 @@ type LinksDialogBoxProps = {
   onClose: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
-// Zod schema for URL validation
 const urlSchema = z.string().url({
   message: "Please enter a valid URL",
 });
 
 const LinksDialogBox: React.FC<LinksDialogBoxProps> = ({ isOpen, onClose }) => {
-  // State to store all link values
   const [linkValues, setLinkValues] = useState<Record<string, string>>({});
-  // State to track validation errors
   const [validationErrors, setValidationErrors] = useState<
     Record<string, string>
   >({});
-  // State for button text
   const [buttonText, setButtonText] = useState<string>("Set Links");
 
   const { updateProfileData, userData } = useUserStore();
 
-  // Map placeholders to more readable titles
   const placeholderToTitle: Record<string, string> = {
     "Add your Github URL": "Github",
     "Add your LinkedIn URL": "LinkedIn",
     "Add your site's URL": "Personal site",
   };
 
-  // Initialize linkValues with empty strings for all placeholders
   useEffect(() => {
     const initialValues: Record<string, string> = {};
     linkBadgeTextAreas.forEach((placeholder) => {
@@ -54,41 +48,27 @@ const LinksDialogBox: React.FC<LinksDialogBoxProps> = ({ isOpen, onClose }) => {
     setLinkValues(initialValues);
   }, []);
 
-  // Handler for updating values from LinkTextAreas
   const handleValueChange = (placeholder: string, value: string) => {
-    setLinkValues((prev) => ({
-      ...prev,
-      [placeholder]: value,
-    }));
-
-    // Clear error for this field when value changes
+    setLinkValues((prev) => ({ ...prev, [placeholder]: value }));
     if (validationErrors[placeholder]) {
       setValidationErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[placeholder];
         return newErrors;
       });
-
-      // Reset button text if all errors are cleared
       if (Object.keys(validationErrors).length === 1) {
         setButtonText("Set Links");
       }
     }
   };
 
-  // Handler for the "Set Links" button click
   const handleSetLinks = async () => {
-    // Reset validation errors
     setValidationErrors({});
-
-    // Validate all URLs
     const errors: Record<string, string> = {};
     let hasErrors = false;
 
-    // Check each URL
     Object.entries(linkValues).forEach(([placeholder, url]) => {
-      if (url.trim() === "") return; // Skip empty URLs
-
+      if (url.trim() === "") return;
       try {
         urlSchema.parse(url);
       } catch (err) {
@@ -100,26 +80,16 @@ const LinksDialogBox: React.FC<LinksDialogBoxProps> = ({ isOpen, onClose }) => {
     });
 
     if (hasErrors) {
-      // Set validation errors to display in UI
       setValidationErrors(errors);
-      // Change button text
       setButtonText("Invalid Links");
-      // Don't console log anything for errors
     } else {
-      // Reset button text
       setButtonText("Set Links");
-
-      // Format the output in the desired format
       const formattedLinks: Record<string, string> = {};
-
       Object.entries(linkValues).forEach(([placeholder, url]) => {
-        if (url.trim() === "") return; // Skip empty URLs
-
-        // Use the mapping to get a clean title
+        if (url.trim() === "") return;
         const title = placeholderToTitle[placeholder] || placeholder;
         formattedLinks[title] = url;
       });
-
       try {
         await updateProfileData({ links: formattedLinks });
         onClose(false);
@@ -131,19 +101,24 @@ const LinksDialogBox: React.FC<LinksDialogBoxProps> = ({ isOpen, onClose }) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="min-h-[400px] min-w-[700px]">
+      {/* Responsive: near-full-screen on mobile, capped at 2xl on desktop */}
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-2xl min-h-[400px]">
         <DialogHeader>
           <DialogTitle className="text-2xl flex justify-center items-start">
             {userData?.links ? "Edit links" : "Add links"}
           </DialogTitle>
           <DialogDescription className="flex flex-col h-full w-full">
-            <div className="h-full w-full flex flex-row space-x-3 mb-5">
-              <div className="h-full w-full flex flex-col items-center justify-evenly space-y-7">
+            {/* 
+              On very small screens, stack label + input vertically.
+              On sm+ screens, show them side by side.
+            */}
+            <div className="h-full w-full flex flex-col sm:flex-row gap-4 mb-5 mt-3">
+              <div className="flex-1 flex flex-col items-center justify-evenly gap-6">
                 {linkBadgeTitles.map((title) => (
                   <LinkBoxes key={title} title={title} />
                 ))}
               </div>
-              <div className="h-full w-full flex flex-col items-center justify-evenly space-y-7">
+              <div className="flex-1 flex flex-col items-center justify-evenly gap-6">
                 {linkBadgeTextAreas.map((inputPlaceholder) => (
                   <LinkTextAreas
                     key={inputPlaceholder}
