@@ -10,7 +10,6 @@ import { MoonLoader } from "react-spinners";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Submission, useSubmissionStore } from "@/features/submissionStore";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from "next/navigation";
 
 type SolvedQuestionsDataTableProps = {};
@@ -33,7 +32,7 @@ const SolvedQuestionsDataTable: React.FC<
     // First sort all submissions by createdAt date (newest first)
     const sortedSubmissions = [...userSubmissions].sort(
       (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
     // Then filter for unique problem titles (keeping the first occurrence which will be the newest)
@@ -64,14 +63,14 @@ const SolvedQuestionsDataTable: React.FC<
     const problemTitle = submission.problem?.title;
     if (problemTitle) {
       router.push(
-        `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}`
+        `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}`,
       );
     }
   };
 
   return (
     <>
-      <ScrollArea className="h-[550px] w-full rounded-xl bg-accent border">
+      <div className="w-full overflow-y-auto rounded-xl bg-accent border">
         {isLoading ? (
           <div className="h-[550px] w-full flex justify-center items-center">
             <MoonLoader size={200} color="#ffffff" />
@@ -99,7 +98,7 @@ const SolvedQuestionsDataTable: React.FC<
                           >
                             {flexRender(
                               cell.column.columnDef.cell,
-                              cell.getContext()
+                              cell.getContext(),
                             )}
                           </TableCell>
                         ))}
@@ -152,7 +151,7 @@ const SolvedQuestionsDataTable: React.FC<
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
     </>
   );
 };
