@@ -3,14 +3,13 @@
 import React, { useEffect, useState } from "react";
 import { BookOpenCheck, PencilLine } from "lucide-react";
 import { useUserStore } from "@/features/userStore";
-import { ClipLoader } from "react-spinners";
 import InstitutionDialogBox from "../helperComponents/dialogBoxes/InstitutionDialogBox";
 import { Button } from "@/components/ui/button";
 
 type EditProfileBarProps = {};
 
 const EditProfileBar: React.FC<EditProfileBarProps> = () => {
-  const { solvedLanguages, fetchSolvedLanguages, isLoading, userData } =
+  const { solvedLanguages, fetchSolvedLanguages, userData } =
     useUserStore();
 
   const [showInstitutionDialogBox, setShowInstitutionDialogBox] =
@@ -18,17 +17,9 @@ const EditProfileBar: React.FC<EditProfileBarProps> = () => {
 
   useEffect(() => {
     fetchSolvedLanguages();
-  }, [fetchSolvedLanguages]);
+  }, []);
 
   const college = userData?.institution;
-
-  if (isLoading) {
-    return (
-      <div className="bg-accent border h-full w-full rounded-xl flex items-center justify-center">
-        <ClipLoader size={50} color="#ffffff" />
-      </div>
-    );
-  }
 
   return (
     <>
