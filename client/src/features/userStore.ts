@@ -106,11 +106,11 @@ export const useUserStore = create<authData>()((set) => ({
     }
   },
 
-  updateLinks: async (links: Record<string, string>) => {
+  updateLinks: async (links) => {
     try {
       set({ isDataUpdating: true });
       await axios.patch(`${API_URL}/user/profile`, { links });
-      set({ isDataUpdating: false });
+      set({ isDataUpdating: false, userLinks: links }); // ✅ sync local state
     } catch (error: any) {
       set({
         error: error.response?.data?.message || "Failed to update links",
@@ -137,25 +137,24 @@ export const useUserStore = create<authData>()((set) => ({
     }
   },
 
-  updateProfileData: async (data: {
-    description?: string;
-    links?: Record<string, string>;
-  }) => {
+  updateProfileData: async (data) => {
     try {
       set({ isDataUpdating: true });
-      const response = await axios.patch(`${API_URL}/user/profile`, data);
+      await axios.patch(`${API_URL}/user/profile`, data);
 
-      // Update user data in store if description was updated
-      if (data.description) {
-        set((state) => ({
-          userData: state.userData
-            ? { ...state.userData, description: data.description }
-            : null,
-          isDataUpdating: false,
-        }));
-      } else {
-        set({ isDataUpdating: false });
-      }
+      set((state) => ({
+        userData: state.userData
+          ? {
+              ...state.userData,
+              ...(data.description !== undefined && {
+                description: data.description,
+              }),
+              ...(data.links !== undefined && { links: data.links }), // ✅ sync links into userData
+            }
+          : null,
+        ...(data.links !== undefined && { userLinks: data.links }), // ✅ sync userLinks too
+        isDataUpdating: false,
+      }));
     } catch (error: any) {
       set({
         error: error.response?.data?.message || "Failed to update profile data",
@@ -164,6 +163,7 @@ export const useUserStore = create<authData>()((set) => ({
       throw error;
     }
   },
+  
   fetchSolvedLanguages: async () => {
     try {
       set({ isLoading: true, error: null });
