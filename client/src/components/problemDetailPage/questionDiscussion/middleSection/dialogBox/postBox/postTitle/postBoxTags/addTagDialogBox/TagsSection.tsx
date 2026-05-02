@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { usePostStore } from "@/features/postStore";
 import { MoonLoader } from "react-spinners";
+import { TagsSectionSkeleton } from "./TagsSectionSkeleton";
 
 type TagsSectionProps = {
   searchTerm: string;
@@ -183,11 +184,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   const validationMessage = currentValidation?.message;
 
   if (isFetchingTag) {
-    return (
-      <div className="h-full w-full flex justify-center items-center">
-        <MoonLoader color="#ffffff" />
-      </div>
-    );
+    return <TagsSectionSkeleton />;
   }
 
   if (tagFetchingError) {
