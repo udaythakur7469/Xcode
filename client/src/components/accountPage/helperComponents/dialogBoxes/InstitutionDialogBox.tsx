@@ -30,7 +30,7 @@ const InstitutionDialogBox: React.FC<InstitutionDialogBoxProps> = ({
   }, [userData?.institution]);
 
   const handleInstitutionChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLTextAreaElement>,
   ) => {
     setInstitution(e.target.value);
   };
@@ -46,7 +46,7 @@ const InstitutionDialogBox: React.FC<InstitutionDialogBoxProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="min-h-[200px] min-w-[600px]">
+      <DialogContent className="w-full max-w-[95vw] sm:max-w-xl min-h-[200px]">
         <DialogHeader>
           <DialogTitle className="text-2xl flex justify-center items-start mb-3">
             {userData?.institution ? "Edit Institution" : "Add Institution"}
@@ -54,7 +54,7 @@ const InstitutionDialogBox: React.FC<InstitutionDialogBoxProps> = ({
           <DialogDescription className="flex flex-col h-full w-full">
             <Textarea
               placeholder="Enter your institution"
-              className="h-full w-full mb-5"
+              className="h-full w-full mb-5 min-h-[80px]"
               value={institution}
               onChange={handleInstitutionChange}
             />
