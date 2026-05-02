@@ -21,7 +21,8 @@ import {
   DropdownMenu,
   DropdownMenuTrigger,
 } from "@/components/ui/logout-dropdown-menu";
-import { MoonLoader } from "react-spinners";
+import { UserProfileSkeleton } from "@/components/accountPage/UserProfileSkeleton";
+import NavbarShell from "./NavbarShell";
 
 type NavbarProps = {
   firstButton: string;
@@ -101,9 +102,16 @@ const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
   const isAccountPage = pathname?.includes("/account");
   if (!isAuthChecked && isAccountPage) {
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-background">
-        <MoonLoader color="#ffffff" size={60} />
-      </div>
+      <>
+        <NavbarShell
+          firstButton={firstButton}
+          secondButton={secondButton}
+          goToHomePage={goToHomePage}
+          goToPage={goToPage}
+          rightSlot={<div className="w-8 h-8" />}
+        />
+        <UserProfileSkeleton />
+      </>
     );
   }
 
