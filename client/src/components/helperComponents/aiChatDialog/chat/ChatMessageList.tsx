@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useLayoutEffect, useRef } from "react";
-import { MoonLoader } from "react-spinners";
 import { useChatStore, selectVisibleMessages } from "@/features/chatStore";
 import ChatBubble from "./ChatBubble";
+import { ChatMessageListSkeleton } from "./ChatMessageListSkeleton";
 
 type ChatMessageListProps = {
   activeChatId: string | null;
@@ -57,11 +57,7 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   }
 
   if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <MoonLoader color="#ffffff" size={28} />
-      </div>
-    );
+    return <ChatMessageListSkeleton />;
   }
 
   if (!activeChatId) {
