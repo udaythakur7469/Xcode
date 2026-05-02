@@ -203,39 +203,69 @@ export const updateProfilePicture = async (req, res) => {
 };
 export const updateProfile = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const userId = req.user.userId;
         const { description, links, institution } = req.body;
-        const updateData = {};
+        // Build scalar-only update (no relations)
+        const scalarUpdate = {};
         if (description !== undefined)
-            updateData.description = description;
-        if (links !== undefined)
-            updateData.links = links;
+            scalarUpdate.description = description;
         if (institution !== undefined)
-            updateData.institution = institution;
-        const updatedUser = await prisma.user.update({
-            where: { id: userId },
-            data: updateData,
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                picture: true,
-                description: true,
-                institution: true,
-                links: true,
-            },
-        });
+            scalarUpdate.institution = institution;
+        let updatedUser;
+        if (links !== undefined) {
+            // links is Record<string, string> e.g. { Github: "...", LinkedIn: "..." }
+            // Use a transaction: delete old rows, then insert new ones
+            [, updatedUser] = await prisma.$transaction([
+                // 1. Wipe existing links for this user
+                prisma.userLink.deleteMany({ where: { userId } }),
+                // 2. Re-create user row (scalar fields) + create fresh link rows
+                prisma.user.update({
+                    where: { id: userId },
+                    data: {
+                        ...scalarUpdate,
+                        links: {
+                            create: Object.entries(links).map(([key, value]) => ({
+                                key,
+                                value,
+                            })),
+                        },
+                    },
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        picture: true,
+                        description: true,
+                        institution: true,
+                        links: true,
+                    },
+                }),
+            ]);
+        }
+        else {
+            // No links in payload — just update scalar fields
+            updatedUser = await prisma.user.update({
+                where: { id: userId },
+                data: scalarUpdate,
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    picture: true,
+                    description: true,
+                    institution: true,
+                    links: true,
+                },
+            });
+        }
         try {
-            if (req.cache) {
+            if (req.cache)
                 await req.cache.invalidateByTags(["user:profile"]);
-            }
         }
         catch (cacheErr) {
             console.error("Cache invalidation error in updateProfile", cacheErr);
         }
-        res
-            .status(200)
-            .json({
+        res.status(200).json({
             success: true,
             message: "Profile updated successfully",
             user: updatedUser,
@@ -243,10 +273,9 @@ export const updateProfile = async (req, res) => {
     }
     catch (error) {
         console.error("Error updating profile:", error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to update profile",
-        });
+        res
+            .status(500)
+            .json({ success: false, message: "Failed to update profile" });
     }
 };
 export const getUserSolvedLanguages = async (req, res) => {
