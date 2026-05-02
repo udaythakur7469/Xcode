@@ -13,11 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MoonLoader } from "react-spinners";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useSubmissionStore } from "@/features/submissionStore";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import CodeDialog from "../dialogBoxes/CodeDialog";
 import { AllSubmissionsTableSkeleton } from "./SubmissionTableSkeleton";
 
@@ -57,7 +55,7 @@ const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
 
   return (
     <>
-      <ScrollArea className="h-[550px] w-full">
+      <div className="h-full w-full overflow-y-auto">
         {isLoading ? (
           <AllSubmissionsTableSkeleton />
         ) : error ? (
@@ -80,7 +78,7 @@ const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
                             ? null
                             : flexRender(
                                 header.column.columnDef.header,
-                                header.getContext()
+                                header.getContext(),
                               )}
                         </TableHead>
                       ))}
@@ -103,7 +101,7 @@ const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
                           >
                             {flexRender(
                               cell.column.columnDef.cell,
-                              cell.getContext()
+                              cell.getContext(),
                             )}
                           </TableCell>
                         ))}
@@ -130,7 +128,7 @@ const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
                   onClick={() =>
                     getAllSubmissions(
                       problemTitle,
-                      allSubmissionsPagination.currentPage - 1
+                      allSubmissionsPagination.currentPage - 1,
                     )
                   }
                   disabled={allSubmissionsPagination.currentPage === 1}
@@ -146,7 +144,7 @@ const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
                   onClick={() =>
                     getAllSubmissions(
                       problemTitle,
-                      allSubmissionsPagination.currentPage + 1
+                      allSubmissionsPagination.currentPage + 1,
                     )
                   }
                   disabled={
@@ -162,7 +160,7 @@ const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
       {/* Code Dialog */}
       <CodeDialog
         isOpen={isCodeDialogOpen}

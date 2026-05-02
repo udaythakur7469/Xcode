@@ -13,11 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { MoonLoader } from "react-spinners";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useSubmissionStore } from "@/features/submissionStore";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import CodeDialog from "../dialogBoxes/CodeDialog";
 import { UserSubmissionsTableSkeleton } from "./SubmissionTableSkeleton";
 
@@ -55,7 +53,7 @@ const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
 
   return (
     <>
-      <ScrollArea className="h-[550px] w-full">
+      <div className="h-full w-full overflow-y-auto">
         {isLoading ? (
           <UserSubmissionsTableSkeleton />
         ) : error ? (
@@ -160,7 +158,7 @@ const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
       {/* Code Dialog */}
       <CodeDialog
         isOpen={isCodeDialogOpen}
