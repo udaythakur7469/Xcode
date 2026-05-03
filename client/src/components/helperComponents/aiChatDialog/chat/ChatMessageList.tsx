@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useLayoutEffect, useRef } from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import { useChatStore, selectVisibleMessages } from "@/features/chatStore";
 import ChatBubble from "./ChatBubble";
 import { ChatMessageListSkeleton } from "./ChatMessageListSkeleton";
@@ -29,22 +29,43 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   // Reset initial-load flag whenever the active chat changes
   useLayoutEffect(() => {
     isInitialLoad.current = true;
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
   }, [activeChatId]);
 
   // Snap to bottom before paint on initial load (WhatsApp-like behavior)
   useLayoutEffect(() => {
     if (messages.length === 0) return;
-    if (isInitialLoad.current) {
-      if (containerRef.current) {
-        containerRef.current.scrollTop = containerRef.current.scrollHeight;
-      }
-      isInitialLoad.current = false;
-    }
-  }, [messages]);
 
-  // Smooth scroll when new messages arrive after initial load
-  useEffect(() => {
-    if (isInitialLoad.current) return;
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+
+      const container = containerRef.current;
+      if (!container) return;
+
+      // First attempt — synchronous snap before paint
+      container.scrollTop = container.scrollHeight;
+
+      // Second attempt — after all child heights are resolved
+      // MutationObserver catches dynamic content (markdown, code blocks)
+      // that finishes rendering after the initial layout pass
+      const observer = new MutationObserver(() => {
+        container.scrollTop = container.scrollHeight;
+      });
+
+      observer.observe(container, { childList: true, subtree: true });
+
+      // Stop observing after 500ms — by then everything has painted
+      const timeout = setTimeout(() => observer.disconnect(), 500);
+
+      return () => {
+        clearTimeout(timeout);
+        observer.disconnect();
+      };
+    }
+
+    // New message after initial load — smooth scroll
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
