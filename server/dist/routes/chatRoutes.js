@@ -1,6 +1,8 @@
 import express from "express";
 import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js";
-import { createChat, deleteChat, getChats, getMessages, sendMessage, abortMessage, getMessageById, createBranch, updateActivePath, updateFeedback, } from "../controllers/chatController.js";
+import { createChat, deleteChat, getChats, getMessages, sendMessage, abortMessage, getMessageById, createBranch, updateActivePath, updateFeedback, shareChat, getSharedChat, forkSharedChat, } from "../controllers/chatController.js";
+import { authMiddleware } from "../middlewares/authMiddleware.js";
+import { readLimiter } from "../middlewares/rateLimiter.js";
 const router = express.Router();
 // ── Existing routes (unchanged) ──────────────────────────────────────────────
 router.route("/createChat").post(optionalAuthMiddleware, createChat);
@@ -22,4 +24,11 @@ router.route("/activePath").patch(optionalAuthMiddleware, updateActivePath);
 router
     .route("/message/:messageId/feedback")
     .patch(optionalAuthMiddleware, updateFeedback);
+//-----------------------------------------share chat routes----------------------------------------------------------------------
+// POST /api/chatShare/share — auth required, creates snapshot, returns shareId
+router.route("/share").post(authMiddleware, readLimiter, shareChat);
+// GET /api/chatShare/shared/:shareId — NO auth, publicly accessible
+router.route("/shared/:shareId").get(readLimiter, getSharedChat);
+// POST /api/chatShare/fork — auth required, forks snapshot into user's chats
+router.route("/fork").post(authMiddleware, readLimiter, forkSharedChat);
 export default router;
