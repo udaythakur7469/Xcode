@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { MessageCirclePlus, Trash2 } from "lucide-react";
+import { MessageCirclePlus, Share2, Trash2 } from "lucide-react";
 import { getChatsResponse } from "@/features/chatStore";
-import { ChatSidebarSkeleton } from "./ChatSidebarSkeleton";
+import { MoonLoader } from "react-spinners";
 
 type ChatSidebarProps = {
   chats?: getChatsResponse[];
@@ -12,6 +12,9 @@ type ChatSidebarProps = {
   onNewChat: () => void;
   isLoading?: boolean;
   onDeleteChat: (chatId: string) => void;
+  // New prop: called when the share icon is clicked on the active chat row.
+  onShareChat: (chatId: string) => void;
+  isSharingChat: boolean;
   gettingChatsError: string | null;
 };
 
@@ -22,6 +25,8 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   onNewChat,
   isLoading = false,
   onDeleteChat,
+  onShareChat,
+  isSharingChat=false,
   gettingChatsError,
 }) => {
   return (
@@ -40,7 +45,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
             {gettingChatsError}
           </div>
         ) : isLoading ? (
-          <ChatSidebarSkeleton />
+          <div className="flex h-full justify-center items-center">
+            <MoonLoader color="#ffffff" />
+          </div>
         ) : chats?.length === 0 ? (
           <div className="p-4 text-center text-gray-400 text-sm">
             No chats yet
@@ -64,19 +71,39 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 }
               `}
             >
-              {/* ✅ Always render the current title from the chat object */}
               <div className="truncate flex-1" title={chat.title}>
                 {chat.title || "New Chat"}
               </div>
+
+              {/* Share + Delete — only visible on the active chat row */}
               {activeChatId === chat.id ? (
-                <Trash2
-                  size={16}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteChat(chat.id);
-                  }}
-                  className="flex-shrink-0 ml-2 hover:text-red-500 transition-colors cursor-pointer"
-                />
+                <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                  {/* Share icon — left of delete, stopPropagation prevents
+                      the parent onClick from also triggering onSelectChat */}
+
+                  {isSharingChat ? (
+                    <MoonLoader size={15} color="#ffffff" />
+                  ) : (
+                    <Share2
+                      size={15}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onShareChat(chat.id);
+                      }}
+                      className="hover:text-blue-300 transition-colors cursor-pointer"
+                      title="Share this chat"
+                    />
+                  )}
+                  <Trash2
+                    size={15}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteChat(chat.id);
+                    }}
+                    className="hover:text-red-500 transition-colors cursor-pointer"
+                    title="Delete this chat"
+                  />
+                </div>
               ) : null}
             </div>
           ))
