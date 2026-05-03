@@ -752,3 +752,186 @@ function generateAsync({ aiPlaceholderId, chatId, userMessageId, currentUserMess
         }
     })();
 }
+//-----------------------------------------------share chat controllers-----------------------------------------------------------
+// ── Helper: resolve the active path of a chat ─────────────────────────────────
+// Reads Chat.activePath (same source of truth the frontend uses) and fetches
+// only the messages along that path with status "sent" or "aborted".
+// This guarantees the snapshot matches exactly what the sharer sees on screen.
+async function resolveSnapshotMessages(chatId) {
+    const chat = await prisma.chat.findUnique({
+        where: { id: chatId },
+        select: { activePath: true },
+    });
+    if (!chat)
+        return null;
+    let messageIds = chat.activePath ?? [];
+    // Fallback: if activePath is empty, fetch all messages ordered by date
+    if (messageIds.length === 0) {
+        const all = await prisma.message.findMany({
+            where: { ChatId: chatId },
+            orderBy: { createdAt: "asc" },
+            select: { id: true },
+        });
+        messageIds = all.map((m) => m.id);
+    }
+    if (messageIds.length === 0)
+        return [];
+    // Fetch in one query then re-order to match activePath order
+    const messages = await prisma.message.findMany({
+        where: {
+            id: { in: messageIds },
+            ChatId: chatId,
+            status: { in: ["sent", "aborted"] },
+        },
+        select: {
+            id: true,
+            ChatId: true,
+            parentId: true,
+            text: true,
+            role: true,
+            status: true,
+            aiModel: true,
+            feedback: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
+    // Re-order to match activePath sequence
+    const byId = new Map(messages.map((m) => [m.id, m]));
+    return messageIds
+        .map((id) => byId.get(id))
+        .filter(Boolean);
+}
+// ── POST /api/chatShare/share ─────────────────────────────────────────────────
+// Auth required. Creates a snapshot of the active path and returns shareId.
+export const shareChat = async (req, res, next) => {
+    const userId = req.user?.Id || req.user?.userId;
+    const { chatId } = req.body;
+    try {
+        if (!chatId || typeof chatId !== "string") {
+            throw createHttpError.BadRequest("Please provide chatId");
+        }
+        // Verify ownership
+        const chat = await prisma.chat.findUnique({
+            where: { id: chatId },
+            select: { userId: true, title: true },
+        });
+        if (!chat) {
+            throw createHttpError.NotFound("Chat not found");
+        }
+        if (chat.userId !== userId) {
+            throw createHttpError.Forbidden("Access denied");
+        }
+        const messages = await resolveSnapshotMessages(chatId);
+        if (!messages || messages.length === 0) {
+            throw createHttpError.BadRequest("Cannot share an empty chat");
+        }
+        const shared = await prisma.sharedChat.create({
+            data: {
+                title: chat.title,
+                messages: messages,
+                userId,
+            },
+        });
+        return res.status(201).json({
+            success: true,
+            message: "Chat shared successfully",
+            shareId: shared.id,
+        });
+    }
+    catch (error) {
+        logger.error("Error in shareChat controller", error);
+        next(error);
+    }
+};
+// ── GET /api/chatShare/shared/:shareId ────────────────────────────────────────
+// No auth required — publicly accessible snapshot for any recipient.
+export const getSharedChat = async (req, res, next) => {
+    const { shareId } = req.params;
+    try {
+        if (!shareId || typeof shareId !== "string") {
+            throw createHttpError.BadRequest("Please provide shareId");
+        }
+        const shared = await prisma.sharedChat.findUnique({
+            where: { id: shareId },
+        });
+        if (!shared) {
+            return res.status(404).json({
+                success: false,
+                message: "Shared chat not found or link is invalid",
+            });
+        }
+        return res.status(200).json({
+            success: true,
+            data: {
+                id: shared.id,
+                title: shared.title,
+                messages: shared.messages,
+                createdAt: shared.createdAt,
+            },
+        });
+    }
+    catch (error) {
+        logger.error("Error in getSharedChat controller", error);
+        next(error);
+    }
+};
+// ── POST /api/chatShare/fork ──────────────────────────────────────────────────
+// Auth required. Creates a new Chat for the logged-in user from the snapshot.
+// The forked chat is a clean linear tree (no branching) — a fresh copy of the
+// shared conversation that the user can continue from.
+export const forkSharedChat = async (req, res, next) => {
+    const userId = req.user?.Id || req.user?.userId;
+    const { shareId } = req.body;
+    try {
+        if (!shareId || typeof shareId !== "string") {
+            throw createHttpError.BadRequest("Please provide shareId");
+        }
+        const shared = await prisma.sharedChat.findUnique({
+            where: { id: shareId },
+        });
+        if (!shared) {
+            throw createHttpError.NotFound("Shared chat not found");
+        }
+        const snapshotMessages = shared.messages;
+        // Build a new flat linear tree inside a transaction.
+        // Each message's parentId = the previous message's new ID.
+        // activePath is persisted so the frontend loads correctly on first open.
+        const forkedChat = await prisma.$transaction(async (tx) => {
+            const chat = await tx.chat.create({
+                data: { userId, title: shared.title },
+            });
+            let prevId = null;
+            const newActivePath = [];
+            for (const msg of snapshotMessages) {
+                const created = await tx.message.create({
+                    data: {
+                        ChatId: chat.id,
+                        parentId: prevId,
+                        text: msg.text,
+                        role: msg.role,
+                        status: "sent",
+                        aiModel: msg.aiModel ?? null,
+                    },
+                });
+                prevId = created.id;
+                newActivePath.push(created.id);
+            }
+            // Persist activePath so frontend loads immediately without recomputing
+            await tx.chat.update({
+                where: { id: chat.id },
+                data: { activePath: newActivePath },
+            });
+            return chat;
+        });
+        return res.status(201).json({
+            success: true,
+            message: "Chat forked successfully",
+            chatId: forkedChat.id,
+        });
+    }
+    catch (error) {
+        logger.error("Error in forkSharedChat controller", error);
+        next(error);
+    }
+};
