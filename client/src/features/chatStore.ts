@@ -74,6 +74,26 @@ interface ChatTreeCache {
   activePath: string[];
 }
 
+export interface SnapshotMessage {
+  id: string;
+  ChatId: string;
+  parentId: string | null;
+  text: string;
+  role: "user" | "assistant";
+  status: "sent" | "aborted";
+  aiModel: string | null;
+  feedback: "LIKE" | "DISLIKE" | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SharedChatData {
+  id: string;
+  title: string;
+  messages: SnapshotMessage[];
+  createdAt: string;
+}
+
 interface ChatState {
   // ── View ─────────────────────────────────────────────────────────────────
   activeChatId: string | null;
@@ -120,6 +140,13 @@ interface ChatState {
   // ── Problem context ───────────────────────────────────────────────────────
   problemTitle: string | null;
 
+  // ── Shared chat state ─────────────────────────────────────────────────────
+  sharedChatData: SharedChatData | null;
+  isSharingChat: boolean;
+  isLoadingSharedChat: boolean;
+  sharedChatError: string | null;
+  isForking: boolean;
+
   // ── Actions ───────────────────────────────────────────────────────────────
   setAiModel: (model: AiModel) => void;
   setProblemTitle: (title: string | null) => void;
@@ -158,6 +185,11 @@ interface ChatState {
   abortActiveGeneration: () => Promise<void>;
 
   resetStore: () => void;
+
+  shareChat: (chatId: string) => Promise<string | null>;
+  getSharedChat: (shareId: string) => Promise<void>;
+  forkSharedChat: (shareId: string) => Promise<string | null>;
+  clearSharedChat: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,6 +220,11 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   inputDrafts: {},
   editingState: null,
   problemTitle: null,
+  sharedChatData: null,
+  isSharingChat: false,
+  isLoadingSharedChat: false,
+  sharedChatError: null,
+  isForking: false,
 
   // ── Setters ───────────────────────────────────────────────────────────────
 
@@ -887,6 +924,55 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     }
   },
 
+  shareChat: async (chatId) => {
+    set({ isSharingChat: true});
+    try {
+      const res = await axios.post(`${API_URL}/chat/share`, { chatId });
+      const shareId: string = res.data.shareId;
+      const shareUrl = `${window.location.origin}?sharedChat=${shareId}`;
+      set({ isSharingChat: false });
+      return shareUrl;
+    } catch (err: any) {
+      set({ isSharingChat: false });
+      throw err;
+    }
+  },
+
+  getSharedChat: async (shareId) => {
+    set({ isLoadingSharedChat: true, sharedChatError: null });
+    try {
+      const res = await axios.get(`${API_URL}/chat/shared/${shareId}`);
+      set({ sharedChatData: res.data.data });
+    } catch (err: any) {
+      set({
+        sharedChatError:
+          err?.response?.data?.message ?? "Failed to load shared chat",
+      });
+    } finally {
+      set({ isLoadingSharedChat: false });
+    }
+  },
+
+  forkSharedChat: async (shareId) => {
+    set({ isForking: true });
+    try {
+      const res = await axios.post(`${API_URL}/chat/fork`, { shareId });
+      return res.data.chatId as string;
+    } catch (err: any) {
+      throw err;
+    } finally {
+      set({ isForking: false });
+    }
+  },
+
+  clearSharedChat: () => {
+    set({
+      sharedChatData: null,
+      sharedChatError: null,
+      isLoadingSharedChat: false,
+    });
+  },
+
   // ── Reset ─────────────────────────────────────────────────────────────────
   // inputDrafts intentionally preserved across dialog close/open.
 
@@ -1127,10 +1213,7 @@ let _cachedMessages: MessageNode[] = [];
 
 export function selectVisibleMessages(state: ChatState): MessageNode[] {
   // Return cached result if neither activePath nor nodeMap reference changed
-  if (
-    state.activePath === _cachedPath &&
-    state.nodeMap === _cachedNodeMap
-  ) {
+  if (state.activePath === _cachedPath && state.nodeMap === _cachedNodeMap) {
     return _cachedMessages;
   }
 
