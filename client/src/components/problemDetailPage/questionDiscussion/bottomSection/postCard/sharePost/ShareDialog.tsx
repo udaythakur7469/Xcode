@@ -26,7 +26,7 @@ import {
 } from "@/types/share";
 import {
   buildPostShareUrl,
-  buildSocialUrl,
+  buildPostSocialUrl,
   copyToClipboard,
   openSharePopup,
 } from "@/lib/share/shareUtils";
@@ -235,7 +235,6 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
       if (!prefetchedPost) setPostData(null);
     }
   }, [isOpen, prefetchedPost]);
-
   // ── Handlers ───────────────────────────────────────────────────────────
 
   const handleCopyLink = async () => {
@@ -245,7 +244,7 @@ const ShareDialog: React.FC<ShareDialogProps> = ({
   };
 
   const handleSocialShare = (platform: SocialPlatform) => {
-    const url = buildSocialUrl(platform, shareUrl, postData?.title ?? "");
+    const url = buildPostSocialUrl(platform, shareUrl, postData?.title ?? "");
     openSharePopup(url);
   };
 
