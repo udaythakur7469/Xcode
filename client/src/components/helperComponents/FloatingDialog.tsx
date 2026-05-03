@@ -10,6 +10,31 @@ import {
 } from "framer-motion";
 import { Maximize, Menu, Minimize, RotateCcw, X } from "lucide-react";
 
+const getKey = (dialogType: string, field: string) =>
+  `fd_${dialogType}_${field}`;
+
+const load = <T,>(dialogType: string, field: string, fallback: T): T => {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = sessionStorage.getItem(getKey(dialogType, field));
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const save = (dialogType: string, field: string, value: unknown) => {
+  try {
+    sessionStorage.setItem(getKey(dialogType, field), JSON.stringify(value));
+  } catch {}
+};
+
+const clear = (dialogType: string, field: string) => {
+  try {
+    sessionStorage.removeItem(getKey(dialogType, field));
+  } catch {}
+};
+
 interface FloatingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -23,6 +48,7 @@ interface FloatingDialogProps {
   enableSidebar?: boolean;
   sidebarContent?: React.ReactNode;
   defaultSidebarWidth?: number;
+  forceSidebarClosed?: boolean;
 }
 
 const FloatingDialog: React.FC<FloatingDialogProps> = ({
@@ -37,12 +63,15 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   enableMaximize = false,
   enableSidebar,
   sidebarContent,
+  forceSidebarClosed = false,
 }) => {
-  const [size, setSize] = useState(defaultSize);
+  const [size, setSize] = useState(() => load(dialogType, "size", defaultSize));
   const [isResizing, setIsResizing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [resizeDirection, setResizeDirection] = useState("");
-  const [isMaximized, setIsMaximized] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(() =>
+    load(dialogType, "isMaximized", false),
+  );
   const [isSidebarOpen, setIsSidebarOpen] = useState(enableSidebar);
   const [sidebarWidthPercent, setSidebarWidthPercent] = useState(31.1);
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
@@ -53,6 +82,13 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   } | null>(null);
   const [position, setPosition] = useState(() => {
     if (typeof window === "undefined") return defaultPosition;
+
+    const saved = load<{ x: number; y: number } | null>(
+      dialogType,
+      "position",
+      null,
+    );
+    if (saved) return saved;
 
     if (dialogType === "CommandPalette") {
       return {
@@ -67,12 +103,15 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
     };
   });
 
+
   const dialogRef = useRef<HTMLDivElement>(null);
   const startPos = useRef({ x: 0, y: 0 });
   const startSize = useRef({ width: 0, height: 0 });
   const startPosition = useRef({ x: 0, y: 0 });
   const dragOffset = useRef({ x: 0, y: 0 });
   const sidebarResizeStart = useRef({ x: 0, widthPercent: 0 });
+
+  const savedSidebarWidthPercent = useRef(31.1);
 
   // Motion values for smooth animation
   const motionX = useMotionValue(position.x);
@@ -91,6 +130,25 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
       motionSidebarWidthPercent.set(sidebarWidthPercent);
     }
   }, [enableSidebar, motionSidebarWidthPercent, sidebarWidthPercent]);
+
+  useEffect(() => {
+    if (forceSidebarClosed) {
+      // Save the current width before collapsing
+      savedSidebarWidthPercent.current = sidebarWidthPercent;
+      // Animate to 0 using the spring
+      motionSidebarWidthPercent.set(0);
+      // Delay the DOM removal so the animation can play
+      setTimeout(() => setIsSidebarOpen(false), 300);
+    } else {
+      // Restore: open sidebar and animate back to saved width
+      setIsSidebarOpen(true);
+      requestAnimationFrame(() => {
+        motionSidebarWidthPercent.set(savedSidebarWidthPercent.current);
+        setSidebarWidthPercent(savedSidebarWidthPercent.current);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [forceSidebarClosed]);
 
   // Spring configuration for smooth animation
   const springConfig = { stiffness: 300, damping: 30 };
@@ -119,6 +177,18 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
     motionWidth.set(size.width);
     motionHeight.set(size.height);
   }, [size.width, size.height, motionWidth, motionHeight]);
+
+  // Persist to sessionStorage — survives reload, clears on tab close
+  useEffect(() => {
+    save(dialogType, "size", size);
+  }, [dialogType, size]);
+  useEffect(() => {
+    save(dialogType, "position", position);
+  }, [dialogType, position]);
+  useEffect(() => {
+    save(dialogType, "isMaximized", isMaximized);
+  }, [dialogType, isMaximized]);
+
 
   // Boundary-aware position setter
   const setBoundaryPosition = useCallback(
@@ -163,6 +233,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (isResizingSidebar) {
+        if (forceSidebarClosed) return;
         const deltaX = e.clientX - sidebarResizeStart.current.x;
         const deltaPercent = (deltaX / size.width) * 100;
         const newPercent = Math.max(
@@ -172,6 +243,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
         // During manual resize, update both motion value and state instantly (no spring)
         setSidebarWidthPercent(newPercent);
+        savedSidebarWidthPercent.current = newPercent;
         motionSidebarWidthPercent.set(newPercent);
       } else if (isResizing) {
         const deltaX = e.clientX - startPos.current.x;
@@ -215,6 +287,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
       isResizing,
       isDragging,
       isResizingSidebar,
+      forceSidebarClosed,
       resizeDirection,
       setBoundaryPosition,
       size.width,
@@ -241,6 +314,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   };
 
   const handleSidebarResizeMouseDown = (e: React.MouseEvent) => {
+    if (forceSidebarClosed) return;
     e.stopPropagation();
     e.preventDefault();
 
@@ -268,8 +342,13 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
   // Reset to default position and size with smooth animation
   const handleReset = () => {
+    clear(dialogType, "size");
+    clear(dialogType, "position");
+    clear(dialogType, "isMaximized");
+
     if (typeof window !== "undefined") {
       const yOffset = dialogType === "CommandPalette" ? -100 : 0;
+
       const centeredPosition = {
         x: Math.max(0, window.innerWidth / 2 - defaultSize.width / 2),
         y: Math.max(
@@ -283,19 +362,15 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
       setIsMaximized(false);
 
       // Animate sidebar back to 31.1% if it's open
-      if (isSidebarOpen) {
+      if (isSidebarOpen && !forceSidebarClosed) {
         motionSidebarWidthPercent.set(31.1);
         setSidebarWidthPercent(31.1);
+        savedSidebarWidthPercent.current = 31.1;
       }
     } else {
       setSize(defaultSize);
       setPosition(defaultPosition);
       setIsMaximized(false);
-
-      if (isSidebarOpen) {
-        motionSidebarWidthPercent.set(31.1);
-        setSidebarWidthPercent(31.1);
-      }
     }
   };
 
@@ -329,6 +404,8 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
   // Handle sidebar open/close with spring animation
   const handleSidebarToggle = () => {
+    if (forceSidebarClosed) return;
+
     if (isSidebarOpen) {
       // Closing: animate from current width to 0
       motionSidebarWidthPercent.set(0);
@@ -582,8 +659,19 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                     size="icon"
                     onClick={handleSidebarToggle}
                     onMouseDown={(e) => e.stopPropagation()}
-                    className="h-8 w-8 flex-shrink-0"
-                    title={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+                    className={`h-8 w-8 flex-shrink-0 ${
+                      forceSidebarClosed
+                        ? "opacity-30 cursor-not-allowed pointer-events-none"
+                        : ""
+                    }`}
+                    title={
+                      forceSidebarClosed
+                        ? "Sidebar disabled in shared mode"
+                        : isSidebarOpen
+                          ? "Close sidebar"
+                          : "Open sidebar"
+                    }
+                    disabled={forceSidebarClosed}
                   >
                     {isSidebarOpen ? (
                       <X strokeWidth={3} />
@@ -595,9 +683,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                 <div
                   className="flex-1 min-w-0"
                   onMouseDown={(e) => {
-                    if (
-                      dialogType === "CommandPalette"
-                    ) {
+                    if (dialogType === "CommandPalette") {
                       e.stopPropagation();
                     }
                   }}
@@ -667,7 +753,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                   </div>
 
                   {/* Sidebar Resize Handle - invisible but functional */}
-                  {isSidebarOpen && (
+                  {isSidebarOpen && !forceSidebarClosed && (
                     <div
                       className="absolute right-0 top-0 bottom-0 w-2 cursor-ew-resize z-20"
                       onMouseDown={handleSidebarResizeMouseDown}
