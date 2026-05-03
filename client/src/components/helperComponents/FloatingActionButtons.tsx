@@ -18,6 +18,9 @@ import {
   ChatContainerWindow,
 } from "./aiChatDialog/ChatContainer";
 import { ForgotPasswordDialog } from "../auth/forgotPasswordPage/ForgotPasswordDialog";
+import { useSearchParams } from "next/navigation";
+
+const PENDING_SHARE_KEY = "pendingShareId";
 
 const FloatingActionButtons = () => {
   const {
@@ -39,6 +42,10 @@ const FloatingActionButtons = () => {
     handleFABClick,
   } = useFABSystem();
 
+  const searchParams = useSearchParams();
+  const shareIdFromUrl = searchParams.get("sharedChat");
+  const isSharedMode = !!shareIdFromUrl;
+
   const [commandPaletteSearchQuery, setCommandPaletteSearchQuery] =
     useState("");
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
@@ -48,6 +55,21 @@ const FloatingActionButtons = () => {
     useState<boolean>(false);
 
   const { checkAuth, isUserAuthenticated } = useUserStore();
+
+  useEffect(() => {
+    if (shareIdFromUrl && !aiChatDialogOpen) {
+      setAiChatDialogOpen(true);
+    }
+  }, [shareIdFromUrl]);
+
+  useEffect(() => {
+    if (!isUserAuthenticated) return;
+    const pending = sessionStorage.getItem(PENDING_SHARE_KEY);
+    if (pending) {
+      sessionStorage.removeItem(PENDING_SHARE_KEY);
+      setAiChatDialogOpen(true);
+    }
+  }, [isUserAuthenticated]);
 
   useEffect(() => {
     if (!commandPaletteDialogOpen) {
@@ -64,6 +86,12 @@ const FloatingActionButtons = () => {
 
   const handleCommandPaletteClear = () => {
     setCommandPaletteSearchQuery("");
+  };
+
+  const openLoginForSharedChat = (currentShareId: string) => {
+    sessionStorage.setItem(PENDING_SHARE_KEY, currentShareId);
+    setAiChatDialogOpen(false);
+    setIsLoginOpen(true);
   };
 
   const openLoginDialogForGuestUsers = () => {
@@ -118,17 +146,21 @@ const FloatingActionButtons = () => {
         defaultSize={{ width: 700, height: 500 }}
         enableReset={true}
         enableMaximize={true}
-        enableSidebar={isUserAuthenticated}
+        enableSidebar={isUserAuthenticated || isSharedMode}
+        forceSidebarClosed={isSharedMode}
         sidebarContent={
           <ChatContainerSidebar
             isDialogOpen={aiChatDialogOpen}
             setDialogOpen={setAiChatDialogOpen}
+            onOpenLoginForSharedChat={openLoginForSharedChat}
           />
         }
       >
         <ChatContainerWindow
+          key={aiChatDialogOpen ? "open" : "closed"}
           onOpenLogin={openLoginDialogForGuestUsers}
           onOpenSignup={openSignupDialogForGuestUsers}
+          onOpenLoginForSharedChat={openLoginForSharedChat}
         />
       </FloatingDialog>
 
