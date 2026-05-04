@@ -1,6 +1,6 @@
 import express from "express";
 import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js";
-import { createChat, deleteChat, getChats, getMessages, sendMessage, abortMessage, getMessageById, createBranch, updateActivePath, updateFeedback, shareChat, getSharedChat, forkSharedChat, } from "../controllers/chatController.js";
+import { createChat, deleteChat, getChats, getMessages, sendMessage, abortMessage, getMessageById, createBranch, updateActivePath, updateFeedback, shareChat, getSharedChat, forkSharedChat, sendChatEmail, } from "../controllers/chatController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { readLimiter } from "../middlewares/rateLimiter.js";
 const router = express.Router();
@@ -31,4 +31,5 @@ router.route("/share").post(authMiddleware, readLimiter, shareChat);
 router.route("/shared/:shareId").get(readLimiter, getSharedChat);
 // POST /api/chatShare/fork — auth required, forks snapshot into user's chats
 router.route("/fork").post(authMiddleware, readLimiter, forkSharedChat);
+router.post("/email", sendChatEmail);
 export default router;

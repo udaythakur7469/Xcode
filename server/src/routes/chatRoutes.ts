@@ -14,6 +14,7 @@ import {
   shareChat,
   getSharedChat,
   forkSharedChat,
+  sendChatEmail,
 } from "../controllers/chatController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { readLimiter } from "../middlewares/rateLimiter.js";
@@ -55,5 +56,7 @@ router.route("/shared/:shareId").get(readLimiter, getSharedChat);
 
 // POST /api/chatShare/fork — auth required, forks snapshot into user's chats
 router.route("/fork").post(authMiddleware, readLimiter, forkSharedChat);
+
+router.post("/email", sendChatEmail);
 
 export default router;
