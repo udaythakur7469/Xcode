@@ -147,6 +147,9 @@ interface ChatState {
   sharedChatError: string | null;
   isForking: boolean;
 
+  isSendingChatEmail: boolean;
+  chatEmailError: string | null;
+
   // ── Actions ───────────────────────────────────────────────────────────────
   setAiModel: (model: AiModel) => void;
   setProblemTitle: (title: string | null) => void;
@@ -190,6 +193,12 @@ interface ChatState {
   getSharedChat: (shareId: string) => Promise<void>;
   forkSharedChat: (shareId: string) => Promise<string | null>;
   clearSharedChat: () => void;
+
+  sendChatEmail: (payload: {
+    chatId: string;
+    recipientEmail: string;
+    shareUrl: string;
+  }) => Promise<void>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -225,6 +234,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   isLoadingSharedChat: false,
   sharedChatError: null,
   isForking: false,
+  isSendingChatEmail: false,
+  chatEmailError: null,
 
   // ── Setters ───────────────────────────────────────────────────────────────
 
@@ -925,7 +936,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   },
 
   shareChat: async (chatId) => {
-    set({ isSharingChat: true});
+    set({ isSharingChat: true });
     try {
       const res = await axios.post(`${API_URL}/chat/share`, { chatId });
       const shareId: string = res.data.shareId;
@@ -971,6 +982,23 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       sharedChatError: null,
       isLoadingSharedChat: false,
     });
+  },
+
+  sendChatEmail: async ({ chatId, recipientEmail, shareUrl }) => {
+    set({ isSendingChatEmail: true, chatEmailError: null });
+    try {
+      await axios.post(`${API_URL}/chat/email`, {
+        chatId,
+        recipientEmail,
+        shareUrl,
+      });
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? "Failed to send email";
+      set({ chatEmailError: msg });
+      throw new Error(msg);
+    } finally {
+      set({ isSendingChatEmail: false });
+    }
   },
 
   // ── Reset ─────────────────────────────────────────────────────────────────
