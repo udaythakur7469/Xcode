@@ -2,6 +2,8 @@ import prisma from "../configs/db.js";
 import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
 import { generateAIResponse } from "../services/rag/aiService.js";
+import { sharedChatEmail } from "../emails/shareChatEmail.js";
+import { MailtrapClient } from "mailtrap";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -1104,6 +1106,51 @@ export const forkSharedChat = async (req: any, res: any, next: any) => {
     });
   } catch (error) {
     logger.error("Error in forkSharedChat controller", error);
+    next(error);
+  }
+};
+
+const client = new MailtrapClient({
+  token: process.env.MAILTRAP_TOKEN!,
+  testInboxId: Number(process.env.MAILTRAP_INBOX_ID),
+});
+
+interface SendChatEmailBody {
+  chatId: string;
+  recipientEmail: string;
+  shareUrl: string;
+  chatTitle?: string | null;
+}
+
+export const sendChatEmail = async (req: any, res: any, next: any): Promise<void> => {
+  const { recipientEmail, shareUrl, chatTitle } = req.body as SendChatEmailBody;
+
+  if (!recipientEmail || !shareUrl) {
+    res.status(400).json({
+      success: false,
+      message: "Recipient email and share URL are required.",
+    });
+    return;
+  }
+
+  try {
+    await client.testing.send({
+      from: {
+        email: "mailtrap@example.com",
+        name: "Nova AI",
+      },
+      to: [{ email: recipientEmail }],
+      subject: "Someone shared a Nova AI chat with you",
+      html: sharedChatEmail({ shareUrl, chatTitle }),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Email sent successfully.",
+    });
+  } catch (error) {
+    const err = error as Error;
+    console.error("[sendChatEmail]", err.message);
     next(error);
   }
 };
