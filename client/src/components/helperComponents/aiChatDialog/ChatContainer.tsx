@@ -264,6 +264,7 @@ export const ChatContainerSidebar: React.FC<SidebarProps> = ({
         isOpen={openSharePostDialog}
         onClose={() => setOpenSharePostDialog(false)}
         shareUrl={shareUrl}
+        chatId={activeChatId}
       />
     </>
   );
