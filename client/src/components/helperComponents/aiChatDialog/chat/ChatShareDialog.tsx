@@ -6,16 +6,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/chatShareDialog";
+} from "@/components/ui/chatSharingDialog";
 import { Button } from "@/components/ui/button";
-import {
-  Check,
-  Copy,
-  Link2,
-  Share2,
-} from "lucide-react";
+import { Check, Copy, Link2, Loader2, Mail, Send, Share2 } from "lucide-react";
 import { SocialPlatform } from "@/types/share";
 import { buildChatSocialUrl, openSharePopup } from "@/lib/share/shareUtils";
+import { useChatStore } from "@/features/chatStore";
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -23,6 +19,7 @@ type ShareDialogProps = {
   isOpen: boolean;
   onClose: () => void;
   shareUrl: string | null;
+  chatId: string | null;
 };
 
 // ── Social platform config ────────────────────────────────────────────────
@@ -109,19 +106,57 @@ const ChatShareDialog: React.FC<ShareDialogProps> = ({
   isOpen,
   onClose,
   shareUrl,
+  chatId,
 }) => {
-
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // ── Email state ────────────────────────────────────────────────────────
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [emailStatus, setEmailStatus] = useState<
+    "idle" | "sending" | "success" | "error"
+  >("idle");
+  const [emailMessage, setEmailMessage] = useState("");
+
+  const { sendChatEmail, isSendingChatEmail } = useChatStore();
+
   const handleCopyLink = async () => {
-      await navigator.clipboard.writeText(shareUrl);
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2500);
-    };
-  
+    await navigator.clipboard.writeText(shareUrl ?? "");
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2500);
+  };
+
   const handleChatSocialShare = (platform: SocialPlatform) => {
     const url = buildChatSocialUrl(platform, shareUrl ?? "");
     openSharePopup(url);
+  };
+
+  const handleSendEmail = async () => {
+    if (!recipientEmail.trim()) {
+      setEmailStatus("error");
+      setEmailMessage("Please enter a recipient email address.");
+      return;
+    }
+
+    if (!shareUrl) {
+      setEmailStatus("error");
+      setEmailMessage("Share link is not available yet.");
+      return;
+    }
+
+    setEmailStatus("sending");
+    setEmailMessage("");
+
+    try {
+      await sendChatEmail({ chatId, recipientEmail, shareUrl });
+      setEmailStatus("success");
+      setEmailMessage("Email sent successfully!");
+      setRecipientEmail("");
+    } catch (err: any) {
+      setEmailStatus("error");
+      setEmailMessage(
+        err?.message ?? "Failed to send email. Please try again.",
+      );
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -140,61 +175,118 @@ const ChatShareDialog: React.FC<ShareDialogProps> = ({
           </DialogHeader>
 
           <div className="px-5 py-4 space-y-5 max-h-[90vh] overflow-y-auto">
-              <>
-                {/* ── Section: Link ─────────────────────────────────── */}
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-white uppercase tracking-wider flex items-center gap-1.5">
-                    <Link2 size={12} />
-                    Link
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-secondary rounded-md px-3 py-2 text-xs text-white truncate font-mono">
-                      {shareUrl}
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={linkCopied ? "outline" : "secondary"}
-                      onClick={handleCopyLink}
-                      className="shrink-0 gap-1.5 text-xs"
+            <>
+              {/* ── Section: Link ─────────────────────────────────── */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Link2 size={12} />
+                  Link
+                </p>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-secondary rounded-md px-3 py-2 text-xs text-white truncate font-mono">
+                    {shareUrl}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={linkCopied ? "outline" : "secondary"}
+                    onClick={handleCopyLink}
+                    className="shrink-0 gap-1.5 text-xs"
+                  >
+                    {linkCopied ? (
+                      <>
+                        <Check size={12} color="green" />
+                        <span className="text-green-600">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border-t" />
+
+              {/* ── Section: Primary Share ────────────────────────── */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-white uppercase tracking-wider">
+                  🚀 Primary Share
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {SOCIAL_PLATFORMS.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleChatSocialShare(p.id)}
+                      className={`flex flex-col items-center gap-1.5 px-2 py-3 rounded-lg border border-border text-white text-xs font-medium transition-all duration-150 ${p.color}`}
                     >
-                      {linkCopied ? (
-                        <>
-                          <Check size={12} color="green"/>
-                          <span className="text-green-600">Copied</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={12} />
-                          Copy
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                      {p.icon}
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t" />
+
+              {/* ── Section: Email ────────────────────────────────── */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Mail size={12} />
+                  Send via Email
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    value={recipientEmail}
+                    onChange={(e) => {
+                      setRecipientEmail(e.target.value);
+                      if (emailStatus !== "idle") {
+                        setEmailStatus("idle");
+                        setEmailMessage("");
+                      }
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && handleSendEmail()}
+                    placeholder="friend@example.com"
+                    disabled={isSendingChatEmail}
+                    className="flex-1 bg-secondary rounded-md px-3 py-2 text-xs text-white placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-border transition disabled:opacity-50"
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleSendEmail}
+                    disabled={isSendingChatEmail || emailStatus === "success"}
+                    className="shrink-0 gap-1.5 text-xs"
+                  >
+                    {isSendingChatEmail ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : emailStatus === "success" ? (
+                      <Check size={12} color="green" />
+                    ) : (
+                      <Send size={12} />
+                    )}
+                    {isSendingChatEmail
+                      ? "Sending"
+                      : emailStatus === "success"
+                        ? "Sent"
+                        : "Send"}
+                  </Button>
                 </div>
 
-                <div className="border-t" />
-
-                {/* ── Section: Primary Share ────────────────────────── */}
-                <div className="space-y-2">
-                  <p className="text-xs font-medium text-white uppercase tracking-wider">
-                    🚀 Primary Share
+                {emailMessage && (
+                  <p
+                    className={`text-xs ${
+                      emailStatus === "success"
+                        ? "text-green-500"
+                        : "text-red-400"
+                    }`}
+                  >
+                    {emailMessage}
                   </p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {SOCIAL_PLATFORMS.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => handleChatSocialShare(p.id)}
-                        className={`flex flex-col items-center gap-1.5 px-2 py-3 rounded-lg border border-border text-white text-xs font-medium transition-all duration-150 ${p.color}`}
-                      >
-                        {p.icon}
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t" />
-              </>
+                )}
+              </div>
+            </>
           </div>
         </DialogContent>
       </Dialog>
