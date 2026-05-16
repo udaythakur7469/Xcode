@@ -3,6 +3,8 @@ import { create } from "zustand";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
 enum interviewType {
   BEHAVIORAL = "BEHAVIORAL",
   TECHNICAL = "TECHNICAL",
@@ -10,13 +12,15 @@ enum interviewType {
 }
 
 enum Verdict {
-  NOT_RECOMMENDED,
-  DO_NOT_HIRE,
-  PREFER_NOT_TO_HIRE,
-  WORTH_CONSIDERING,
-  RECOMMENDED,
-  MUST_HIRE,
+  NOT_RECOMMENDED = "NOT_RECOMMENDED",
+  DO_NOT_HIRE = "DO_NOT_HIRE",
+  PREFER_NOT_TO_HIRE = "PREFER_NOT_TO_HIRE",
+  WORTH_CONSIDERING = "WORTH_CONSIDERING",
+  RECOMMENDED = "RECOMMENDED",
+  MUST_HIRE = "MUST_HIRE",
 }
+
+// ─── Interfaces ──────────────────────────────────────────────────────────────
 
 interface SavedMessage {
   role: "user" | "system" | "assistant";
@@ -48,12 +52,47 @@ export interface ShowInterviewData {
   updatedAt: string;
 }
 
-interface CategoryScores {
+export interface CategoryScore {
   id: number | null;
   feedbackId: number | null;
   name: string;
   score: number | null;
   comment: string;
+}
+
+// ─── NEW types ───────────────────────────────────────────────────────────────
+
+export interface QuestionScore {
+  id: number | null;
+  feedbackId: number | null;
+  questionNumber: number;
+  questionText: string;
+  score: number;
+  comment: string;
+}
+
+export type KeyMomentType = "BEST" | "WEAKEST" | "NOTABLE";
+
+export interface KeyMoment {
+  id: number | null;
+  feedbackId: number | null;
+  type: KeyMomentType;
+  questionNumber: number;
+  questionText: string;
+  quote: string;
+  annotation: string;
+  timestampLabel: string;
+}
+
+export type TopicPriority = "CRITICAL" | "IMPORTANT" | "RECOMMENDED";
+
+export interface RecommendedTopic {
+  id: number | null;
+  feedbackId: number | null;
+  topic: string;
+  reason: string;
+  priority: TopicPriority;
+  tags: string[];
 }
 
 export interface Feedback {
@@ -65,21 +104,48 @@ export interface Feedback {
   areasForImprovement: string[] | null;
   finalAssessment: string | null;
   finalVerdict: Verdict | null;
-  categoryScores: CategoryScores[] | null;
+  categoryScores: CategoryScore[] | null;
+  // NEW
+  candidateTalkRatio: number | null;
+  questionScores: QuestionScore[] | null;
+  keyMoments: KeyMoment[] | null;
+  recommendedTopics: RecommendedTopic[] | null;
   createdAt: string;
   updatedAt: string;
 }
+
+// ─── History types (Option A + B) ────────────────────────────────────────────
+
+export interface FeedbackHistoryEntry {
+  id: number;
+  interviewId: number;
+  totalScore: number;
+  finalVerdict: Verdict;
+  createdAt: string;
+  categoryScores: { name: string; score: number }[];
+}
+
+export interface FeedbackHistoryData {
+  history: FeedbackHistoryEntry[];
+  platformAvg: number;
+  userAvg: number;
+  percentile: number;
+}
+
+// ─── Store interface ──────────────────────────────────────────────────────────
 
 interface InterviewData {
   userInterviews: ShowInterviewData[];
   latestInterviews: ShowInterviewData[];
   interview: Interview | null;
   feedback: Feedback | null;
+  feedbackHistory: FeedbackHistoryData | null;
   interviewError: string | null;
   isLoadingUserInterviews: boolean;
   isLoadingLatestInterviews: boolean;
   isLoadingInterviewDetails: boolean;
   isLoadingFeedback: boolean;
+  isLoadingFeedbackHistory: boolean;
   message: string | null;
   success: boolean;
 
@@ -88,24 +154,30 @@ interface InterviewData {
   getInterviewDetails: (id: number) => Promise<void>;
   getFeedback: (
     id: number | null,
-    transcript: SavedMessage[] | null
+    transcript: SavedMessage[] | null,
   ) => Promise<void>;
   getFeedbackByInterviewId: (
     id: number,
-    source: "user" | "all" | null
+    source: "user" | "all" | null,
   ) => Promise<void>;
+  // NEW
+  getFeedbackHistory: (interviewId: number) => Promise<void>;
 }
+
+// ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useInterviewStore = create<InterviewData>((set) => ({
   userInterviews: [],
   latestInterviews: [],
   interview: null,
   feedback: null,
+  feedbackHistory: null,
   interviewError: null,
   isLoadingUserInterviews: false,
   isLoadingLatestInterviews: false,
   isLoadingInterviewDetails: false,
   isLoadingFeedback: false,
+  isLoadingFeedbackHistory: false,
   message: null,
   success: false,
 
@@ -113,9 +185,8 @@ export const useInterviewStore = create<InterviewData>((set) => ({
     set({ isLoadingUserInterviews: true, interviewError: null });
     try {
       const response = await axios.get(
-        `${API_URL}/interview/getInterviewsByUserId`
+        `${API_URL}/interview/getInterviewsByUserId`,
       );
-
       set({ userInterviews: response.data, isLoadingUserInterviews: false });
     } catch (interviewError: any) {
       const errMsg =
@@ -125,11 +196,12 @@ export const useInterviewStore = create<InterviewData>((set) => ({
       throw interviewError;
     }
   },
+
   getLatestInterviews: async () => {
     set({ isLoadingLatestInterviews: true, interviewError: null });
     try {
       const response = await axios.get(
-        `${API_URL}/interview/getLatestInterviews`
+        `${API_URL}/interview/getLatestInterviews`,
       );
       set({
         latestInterviews: response.data,
@@ -145,19 +217,11 @@ export const useInterviewStore = create<InterviewData>((set) => ({
   },
 
   getInterviewDetails: async (id: number) => {
-    set({
-      isLoadingInterviewDetails: true,
-      interviewError: null,
-    });
-
+    set({ isLoadingInterviewDetails: true, interviewError: null });
     try {
       const response = await axios.get(
         `${API_URL}/interview/getInterviewDetails`,
-        {
-          params: {
-            id,
-          },
-        }
+        { params: { id } },
       );
       set({
         interview: response.data,
@@ -176,29 +240,20 @@ export const useInterviewStore = create<InterviewData>((set) => ({
       throw interviewError;
     }
   },
-  getFeedback: async (id: number | null, transcript: SavedMessage[] | null) => {
-    set({
-      isLoadingFeedback: true,
-      interviewError: null,
-    });
 
+  getFeedback: async (id: number | null, transcript: SavedMessage[] | null) => {
+    set({ isLoadingFeedback: true, interviewError: null });
     try {
       const response = await axios.post(
         `${API_URL}/interview/generateFeedback`,
-        {
-          id,
-          transcript,
-        }
+        { id, transcript },
       );
-
       const feedbackData = response.data;
       set({
         feedback: feedbackData.feedback,
         success: feedbackData.success,
         isLoadingFeedback: false,
       });
-
-      // Return the data for immediate use
       return feedbackData;
     } catch (interviewError: any) {
       const errMsg =
@@ -211,29 +266,18 @@ export const useInterviewStore = create<InterviewData>((set) => ({
       throw interviewError;
     }
   },
+
   getFeedbackByInterviewId: async (
     id: number,
-    source: "user" | "all" | null
+    source: "user" | "all" | null,
   ) => {
-    set({
-      isLoadingFeedback: true,
-      interviewError: null,
-    });
+    set({ isLoadingFeedback: true, interviewError: null });
     try {
       const response = await axios.get(
         `${API_URL}/interview/getFeedbackByInterviewId`,
-        {
-          params: {
-            id,
-            source,
-          },
-        }
+        { params: { id, source } },
       );
-      const feedbackData = response.data;
-      set({
-        feedback: feedbackData,
-        isLoadingFeedback: false,
-      });
+      set({ feedback: response.data, isLoadingFeedback: false });
     } catch (interviewError: any) {
       const errMsg =
         interviewError.response?.data?.message ||
@@ -244,6 +288,24 @@ export const useInterviewStore = create<InterviewData>((set) => ({
         success: false,
       });
       throw interviewError;
+    }
+  },
+
+  // NEW — fetch score history + platform stats for charts
+  getFeedbackHistory: async (interviewId: number) => {
+    set({ isLoadingFeedbackHistory: true, interviewError: null });
+    try {
+      const response = await axios.get(
+        `${API_URL}/interview/getFeedbackHistory`,
+        { params: { interviewId } },
+      );
+      set({ feedbackHistory: response.data, isLoadingFeedbackHistory: false });
+    } catch (interviewError: any) {
+      const errMsg =
+        interviewError.response?.data?.message ||
+        "Error fetching feedback history";
+      set({ interviewError: errMsg, isLoadingFeedbackHistory: false });
+      // Don't throw — history failing shouldn't break the whole page
     }
   },
 }));
