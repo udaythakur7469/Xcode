@@ -48,14 +48,16 @@ export const ChatContainerSidebar: React.FC<SidebarProps> = ({
   const { isUserAuthenticated } = useUserStore();
   const searchParams = useSearchParams();
 
-  const[openSharePostDialog, setOpenSharePostDialog] = useState<boolean>(false);
-  const[shareUrl, setShareUrl] = useState<string | null>("");
+  const [openSharePostDialog, setOpenSharePostDialog] =
+    useState<boolean>(false);
+  const [shareUrl, setShareUrl] = useState<string | null>("");
 
   const userChats = useChatStore((s) => s.userChats);
   const activeChatId = useChatStore((s) => s.activeChatId);
   const isLoadingUserChats = useChatStore((s) => s.isLoadingUserChats);
   const UserChatsError = useChatStore((s) => s.UserChatsError);
   const editingState = useChatStore((s) => s.editingState);
+  const forkSharedChat = useChatStore((s) => s.forkSharedChat);
 
   const getUserChats = useChatStore((s) => s.getUserChats);
   const setActiveChatId = useChatStore((s) => s.setActiveChatId);
@@ -287,6 +289,8 @@ type SharedChatFooterProps = {
   shareIdFromUrl: string;
   onFork: () => void;
   onOpenLogin: () => void;
+  alreadyExistsChatId: string | null;
+  onOpenExisting: () => void;
 };
 
 export const SharedChatFooter: React.FC<SharedChatFooterProps> = ({
@@ -297,11 +301,40 @@ export const SharedChatFooter: React.FC<SharedChatFooterProps> = ({
   shareIdFromUrl,
   onFork,
   onOpenLogin,
+  alreadyExistsChatId,
+  onOpenExisting,
 }) => {
-  // Don't render while loading or if there's an error — the message area
-  // already handles those states.
   if (isLoadingSharedChat || sharedChatError) return null;
 
+  // ── Already exists banner ──────────────────────────────────────────────────
+  if (alreadyExistsChatId) {
+    return (
+      <div className="absolute bottom-0 left-0 right-0 z-30 border-t border-amber-500/30 bg-amber-950/60 backdrop-blur-sm px-4 py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="shrink-0 w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+            <GitFork size={15} className="text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-amber-300 leading-tight">
+              You already have this conversation
+            </p>
+            <p className="text-xs text-amber-500/80 mt-0.5">
+              This chat exists in your history — open it instead of creating a
+              duplicate.
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={onOpenExisting}
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-amber-950 text-xs font-bold transition-colors"
+        >
+          Open existing
+        </button>
+      </div>
+    );
+  }
+
+  // ── Normal footer ──────────────────────────────────────────────────────────
   return (
     <div className="absolute bottom-0 left-0 right-0 z-30 border-t bg-background px-4 py-3 flex items-center justify-between gap-3 shadow-[0_-4px_16px_rgba(0,0,0,0.12)]">
       <div className="min-w-0">
@@ -400,6 +433,10 @@ export const ChatContainerWindow: React.FC<WindowProps> = ({
   const forkSharedChat = useChatStore((s) => s.forkSharedChat);
   const clearSharedChat = useChatStore((s) => s.clearSharedChat);
 
+  const [alreadyExistsChat, setAlreadyExistsChat] = useState<string | null>(
+    null,
+  );
+
   useEffect(() => {
     if (!shareIdFromUrl) {
       clearSharedChat();
@@ -411,6 +448,7 @@ export const ChatContainerWindow: React.FC<WindowProps> = ({
   // ── Fork ───────────────────────────────────────────────────────────────────
   const handleFork = async () => {
     if (!shareIdFromUrl || isForking) return;
+    setAlreadyExistsChat(null);
     try {
       const newChatId = await forkSharedChat(shareIdFromUrl);
       if (!newChatId) return;
@@ -427,10 +465,11 @@ export const ChatContainerWindow: React.FC<WindowProps> = ({
 
       toast.success("Chat added to your conversations");
     } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message ??
-          "Failed to fork chat — please try again",
-      );
+      if (err.alreadyForked && err.existingChatId) {
+        setAlreadyExistsChat(err.existingChatId); // ← show banner, don't clear shared mode
+      } else {
+        toast.error(err?.message ?? "Failed to fork chat — please try again");
+      }
     }
   };
 
@@ -492,6 +531,18 @@ export const ChatContainerWindow: React.FC<WindowProps> = ({
         sharedChatData={isSharedMode ? sharedChatData : null}
         isLoadingSharedChat={isSharedMode ? isLoadingSharedChat : false}
         sharedChatError={isSharedMode ? sharedChatError : null}
+        onStartOwnChat={async () => {
+          const params = new URLSearchParams(searchParams.toString());
+          params.delete("sharedChat");
+          router.replace(
+            params.toString()
+              ? `?${params.toString()}`
+              : window.location.pathname,
+          );
+          if (isUserAuthenticated) {
+            await getUserChats();
+          }
+        }}
       />
 
       {/* Sticky footer — only visible in presentation mode */}
@@ -504,6 +555,22 @@ export const ChatContainerWindow: React.FC<WindowProps> = ({
           shareIdFromUrl={shareIdFromUrl}
           onFork={handleFork}
           onOpenLogin={handleOpenLoginForFork}
+          alreadyExistsChatId={alreadyExistsChat}
+          onOpenExisting={() => {
+            if (!alreadyExistsChat) return;
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("sharedChat");
+            router.replace(
+              params.toString()
+                ? `?${params.toString()}`
+                : window.location.pathname,
+            );
+            getUserChats().then(() => {
+              moveChatToTop(alreadyExistsChat);
+              setActiveChatId(alreadyExistsChat);
+              getChatMessages(alreadyExistsChat);
+            });
+          }}
         />
       )}
     </div>
