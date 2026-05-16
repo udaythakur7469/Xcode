@@ -5,6 +5,7 @@ import InterviewCard from "../interviewCard/InterviewCard";
 import { Button } from "@/components/ui/button";
 import InterviewDialog from "../helperComponents/InterviewDialog";
 import { useInterviewStore } from "@/features/interviewStore"; // Import your store
+import { InterviewRowSkeleton } from "../interviewCard/InterviewCardSkeleton";
 
 type AllInterviewsProps = {};
 
@@ -70,9 +71,7 @@ const AllInterviews: React.FC<AllInterviewsProps> = () => {
   }, [cardWidth, latestInterviews.length, isLoadingLatestInterviews]);
 
   if (isLoadingLatestInterviews) {
-    return (
-      <div className="py-2 ml-5 mt-5 text-center">Loading interviews...</div>
-    );
+    return <InterviewRowSkeleton title="All Interviews" cardCount={3} />;
   }
 
   if (interviewError) {
