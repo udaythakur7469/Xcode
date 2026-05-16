@@ -68,9 +68,9 @@ router.route("/getProblems").get(
       tags: ["problems:list"],
       includeAuth: true,
       keyGenerator: (req: any) => {
-        const { page, difficulty, status, tags } = req.query;
+        const { page, difficulty, status, tags, dateFrom, dateTo } = req.query;
         const userId = req.user?.userId || "guest";
-        return `problems:list:user:${userId}:page:${page || 1}:diff:${difficulty || "all"}:status:${status || "all"}:tags:${tags || ""}`;
+        return `problems:list:user:${userId}:page:${page || 1}:diff:${difficulty || "all"}:status:${status || "all"}:tags:${tags || ""}:from:${dateFrom || ""}:to:${dateTo || ""}`;
       },
     },
   }),
