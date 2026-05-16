@@ -74,7 +74,11 @@ interface Problemdata {
   };
 
   createProblem: (problem: ProblemDetails) => Promise<void>;
-  getPaginatedProblems: (page: number) => Promise<void>;
+  getPaginatedProblems: (
+    page: number,
+    dateFrom?: string | null,
+    dateTo?: string | null,
+  ) => Promise<void>;
   searchProblems: (query: string) => Promise<void>;
   getProblemByTitle: (title: string) => Promise<ProblemDetails>;
   setDifficultyFilter: (difficulty: "easy" | "medium" | "hard" | null) => void;
@@ -144,16 +148,23 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
     get().getPaginatedProblems(get().pagination.currentPage);
   },
 
-  getPaginatedProblems: async (page: number) => {
+  getPaginatedProblems: async (
+    page: number,
+    dateFrom: string | null = null,
+    dateTo: string | null = null,
+  ) => {
     set({ isLoading: true, error: null });
     try {
+      const params: Record<string, any> = {
+      page,
+      difficulty: get().difficultyFilter,
+      status: get().statusFilter,
+      tags: get().tagsFilter.join(","),
+    };
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
       const response = await axios.get(`${API_URL}/problem/getProblems`, {
-        params: {
-          page,
-          difficulty: get().difficultyFilter, // Pass difficultyFilter to the backend
-          status: get().statusFilter,
-          tags: get().tagsFilter.join(","),
-        },
+        params,
       });
 
       set({
