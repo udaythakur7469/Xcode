@@ -30,8 +30,8 @@ const DateFilterChip: React.FC = () => {
           transition={{ duration: 0.18, ease: "easeOut" }}
           className="mb-3"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-400">
-            <span>{label}</span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-sm font-medium text-blue-400">
+            {calendarMode === "single" ? <span>Problems solved on {label}</span> : <span>Problems solved during {label}</span>}
             <button
               onClick={closeAnalyticsPanel}
               className="flex h-4 w-4 items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400 transition-colors hover:bg-indigo-500/40"
