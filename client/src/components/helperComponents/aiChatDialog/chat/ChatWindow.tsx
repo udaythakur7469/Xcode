@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useLayoutEffect, useRef } from "react";
-import { LogIn, MessageSquare, UserPlus } from "lucide-react";
+import { LogIn, MessageSquare, UserPlus, Link as LinkIcon } from "lucide-react";
 import ChatMessageList from "./ChatMessageList";
 import ChatInput from "./ChatInput";
 import { MoonLoader } from "react-spinners";
@@ -128,6 +128,7 @@ type ChatWindowProps = {
   sharedChatData?: SharedChatData | null;
   isLoadingSharedChat?: boolean;
   sharedChatError?: string | null;
+  onStartOwnChat?: () => void;
 };
 
 const ChatWindow: React.FC<ChatWindowProps> = ({
@@ -143,23 +144,53 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
   sharedChatData = null,
   isLoadingSharedChat = false,
   sharedChatError = null,
+  onStartOwnChat,
 }) => {
   // ── Presentation mode ──────────────────────────────────────────────────────
   // Checked BEFORE the guest state so unauthenticated users still see the
   // shared messages (their CTA is in the sticky footer, not here).
   if (isSharedMode) {
+    // ── Error empty state ────────────────────────────────────────────────────
+    if (!isLoadingSharedChat && sharedChatError) {
+      return (
+        <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center">
+          <div className="max-w-xs w-full space-y-4">
+            <div className="flex justify-center">
+              <div className="p-3 bg-zinc-800 rounded-full">
+                <LinkIcon size={22} className="text-zinc-400" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-base font-bold text-white">
+                {sharedChatError.includes("expired")
+                  ? "This link has expired"
+                  : "Link not found"}
+              </h2>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                {sharedChatError}
+              </p>
+            </div>
+            <button
+              onClick={onStartOwnChat}
+              className="flex items-center justify-center gap-2 w-full py-2.5 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              <MessageSquare size={15} />
+              Start your own chat
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="h-full w-full flex flex-col">
-        {/* pb-[60px] = sticky footer height so the last message is never
-            obscured. Adjust if SharedChatFooter padding changes. */}
         <div className="flex-1 overflow-hidden pb-[60px]">
           <SharedMessageList
             data={sharedChatData}
             isLoading={isLoadingSharedChat}
-            error={sharedChatError ?? null}
+            error={null}
           />
         </div>
-        {/* No ChatInput in presentation mode */}
       </div>
     );
   }
