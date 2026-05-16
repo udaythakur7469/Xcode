@@ -588,11 +588,17 @@ model Chat {
   // Survives page refresh so the user's branch position is preserved.
   activePath String[] @default([])
 
+  sourceShareId String?
+
+  sourceChatId  String?
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([userId, createdAt]) // Index for efficient user Chat queries
+  @@index([userId, createdAt])
+  @@index([userId, sourceShareId])
+  @@index([userId, sourceChatId])
 }
 
 // =========================================================
@@ -618,19 +624,19 @@ model Message {
   // Tree structure — self-referential parent/child.
   // parentId is null for root messages (the first user message in a chat).
   // Every other message's parent is the immediately preceding message.
-  parentId  String?
-  parent    Message?      @relation("MessageTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children  Message[]     @relation("MessageTree")
+  parentId String?
+  parent   Message?  @relation("MessageTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children Message[] @relation("MessageTree")
 
   // User feedback on AI messages
-  feedback  MessageFeedback?
+  feedback MessageFeedback?
 
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([ChatId, createdAt]) // Index for efficient message queries
-  @@index([ChatId, parentId])   // Critical for sibling queries
+  @@index([ChatId, parentId]) // Critical for sibling queries
 }
 
 // =========================================================
@@ -714,6 +720,8 @@ model SharedChat {
   messages  Json
   userId    Int?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sourceChatId String?
+  expiresAt    DateTime?
   createdAt DateTime @default(now())
 
   @@index([userId])
