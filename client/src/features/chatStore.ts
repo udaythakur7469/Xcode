@@ -955,10 +955,14 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       const res = await axios.get(`${API_URL}/chat/shared/${shareId}`);
       set({ sharedChatData: res.data.data });
     } catch (err: any) {
-      set({
-        sharedChatError:
-          err?.response?.data?.message ?? "Failed to load shared chat",
-      });
+      const status = err?.response?.status;
+      const message =
+        status === 410
+          ? "This shared link has expired"
+          : status === 404
+            ? "This link is invalid or could not be found"
+            : (err?.response?.data?.message ?? "Failed to load shared chat");
+      set({ sharedChatError: message });
     } finally {
       set({ isLoadingSharedChat: false });
     }
@@ -970,6 +974,14 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       const res = await axios.post(`${API_URL}/chat/fork`, { shareId });
       return res.data.chatId as string;
     } catch (err: any) {
+      if (err.response?.status === 409) {
+        const alreadyForkedError = new Error(
+          err.response.data.message ?? "Already forked",
+        ) as any;
+        alreadyForkedError.alreadyForked = true;
+        alreadyForkedError.existingChatId = err.response.data.chatId as string;
+        throw alreadyForkedError;
+      }
       throw err;
     } finally {
       set({ isForking: false });
