@@ -4,8 +4,8 @@ import React, { useEffect } from "react";
 import FeedbackPage from "@/components/interviewPage/feedbackPage/FeedbackPage";
 import { useInterviewStore } from "@/features/interviewStore";
 import { useSearchParams } from "next/navigation";
-import { MoonLoader } from "react-spinners";
 import Navbar from "@/components/landingPage/navbar/Navbar";
+import { FeedbackPageSkeleton } from "@/components/interviewPage/feedbackPage/FeedbackPageSkeleton";
 
 type pageProps = { params: { id: string } };
 
@@ -16,6 +16,7 @@ const page: React.FC<pageProps> = ({ params }) => {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const unwrappedParams = React.use(params);
   const { id } = unwrappedParams;
+
   if (!id) {
     return <div className="text-red-500 text-xl">Feedback not found</div>;
   }
@@ -23,41 +24,51 @@ const page: React.FC<pageProps> = ({ params }) => {
   const {
     getFeedbackByInterviewId,
     getInterviewDetails,
+    getFeedbackHistory,
     isLoadingFeedback,
     isLoadingInterviewDetails,
     interviewError,
     feedback,
     interview,
+    feedbackHistory,
     // eslint-disable-next-line react-hooks/rules-of-hooks
   } = useInterviewStore();
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (id) {
-      getFeedbackByInterviewId(Number(id), source);
-      getInterviewDetails(Number(id));
+      const numericId = Number(id);
+      getFeedbackByInterviewId(numericId, source);
+      getInterviewDetails(numericId);
+      // Fetch history for score chart + percentile — runs in parallel, non-blocking
+      getFeedbackHistory(numericId);
     }
-  }, [getFeedbackByInterviewId, id, source, getInterviewDetails]);
+  }, [
+    getFeedbackByInterviewId,
+    id,
+    source,
+    getInterviewDetails,
+    getFeedbackHistory,
+  ]);
 
   if (interviewError) {
     return <div className="text-red-500 text-xl">{interviewError}</div>;
   }
 
   if (isLoadingFeedback && isLoadingInterviewDetails) {
-    return (
-      <div className="text-center flex justify-center items-center h-screen w-screen">
-        <MoonLoader color="#ffffff" size={250} />
-      </div>
-    );
+    return <FeedbackPageSkeleton />;
   }
 
-
-
   return (
-    <div className="h-screen w-screen flex flex-col">
+    <div className="min-h-screen w-full flex flex-col bg-background">
       <Navbar firstButton={"Explore Xcode"} secondButton={"Solve Problems"} />
-      <FeedbackPage feedback={feedback} interview={interview} />
+      <FeedbackPage
+        feedback={feedback}
+        interview={interview}
+        feedbackHistory={feedbackHistory}
+      />
     </div>
   );
 };
+
 export default page;
