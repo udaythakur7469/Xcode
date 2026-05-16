@@ -468,7 +468,55 @@ model Feedback {
   areasForImprovement String[]
   finalAssessment     String
   finalVerdict        Verdict
+  candidateTalkRatio  Float               @default(0)
+  questionScores      QuestionScore[]
+  keyMoments          KeyMoment[]
+  recommendedTopics   RecommendedTopic[]
   createdAt           DateTime        @default(now())
+}
+
+model QuestionScore {
+  id             Int      @id @default(autoincrement())
+  feedback       Feedback @relation(fields: [feedbackId], references: [id])
+  feedbackId     Int
+  questionNumber Int
+  questionText   String
+  score          Float
+  comment        String
+}
+
+model KeyMoment {
+  id             Int           @id @default(autoincrement())
+  feedback       Feedback      @relation(fields: [feedbackId], references: [id])
+  feedbackId     Int
+  type           KeyMomentType
+  questionNumber Int
+  questionText   String
+  quote          String
+  annotation     String
+  timestampLabel String
+}
+
+model RecommendedTopic {
+  id         Int           @id @default(autoincrement())
+  feedback   Feedback      @relation(fields: [feedbackId], references: [id])
+  feedbackId Int
+  topic      String
+  reason     String
+  priority   TopicPriority
+  tags       String[]
+}
+
+enum KeyMomentType {
+  BEST
+  WEAKEST
+  NOTABLE
+}
+
+enum TopicPriority {
+  CRITICAL
+  IMPORTANT
+  RECOMMENDED
 }
 
 enum Verdict {
