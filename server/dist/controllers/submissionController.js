@@ -424,6 +424,27 @@ const updateStatistics = async (userId, problemId, difficulty, submissionStatus,
             update: { solvedAt: new Date() },
             create: { userId, problemId, solvedAt: new Date() },
         });
+        const solvedAt = new Date();
+        await prisma.problemRevision.createMany({
+            data: [
+                {
+                    userId,
+                    problemId,
+                    reviewDate: new Date(solvedAt.getTime() + 1 * 86400000),
+                }, // +1 day
+                {
+                    userId,
+                    problemId,
+                    reviewDate: new Date(solvedAt.getTime() + 7 * 86400000),
+                }, // +7 days
+                {
+                    userId,
+                    problemId,
+                    reviewDate: new Date(solvedAt.getTime() + 30 * 86400000),
+                }, // +30 days
+            ],
+            skipDuplicates: true,
+        });
     }
     await prisma.submission.create({
         data: {
