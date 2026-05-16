@@ -4,6 +4,7 @@ import {
   generateFeedback,
   generateInterview,
   getFeedbackByInterviewId,
+  getFeedbackHistory,
   getInterviewDetails,
   getInterviewsByUserId,
   getLatestInterviews,
@@ -18,7 +19,7 @@ import redis from "../configs/redisConfig.js";
 
 const router = express.Router();
 
-// ── AI Mutations (rate limited, no cache) ───────────────────────
+// ── AI Mutations (rate limited, no cache) ───────────────────────────────────
 
 router
   .route("/generate-interview")
@@ -28,7 +29,7 @@ router
   .route("/generateFeedback")
   .post(authMiddleware, generateFeedbackLimiter, generateFeedback);
 
-// ── Reads (cached) ───────────────────────────────────────────────
+// ── Reads (cached) ───────────────────────────────────────────────────────────
 
 /**
  * GET /interview/getInterviewsByUserId
@@ -38,7 +39,7 @@ router.route("/getInterviewsByUserId").get(
   authMiddleware,
   interviewReadLimiter,
   cacheMiddleware(redis, {
-    ttl: 300, // 5 minutes
+    ttl: 300,
     autoCache: {
       tags: ["interviews:list"],
       includeAuth: true,
@@ -73,13 +74,13 @@ router.route("/getLatestInterviews").get(
 
 /**
  * GET /interview/getInterviewDetails
- * Single interview — 1 hour TTL (content doesn't change once created).
+ * Single interview details — 1 hour TTL.
  */
 router.route("/getInterviewDetails").get(
   authMiddleware,
   interviewReadLimiter,
   cacheMiddleware(redis, {
-    ttl: 3600, // 1 hour
+    ttl: 3600,
     autoCache: {
       tags: (req: any) => ["interviews", `interview:${req.query.id}`],
       keyGenerator: (req: any) => `interview:detail:${req.query.id}`,
@@ -90,7 +91,7 @@ router.route("/getInterviewDetails").get(
 
 /**
  * GET /interview/getFeedbackByInterviewId
- * Interview feedback — 1 hour TTL (feedback is immutable once generated).
+ * Interview feedback — 1 hour TTL.
  */
 router.route("/getFeedbackByInterviewId").get(
   authMiddleware,
@@ -106,6 +107,30 @@ router.route("/getFeedbackByInterviewId").get(
     },
   }),
   getFeedbackByInterviewId,
+);
+
+/**
+ * GET /interview/getFeedbackHistory
+ * NEW — score history + platform stats for charts.
+ * 10 min TTL (updates as user completes more interviews).
+ */
+router.route("/getFeedbackHistory").get(
+  authMiddleware,
+  interviewReadLimiter,
+  cacheMiddleware(redis, {
+    ttl: 600,
+    autoCache: {
+      tags: (req: any) => [
+        "interviews:feedback:history",
+        `interview:${req.query.interviewId}:history`,
+      ],
+      keyGenerator: (req: any) => {
+        const userId = req.user?.userId;
+        return `interview:history:${userId}:${req.query.interviewId}`;
+      },
+    },
+  }),
+  getFeedbackHistory,
 );
 
 export default router;
