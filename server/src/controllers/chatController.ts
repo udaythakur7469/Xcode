@@ -978,11 +978,15 @@ export const shareChat = async (req: any, res: any, next: any) => {
       throw createHttpError.BadRequest("Cannot share an empty chat");
     }
 
+    const SHARE_TTL_DAYS = 30;
+
     const shared = await prisma.sharedChat.create({
       data: {
         title: chat.title,
         messages: messages as any,
         userId,
+        sourceChatId: chatId,
+        expiresAt: new Date(Date.now() + 10 * 1000),
       },
     });
 
@@ -1019,6 +1023,13 @@ export const getSharedChat = async (req: any, res: any, next: any) => {
       });
     }
 
+    if (shared.expiresAt && shared.expiresAt < new Date()) {
+      return res.status(410).json({
+        success: false,
+        message: "This shared link has expired",
+      });
+    }
+
     return res.status(200).json({
       success: true,
       data: {
@@ -1026,6 +1037,7 @@ export const getSharedChat = async (req: any, res: any, next: any) => {
         title: shared.title,
         messages: shared.messages,
         createdAt: shared.createdAt,
+        expiresAt: shared.expiresAt,
       },
     });
   } catch (error) {
@@ -1040,7 +1052,7 @@ export const getSharedChat = async (req: any, res: any, next: any) => {
 // shared conversation that the user can continue from.
 
 export const forkSharedChat = async (req: any, res: any, next: any) => {
-  const userId = req.user?.Id || req.user?.userId;
+  const userId = req.user?.userId ?? req.user?.Id;
   const { shareId } = req.body;
 
   try {
@@ -1048,14 +1060,56 @@ export const forkSharedChat = async (req: any, res: any, next: any) => {
       throw createHttpError.BadRequest("Please provide shareId");
     }
 
+    // ── Fetch the snapshot first (needed for all checks below) ───────────────
     const shared = await prisma.sharedChat.findUnique({
       where: { id: shareId },
+      select: { sourceChatId: true, title: true, messages: true },
     });
 
     if (!shared) {
       throw createHttpError.NotFound("Shared chat not found");
     }
 
+    // ── Check 1: user already OWNS the original chat ─────────────────────────
+    // Covers self-share: sharer tries to fork their own chat back.
+    if (shared.sourceChatId) {
+      const ownsOriginal = await prisma.chat.findFirst({
+        where: { id: shared.sourceChatId, userId },
+        select: { id: true },
+      });
+
+      if (ownsOriginal) {
+        return res.status(409).json({
+          success: false,
+          alreadyForked: true,
+          chatId: ownsOriginal.id,
+          message: "This shared chat already exists in your chat history",
+        });
+      }
+    }
+
+    // ── Check 2: user already forked this chat (any share link) ──────────────
+    // Covers the case where they forked before but no longer own the original.
+    const existingFork = await prisma.chat.findFirst({
+      where: {
+        userId,
+        ...(shared.sourceChatId
+          ? { sourceChatId: shared.sourceChatId }
+          : { sourceShareId: shareId }),
+      },
+      select: { id: true },
+    });
+
+    if (existingFork) {
+      return res.status(409).json({
+        success: false,
+        alreadyForked: true,
+        chatId: existingFork.id,
+        message: "This shared chat already exists in your chat history",
+      });
+    }
+
+    // ── Build the forked chat ─────────────────────────────────────────────────
     const snapshotMessages = shared.messages as Array<{
       role: "user" | "assistant";
       text: string;
@@ -1064,12 +1118,14 @@ export const forkSharedChat = async (req: any, res: any, next: any) => {
       createdAt: string;
     }>;
 
-    // Build a new flat linear tree inside a transaction.
-    // Each message's parentId = the previous message's new ID.
-    // activePath is persisted so the frontend loads correctly on first open.
     const forkedChat = await prisma.$transaction(async (tx) => {
       const chat = await tx.chat.create({
-        data: { userId, title: shared.title },
+        data: {
+          userId,
+          title: shared.title,
+          sourceShareId: shareId,
+          sourceChatId: shared.sourceChatId ?? null,
+        },
       });
 
       let prevId: string | null = null;
@@ -1090,7 +1146,6 @@ export const forkSharedChat = async (req: any, res: any, next: any) => {
         newActivePath.push(created.id);
       }
 
-      // Persist activePath so frontend loads immediately without recomputing
       await tx.chat.update({
         where: { id: chat.id },
         data: { activePath: newActivePath },
@@ -1109,6 +1164,7 @@ export const forkSharedChat = async (req: any, res: any, next: any) => {
     next(error);
   }
 };
+
 
 const client = new MailtrapClient({
   token: process.env.MAILTRAP_TOKEN!,
