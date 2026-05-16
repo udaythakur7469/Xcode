@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect } from "react";
 import { useProblemStore } from "@/features/problemStore";
 import { columns } from "./ProblemColumns";
@@ -16,8 +18,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useRouter } from "next/navigation"; // Import useRouter
+import { useRouter } from "next/navigation";
 import { ProblemTableSkeleton } from "./ProblemTableSkeleton";
+import { toIso, useCalendarStore } from "@/features/calenderStore";
 
 const ProblemTable: React.FC = () => {
   const {
@@ -30,29 +33,43 @@ const ProblemTable: React.FC = () => {
     difficultyFilter,
   } = useProblemStore();
 
-  const router = useRouter(); // Initialize useRouter
+  // ── Calendar filter state ──────────────────────────────────────────────────
+  const { calendarMode, selectedDate, selectedRange } = useCalendarStore();
 
-  // Use searchResults if available, otherwise use problems
+  // Derived date params
+  const dateFrom: string | null = React.useMemo(() => {
+    if (calendarMode === "single") return selectedDate;
+    if (calendarMode === "range" && selectedRange.from)
+      return toIso(selectedRange.from);
+    return null;
+  }, [calendarMode, selectedDate, selectedRange]);
+
+  const dateTo: string | null = React.useMemo(() => {
+    if (calendarMode === "single") return selectedDate;
+    if (calendarMode === "range" && selectedRange.to)
+      return toIso(selectedRange.to);
+    return null;
+  }, [calendarMode, selectedDate, selectedRange]);
+
+  const router = useRouter();
   const data = searchResults.length > 0 ? searchResults : problems;
 
-  // Fetch problems when the component mounts or the page changes
+  // Re-fetch when page, difficulty filter, or calendar selection changes
   useEffect(() => {
-    console.log("Fetching problems with difficulty filter:", difficultyFilter); // Debug log
-    getPaginatedProblems(pagination.currentPage);
-  }, [pagination.currentPage]);
+    getPaginatedProblems(pagination.currentPage, dateFrom, dateTo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.currentPage, difficultyFilter, dateFrom, dateTo]);
 
-  // Create the table instance
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
 
-  // Handle row click to navigate to the problem details page
   const handleRowClick = (problemTitle: string) => {
     router.push(
       `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}&tab=description`,
-    ); // Navigate to the problem details page with query parameter
+    );
   };
 
   if (isLoading) {
@@ -69,7 +86,6 @@ const ProblemTable: React.FC = () => {
 
   return (
     <div className="w-full">
-      {/* Data Table */}
       <div className="rounded-md border w-full">
         <Table className="w-full">
           <TableHeader>
@@ -78,11 +94,11 @@ const ProblemTable: React.FC = () => {
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
-                    style={{ width: `${header.getSize()}px` }} // Set column width
+                    style={{ width: `${header.getSize()}px` }}
                     className={
                       header.column.id === "solved"
                         ? "text-right text-lg text-white cursor-pointer"
-                        : "text-lg text-white cursor-pointer" // Align Status header to the right
+                        : "text-lg text-white cursor-pointer"
                     }
                   >
                     {header.isPlaceholder
@@ -102,17 +118,17 @@ const ProblemTable: React.FC = () => {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="hover:bg-secondary cursor-pointer" // Add cursor-pointer
-                  onClick={() => handleRowClick(row.original.title)} // Handle row click
+                  className="hover:bg-secondary cursor-pointer"
+                  onClick={() => handleRowClick(row.original.title)}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      style={{ width: `${cell.column.getSize()}px` }} // Set column width
+                      style={{ width: `${cell.column.getSize()}px` }}
                       className={
                         cell.column.id === "solved"
                           ? "text-right cursor-pointer"
-                          : "cursor-pointer" // Align Status content to the right
+                          : "cursor-pointer"
                       }
                     >
                       {flexRender(
@@ -137,11 +153,12 @@ const ProblemTable: React.FC = () => {
         </Table>
       </div>
 
-      {/* Pagination Controls */}
-      {searchResults.length === 0 && ( // Only show pagination if no search results
+      {searchResults.length === 0 && (
         <div className="flex justify-between mt-4">
           <Button
-            onClick={() => getPaginatedProblems(pagination.currentPage - 1)}
+            onClick={() =>
+              getPaginatedProblems(pagination.currentPage - 1, dateFrom, dateTo)
+            }
             disabled={pagination.currentPage === 1}
           >
             <ArrowLeft />
@@ -151,7 +168,9 @@ const ProblemTable: React.FC = () => {
             Page {pagination.currentPage} of {pagination.totalPages}
           </span>
           <Button
-            onClick={() => getPaginatedProblems(pagination.currentPage + 1)}
+            onClick={() =>
+              getPaginatedProblems(pagination.currentPage + 1, dateFrom, dateTo)
+            }
             disabled={pagination.currentPage === pagination.totalPages}
           >
             Next
