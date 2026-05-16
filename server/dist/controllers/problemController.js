@@ -115,6 +115,22 @@ export const getProblems = async (req, res, next) => {
                 whereClause.id = { notIn: [...solvedProblemIds] };
             }
         }
+        const dateFrom = req.query.dateFrom;
+        const dateTo = req.query.dateTo;
+        if (dateFrom && dateTo && userId) {
+            const parseIso = (iso) => {
+                const [y, m, d] = iso.split("-").map(Number);
+                return new Date(Date.UTC(y, m - 1, d));
+            };
+            const from = parseIso(dateFrom);
+            const to = new Date(parseIso(dateTo).getTime() + 86400000); // inclusive
+            whereClause.solvedProblems = {
+                some: {
+                    userId,
+                    solvedAt: { gte: from, lt: to },
+                },
+            };
+        }
         const problems = await prisma.problem.findMany({
             where: whereClause,
             skip,

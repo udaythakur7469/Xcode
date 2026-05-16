@@ -134,6 +134,23 @@ export const getProblems = async (req, res, next) => {
       }
     }
 
+    const dateFrom = req.query.dateFrom as string | undefined;
+    const dateTo = req.query.dateTo as string | undefined;
+    if (dateFrom && dateTo && userId) {
+      const parseIso = (iso: string) => {
+        const [y, m, d] = iso.split("-").map(Number);
+        return new Date(Date.UTC(y, m - 1, d));
+      };
+      const from = parseIso(dateFrom);
+      const to = new Date(parseIso(dateTo).getTime() + 86_400_000); // inclusive
+      whereClause.solvedProblems = {
+        some: {
+          userId,
+          solvedAt: { gte: from, lt: to },
+        },
+      };
+    }
+
     const problems = await prisma.problem.findMany({
       where: whereClause,
       skip,
