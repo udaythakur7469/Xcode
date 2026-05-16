@@ -1,6 +1,6 @@
 "use client";
 
-import React, { forwardRef, useEffect, useState } from "react";
+import React, { forwardRef, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Calendar, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import DisplayTechIcons from "./DisplayTechIcons";
 import { getRandomInterviewCover, getTechLogos } from "@/services/interviewServices/interviewService";
 import moment from "moment";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 
 enum interviewType {
   BEHAVIORAL = "BEHAVIORAL",
@@ -45,6 +46,18 @@ const InterviewCard = forwardRef<HTMLDivElement, InterviewCardProps>(
     const [techIcons, setTechIcons] = useState<{ tech: string; url: string }[]>(
       []
     );
+
+    const containerRef = useRef<HTMLDivElement>(null);
+    const textRef = useRef<HTMLParagraphElement>(null);
+    const [shouldScroll, setShouldScroll] = useState(false);
+
+    useEffect(() => {
+      if (containerRef.current && textRef.current) {
+        setShouldScroll(
+          textRef.current.scrollWidth > containerRef.current.offsetWidth,
+        );
+      }
+    }, [role]);
 
     useEffect(() => {
       const fetchTechIcons = async () => {
@@ -86,10 +99,30 @@ const InterviewCard = forwardRef<HTMLDivElement, InterviewCardProps>(
             </div>
           </div>
         </div>
-        <div className="flex text-2xl mt-2">
-          <p className="flex justify-center items-center mx-5 mt-2">
-            {role} interview
-          </p>
+        <div className="flex text-2xl mt-2 min-w-0 overflow-hidden">
+          <div
+            className="mx-5 mt-2 overflow-hidden min-w-0 relative"
+            ref={containerRef}
+          >
+            <motion.p
+              ref={textRef}
+              className="whitespace-nowrap inline-block"
+              animate={shouldScroll ? { x: ["0%", "-100%"] } : {}}
+              transition={
+                shouldScroll
+                  ? {
+                      duration: 6,
+                      ease: "linear",
+                      repeat: Infinity,
+                      repeatType: "reverse",
+                      repeatDelay: 0.8,
+                    }
+                  : {}
+              }
+            >
+              {role} interview
+            </motion.p>
+          </div>
         </div>
         <div className="my-3 mx-5 flex flex-row justify-start space-x-6">
           <div className="flex flex-row">
