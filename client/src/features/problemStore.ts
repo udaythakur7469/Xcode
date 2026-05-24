@@ -53,6 +53,26 @@ interface TestCases {
   count: number;
 }
 
+interface HintState {
+  hints: string[];
+  unlockedLevel: number;
+  isLoadingHints: boolean;
+  hintsError: string | null;
+}
+
+interface FetchHintsPayload {
+  problemTitle: string;
+  problemDescription: string;
+  userCode: string;
+  language: string;
+}
+
+interface UpdateUnlockPayload {
+  problemTitle: string;
+  language: string;
+  unlockedLevel: number;
+}
+
 interface Problemdata {
   problem: ProblemDetails | null;
   problems: Problem[];
@@ -72,6 +92,10 @@ interface Problemdata {
     totalPages: number | null;
     totalProblems: number | null;
   };
+  hints: string[];
+  unlockedLevel: number;
+  isLoadingHints: boolean;
+  hintsError: string | null;
 
   createProblem: (problem: ProblemDetails) => Promise<void>;
   getPaginatedProblems: (
@@ -93,6 +117,18 @@ interface Problemdata {
     likes: number;
     dislikes: number;
   }) => void;
+  fetchAiHints: (payload: {
+    problemTitle: string;
+    problemDescription: string;
+    userCode: string;
+    language: string;
+  }) => Promise<void>;
+  updateUnlockLevel: (payload: {
+    problemTitle: string;
+    language: string;
+    unlockedLevel: number;
+  }) => Promise<void>;
+  resetHints: () => void;
 }
 
 export const useProblemStore = create<Problemdata>()((set, get) => ({
@@ -114,6 +150,10 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
     totalPages: null,
     totalProblems: null,
   },
+  hints: [],
+  unlockedLevel: 1,
+  isLoadingHints: false,
+  hintsError: null,
 
   createProblem: async (createProblemData) => {
     set({ isLoading: true, error: null });
@@ -156,13 +196,13 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const params: Record<string, any> = {
-      page,
-      difficulty: get().difficultyFilter,
-      status: get().statusFilter,
-      tags: get().tagsFilter.join(","),
-    };
-    if (dateFrom) params.dateFrom = dateFrom;
-    if (dateTo) params.dateTo = dateTo;
+        page,
+        difficulty: get().difficultyFilter,
+        status: get().statusFilter,
+        tags: get().tagsFilter.join(","),
+      };
+      if (dateFrom) params.dateFrom = dateFrom;
+      if (dateTo) params.dateTo = dateTo;
       const response = await axios.get(`${API_URL}/problem/getProblems`, {
         params,
       });
@@ -415,6 +455,51 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
     if (!currentProblem || currentProblem.id !== problemId) return;
     set({
       problem: { ...currentProblem, likes, dislikes },
+    });
+  },
+  fetchAiHints: async (payload: FetchHintsPayload) => {
+    const { problemTitle, problemDescription, userCode, language } = payload;
+    set({ isLoadingHints: true, hintsError: null });
+    try {
+      const response = await axios.post(`${API_URL}/problem/getHints`, {
+        problemTitle,
+        problemDescription,
+        userCode,
+        language,
+      });
+      set({
+        hints: response.data.hints as string[],
+        unlockedLevel: response.data.unlockedLevel as number,
+        isLoadingHints: false,
+        hintsError: null,
+      });
+    } catch (error: any) {
+      const errMsg =
+        error.response?.data?.message || "Hints are temporarily unavailable.";
+      set({ hintsError: errMsg, isLoadingHints: false });
+    }
+  },
+
+  updateUnlockLevel: async (payload: UpdateUnlockPayload) => {
+    const { problemTitle, language, unlockedLevel } = payload;
+    set({ unlockedLevel });
+    try {
+      await axios.patch(`${API_URL}/problem/updateHintUnlock`, {
+        problemTitle,
+        language,
+        unlockedLevel,
+      });
+    } catch (error) {
+      console.error("Failed to persist hint unlock level", error);
+    }
+  },
+
+  resetHints: () => {
+    set({
+      hints: [],
+      unlockedLevel: 1,
+      hintsError: null,
+      isLoadingHints: false,
     });
   },
 }));
