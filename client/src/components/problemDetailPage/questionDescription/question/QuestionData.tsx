@@ -6,13 +6,13 @@ import { useProblemStore } from "@/features/problemStore";
 import { CircleCheckBig, Lightbulb, ThumbsDown, ThumbsUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
-import HintsDialog from "../dialogBoxes/HintsDialog";
+import HintsDialog from "../dialogBoxes/hints/HintsDialog";
 import StatsDialog from "../dialogBoxes/StatsDialog";
 import { formatCount } from "@/services/countService";
 import { useSocket } from "@/context/socketContext";
 import { QuestionDataSkeleton } from "./QuestionDataSkeleton";
 
-type QuestionDataProps = {};
+type QuestionDataProps = { code: string; language: string };
 
 type ProblemDetails = {
   id?: number;
@@ -40,7 +40,7 @@ type ProblemDetails = {
   dislikes?: number;
 };
 
-const QuestionData: React.FC<QuestionDataProps> = () => {
+const QuestionData: React.FC<QuestionDataProps> = ({ code, language }) => {
   const searchParams = useSearchParams();
   const problemTitle = searchParams.get("title");
 
@@ -50,11 +50,13 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
     isReacting,
     problem: storeProblem,
     applyRemoteProblemReaction,
+    resetHints,
   } = useProblemStore();
 
   const [problem, setProblem] = useState<ProblemDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hintsOpen, setHintsOpen] = useState(false);
 
   const { socket } = useSocket();
 
@@ -75,7 +77,8 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
       }
     };
     fetchProblemDetails();
-  }, [problemTitle, getProblemByTitle]);
+    resetHints();
+  }, [problemTitle, getProblemByTitle, resetHints]);
 
   useEffect(() => {
     if (!socket || !storeProblem?.id) return;
@@ -106,8 +109,7 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
         problem
       ) {
         e.preventDefault();
-        const hintButton = document.querySelector("[data-hint-trigger]");
-        if (hintButton instanceof HTMLElement) hintButton.click();
+        setHintsOpen(true);
       }
     };
     window.addEventListener("keydown", keyboardShortcut);
@@ -184,20 +186,28 @@ const QuestionData: React.FC<QuestionDataProps> = () => {
 
             {/* This group always moves to next line together if it doesn't fit */}
             <div className="flex flex-row items-center gap-2 flex-shrink-0 pt-1">
-              <Dialog>
+              <Dialog open={hintsOpen} onOpenChange={setHintsOpen}>
                 <DialogTrigger asChild>
                   <Badge
                     variant="secondary"
                     className="px-3 py-1 flex items-center cursor-pointer"
                     data-hint-trigger
+                    onClick={() => setHintsOpen(true)}
                   >
                     <Lightbulb className="h-4 w-4 mr-1 text-yellow-400" />
                     Hint
                   </Badge>
                 </DialogTrigger>
-                <HintsDialog
-                  data={problem.hints.map((hintObj) => hintObj.hint)}
-                />
+
+                {/* ── CHANGED: pass code, language, title, description ── */}
+                {hintsOpen && (
+                  <HintsDialog
+                    problemTitle={problem.title}
+                    problemDescription={problem.description}
+                    userCode={code}
+                    language={language}
+                  />
+                )}
               </Dialog>
 
               <Badge
