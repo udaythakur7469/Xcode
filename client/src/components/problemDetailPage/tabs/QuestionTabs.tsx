@@ -30,6 +30,8 @@ type QuestionTabsProps = {
   onCloseResultsTab?: () => void;
   onMaximize?: () => void;
   isMaximized?: boolean;
+  code: string;
+  language: string;
 };
 
 // Valid tabs that can appear in the URL
@@ -53,6 +55,8 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   onCloseResultsTab,
   onMaximize,
   isMaximized = false,
+  code,
+  language,
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -327,7 +331,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
                 className="absolute inset-0 w-full h-full"
               >
                 <TabsContent value="description" className="h-full m-0">
-                  <QuestionData />
+                  <QuestionData code={code} language={language} />
                 </TabsContent>
               </motion.div>
             )}
