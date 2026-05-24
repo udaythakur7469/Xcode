@@ -348,6 +348,8 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
               onCloseResultsTab={handleCloseSubmissionTab}
               onMaximize={handleLeftMaximize}
               isMaximized={isLeftMaximized}
+              code={code} 
+              language={language}
             />
           </div>
         </ResizablePanel>
