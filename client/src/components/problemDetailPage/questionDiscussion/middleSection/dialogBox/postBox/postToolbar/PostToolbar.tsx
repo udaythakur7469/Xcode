@@ -18,6 +18,7 @@ import {
   Lightbulb,
   History,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import {
   HoverCard,
@@ -30,6 +31,8 @@ import { usePostEditorStore } from "@/features/postEditorStore";
 type PostToolbarProps = {
   onInsertText: (before: string, after?: string) => void;
   onReset?: (() => void) | null;
+  onOpenAIPanel: () => void;
+  isAIPanelOpen: boolean;
 };
 
 const UPLOAD_PLACEHOLDER = "![uploading...]";
@@ -39,7 +42,12 @@ const TABLE_TEMPLATE = `| Column 1 | Column 2 | Column 3 |
 | Cell     | Cell     | Cell     |
 | Cell     | Cell     | Cell     |`;
 
-const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
+const PostToolbar: React.FC<PostToolbarProps> = ({
+  onInsertText,
+  onReset,
+  onOpenAIPanel,
+  isAIPanelOpen,
+}) => {
   const buttonClasses =
     "flex items-center justify-center rounded-lg p-1 border";
 
@@ -333,7 +341,32 @@ const PostToolbar: React.FC<PostToolbarProps> = ({ onInsertText, onReset }) => {
               {isUploadingImage ? "Uploading..." : "Upload Image"}
             </HoverCardContent>
           </HoverCard>
+
+          {/* Separator */}
+          <div className="w-0.5 h-8 bg-border mx-1" />
+
+          {/* Write with AI */}
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 border text-sm font-medium transition-colors ${
+                  isAIPanelOpen
+                    ? "border-violet-500 text-violet-500 bg-violet-50 dark:bg-violet-950/30"
+                    : "border hover:bg-accent"
+                }`}
+                onClick={onOpenAIPanel}
+              >
+                <Sparkles size={16} />
+                Write with AI
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Generate post with AI
+            </HoverCardContent>
+          </HoverCard>
         </div>
+
+        {/* Right side */}
 
         {/* Right side */}
         <div className="flex items-center gap-2">
