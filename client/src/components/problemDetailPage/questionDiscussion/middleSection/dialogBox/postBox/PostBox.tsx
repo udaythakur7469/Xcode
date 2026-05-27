@@ -8,19 +8,27 @@ import { CircleX, CircleCheckBig } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import UnsavedChangesDialog from "./postTitle/dialogBoxes/UnsavedChangesDialog";
 import MissingTitleDialog from "./postTitle/dialogBoxes/MissingTitleDialog";
+import AIGenerateConfirmDialog from "./postToolbar/generatePost/AIGenerateConfirmDialog";
+import PostCreationErrorDialog from "./postToolbar/generatePost/PostCreationErrorDialog";
+import AIGenerationErrorDialog from "./postToolbar/generatePost/AIGenerationErrorDialog";
 
 type PostBoxProps = { onClose: () => void; draftId?: string | null };
 
 const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
-  const searchParams = useSearchParams(); // Get search params
-  const problemTitle = searchParams.get("title") as string; // Get the title query parameter
+  const searchParams = useSearchParams();
+  const problemTitle = searchParams.get("title") as string;
 
-  //post content states
+  // Post content states
   const [content, setContent] = useState<string>("");
   const [postTitle, setPostTitle] = useState<string>("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [originalTemplate, setOriginalTemplate] = useState<string>("");
   const [hasChanges, setHasChanges] = useState(false);
+
+  // AI panel states
+  const [isAIPanelOpen, setIsAIPanelOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [showAIConfirmDialog, setShowAIConfirmDialog] = useState(false);
 
   const {
     createNewPost,
@@ -32,9 +40,12 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
     isGettingDraftPostDetails,
     isUpdatingDraftPost,
     updateDraftPostError,
+    generatePost,
+    isGeneratingPost,
+    generatePostError,
   } = usePostStore();
 
-  //other states
+  // Other states
   const [selectionStart, setSelectionStart] = useState(0);
   const [selectionEnd, setSelectionEnd] = useState(0);
   const [resetHandler, setResetHandler] = useState<(() => void) | null>(null);
@@ -45,6 +56,7 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
   const [showMissingTitleDialog, setShowMissingTitleDialog] =
     useState<boolean>(false);
   const [isDraftMode, setIsDraftMode] = useState<boolean>(false);
+  const [showGenerateError, setShowGenerateError] = useState(false);
 
   // Load draft data if draftId is provided
   useEffect(() => {
@@ -70,21 +82,14 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
     setOriginalTemplate(template);
   };
 
-  // Effect to detect changes - simple logging
+  // Detect content changes from original template
   useEffect(() => {
     if (originalTemplate && content) {
       const hasContentChanged = content !== originalTemplate;
 
-      // Log every time content differs from original
-      if (hasContentChanged) {
-        console.log("📝 Content modified - tracking changes");
-      }
-
-      // Update state for tracking transitions
       if (hasContentChanged && !hasChanges) {
         setHasChanges(true);
       } else if (!hasContentChanged && hasChanges) {
-        console.log("✅ Content reverted to original");
         setHasChanges(false);
       }
     }
@@ -96,17 +101,24 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
       const timer = setTimeout(() => {
         setShowSuccess(false);
         onClose();
-      }, 1000); // 1 second
+      }, 1000);
 
       return () => clearTimeout(timer);
     }
   }, [showSuccess, onClose]);
 
-  // function to insert markdown (toolbar actions)
+  // Show error overlay when generatePostError appears
+  useEffect(() => {
+    if (generatePostError) {
+      setShowGenerateError(true);
+    }
+  }, [generatePostError]);
+
+  // Toolbar text insertion
   const handleInsertText = useCallback(
     (before: string, after: string = "") => {
       const textarea = document.querySelector(
-        "textarea"
+        "textarea",
       ) as HTMLTextAreaElement;
       if (!textarea) return;
 
@@ -119,34 +131,32 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
         content.substring(0, start) + replacement + content.substring(end);
       setContent(newContent);
 
-      // Reset cursor selection
       setTimeout(() => {
         textarea.focus();
         textarea.setSelectionRange(
           start + before.length,
-          start + before.length + selectedText.length
+          start + before.length + selectedText.length,
         );
       }, 0);
     },
-    [content]
+    [content],
   );
 
   const handleDismissError = () => {
     setShowError(false);
   };
 
-  // Add these functions for cancel handling
   const handleCancelWithCheck = () => {
     if (hasChanges) {
-      setShowCancelDialog(true); // Show warning dialog
+      setShowCancelDialog(true);
     } else {
-      onClose(); // Close directly if no changes
+      onClose();
     }
   };
 
   const handleConfirmCancel = () => {
-    setShowCancelDialog(false); // Close warning dialog
-    onClose(); // Close post box
+    setShowCancelDialog(false);
+    onClose();
   };
 
   const handleCreateNewPost = async () => {
@@ -155,27 +165,25 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
       return;
     }
 
-     try {
-       if (isDraftMode && draftId) {
-         // Update draft and publish it
-         await updateDraftPost(draftId, postTitle, selectedTags, content, true);
-         setSuccessMessage("Post published successfully!");
-       } else {
-         // Create new post
-         await createNewPost(
-           postTitle,
-           problemTitle,
-           selectedTags,
-           content,
-           false
-         );
-         setSuccessMessage("Post created successfully!");
-       }
-       setShowSuccess(true);
-     } catch (error) {
-       console.error("Failed to create/publish post:", error);
-       setShowError(true);
-     }
+    try {
+      if (isDraftMode && draftId) {
+        await updateDraftPost(draftId, postTitle, selectedTags, content, true);
+        setSuccessMessage("Post published successfully!");
+      } else {
+        await createNewPost(
+          postTitle,
+          problemTitle,
+          selectedTags,
+          content,
+          false,
+        );
+        setSuccessMessage("Post created successfully!");
+      }
+      setShowSuccess(true);
+    } catch (error) {
+      console.error("Failed to create/publish post:", error);
+      setShowError(true);
+    }
   };
 
   const handleCreateDraftPost = async () => {
@@ -185,17 +193,15 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
     }
     try {
       if (isDraftMode && draftId) {
-        // Update existing draft
         await updateDraftPost(draftId, postTitle, selectedTags, content, false);
         setSuccessMessage("Draft updated successfully!");
       } else {
-        // Create new draft
         await createNewPost(
           postTitle,
           problemTitle,
           selectedTags,
           content,
-          true
+          true,
         );
         setSuccessMessage("Successfully saved as draft!");
       }
@@ -206,10 +212,48 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
     }
   };
 
+  // ── AI generation handlers ─────────────────────────────────────────────────
+
+  const handleOpenAIPanel = () => {
+    setIsAIPanelOpen((prev) => !prev);
+  };
+
+  // Called by AIWritePanel when the user clicks Generate or presses Enter.
+  // If the user has made changes to the base template, show the confirm dialog first.
+  const handleAIGenerate = () => {
+    if (!aiPrompt.trim()) return;
+
+    if (hasChanges) {
+      setShowAIConfirmDialog(true);
+    } else {
+      runGeneration();
+    }
+  };
+
+  // The actual generation call — wired to the store's streaming generatePost.
+  const runGeneration = async () => {
+    setContent("");
+
+    try {
+      await generatePost(aiPrompt, (chunk) => {
+        setContent((prev) => prev + chunk);
+      });
+      // Generation complete — mark content as changed from original template
+      setIsAIPanelOpen(false);
+      setHasChanges(true);
+    } catch (error) {
+      // generatePostError in the store drives showGenerateError via useEffect
+    }
+  };
+
+  const handleRetryGeneration = () => {
+    setShowGenerateError(false);
+    runGeneration();
+  };
+
   const isLoading =
     isCreatingPost || isGettingDraftPostDetails || isUpdatingDraftPost;
   const currentError = createPostError || updateDraftPostError;
-
 
   return (
     <div className="bg-muted h-full w-full rounded-xl border-none flex flex-col overflow-hidden">
@@ -219,7 +263,8 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
           <MoonLoader color="#ffffff" size={150} />
         </div>
       )}
-      {/* Success Overlay - Shows after loader disappears for 2 seconds */}
+
+      {/* Success Overlay */}
       {showSuccess && !isLoading && (
         <div className="absolute inset-0 backdrop-blur-md pointer-events-none select-none z-50 flex justify-center items-center">
           <div className="relative rounded-lg p-8 max-w-md">
@@ -233,33 +278,49 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
           </div>
         </div>
       )}
-      {/* Error overlay*/}
-      {showError && currentError && (
-        <div className="absolute inset-0 backdrop-blur-sm pointer-events-auto select-none z-50 flex justify-center items-center">
-          <div className="relative rounded-lg p-8 max-w-md">
-            <CircleX
-              className="absolute -top-3 left-1/2 -translate-x-1/2 text-red-500 cursor-pointer rounded-full p-1 transition-colors"
-              size={48}
-              onClick={handleDismissError}
-            />
-            <div className="w-full text-4xl font-bold text-red-500 text-center mt-4">
-              {currentError}
-            </div>
-          </div>
-        </div>
-      )}
+
+      {/* Post creation error dialog */}
+      <PostCreationErrorDialog
+        isOpen={showError && !!currentError}
+        error={currentError ?? ""}
+        onClose={handleDismissError}
+      />
+
+      {/* AI generation error dialog */}
+      <AIGenerationErrorDialog
+        isOpen={showGenerateError && !!generatePostError}
+        error={generatePostError ?? ""}
+        onClose={() => setShowGenerateError(false)}
+        onRetry={handleRetryGeneration}
+      />
+
       {/* Unsaved Changes Dialog */}
       <UnsavedChangesDialog
         isOpen={showCancelDialog}
         onClose={() => setShowCancelDialog(false)}
         onConfirmCancel={handleConfirmCancel}
       />
+
       {/* Missing title Dialog */}
       <MissingTitleDialog
         isOpen={showMissingTitleDialog}
         onClose={() => setShowMissingTitleDialog(false)}
       />
-      {/* Title*/}
+
+      {/* AI generate confirm dialog — shown when user has existing changes */}
+      <AIGenerateConfirmDialog
+        isOpen={showAIConfirmDialog}
+        onClose={() => {
+          setShowAIConfirmDialog(false);
+          setIsAIPanelOpen(false);
+        }}
+        onProceed={() => {
+          setShowAIConfirmDialog(false);
+          runGeneration();
+        }}
+      />
+
+      {/* Title */}
       <div className="border-b rounded-t-xl flex-[2.5] min-h-0 border">
         <PostTitle
           onClose={handleCancelWithCheck}
@@ -272,11 +333,18 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
           isDraftMode={isDraftMode}
         />
       </div>
-      {/* Toolbar*/}
+
+      {/* Toolbar */}
       <div className="border-b flex-none min-h-0 border">
-        <PostToolbar onInsertText={handleInsertText} onReset={resetHandler} />
+        <PostToolbar
+          onInsertText={handleInsertText}
+          onReset={resetHandler}
+          onOpenAIPanel={handleOpenAIPanel}
+          isAIPanelOpen={isAIPanelOpen}
+        />
       </div>
-      {/* Editor panels takes rest of the space */}
+
+      {/* Editor panels take the rest of the space */}
       <div className="flex-[7] min-h-0 h-full rounded-b-xl border">
         <PostEditor
           content={content}
@@ -289,6 +357,12 @@ const PostBox: React.FC<PostBoxProps> = ({ onClose, draftId = null }) => {
           setOriginalTemplate={setOriginalTemplateContent}
           hasChanges={hasChanges}
           isDraftMode={isDraftMode}
+          isAIPanelOpen={isAIPanelOpen}
+          aiPrompt={aiPrompt}
+          isGeneratingPost={isGeneratingPost}
+          onAiPromptChange={setAiPrompt}
+          onAiGenerate={handleAIGenerate}
+          onAiCancel={() => setIsAIPanelOpen(false)}
         />
       </div>
     </div>
