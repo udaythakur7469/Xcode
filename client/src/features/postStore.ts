@@ -157,6 +157,8 @@ interface PostData {
   fullPostData: FullPostData | null;
   isGettingFullPost: boolean;
   fullPostError: any | null;
+  isGeneratingPost: boolean;
+  generatePostError: string | null;
 
   manageDraftPost: (
     id: string,
@@ -195,6 +197,10 @@ interface PostData {
     likes: number;
     dislikes: number;
   }) => void;
+  generatePost: (
+    prompt: string,
+    onChunk: (chunk: string) => void,
+  ) => Promise<void>;
 }
 
 const PAGE_LIMIT = 10;
@@ -241,6 +247,8 @@ export const usePostStore = create<PostData>()((set, get) => ({
   fullPostData: null,
   isGettingFullPost: false,
   fullPostError: null,
+  isGeneratingPost: false,
+  generatePostError: null,
 
   getPostBaseTemplate: async (title) => {
     set({ isPostBaseTemplateLoading: true, postBaseTemplateError: null });
@@ -755,6 +763,44 @@ export const usePostStore = create<PostData>()((set, get) => ({
         isGettingFullPost: false,
       });
 
+      throw error;
+    }
+  },
+
+  generatePost: async (prompt, onChunk) => {
+    set({ isGeneratingPost: true, generatePostError: null });
+
+    try {
+      const response = await fetch(`${API_URL}/post/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const errMsg = errorData?.message || "Failed to generate post";
+        set({ generatePostError: errMsg, isGeneratingPost: false });
+        throw new Error(errMsg);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response stream available");
+
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        onChunk(chunk);
+      }
+
+      set({ isGeneratingPost: false });
+    } catch (error: any) {
+      const errMsg = error?.message || "Error generating post";
+      set({ generatePostError: errMsg, isGeneratingPost: false });
       throw error;
     }
   },
