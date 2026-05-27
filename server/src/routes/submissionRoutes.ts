@@ -25,17 +25,9 @@ router.route("/add-base-code").post(readLimiter, storeBaseClassCode);
 
 // ── Code execution (expensive — rate limited, never cached) ─────
 
-// router.route("/runCode").post(authMiddleware, runCodeLimiter, runCode);
-// router.route("/submitCode").post(authMiddleware, submitCodeLimiter, submitCode);
-
-router.route("/runCode").post(authMiddleware, runCode);
-router
-  .route("/submitCode")
-  .post(
-    authMiddleware,
-    cacheMiddleware(redis, { strategy: "none" }),
-    submitCode,
-  );
+// AFTER
+router.route("/runCode").post(authMiddleware, runCodeLimiter, runCode);
+router.route("/submitCode").post(authMiddleware, submitCodeLimiter, submitCode);
 
 // ── Reads (cached) ───────────────────────────────────────────────
 
