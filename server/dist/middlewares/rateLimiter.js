@@ -91,6 +91,15 @@ export const generateFeedbackLimiter = rateLimit({
     message: "Feedback generation limit reached. You can generate 5 per hour.",
     failStrategy: "open",
 });
+export const generatePostLimiter = rateLimit({
+    redis,
+    limit: 5,
+    window: 3600,
+    keyPrefix: "ai:post:generate",
+    identifier,
+    message: "Post generation limit reached. You can generate 5 posts per hour.",
+    failStrategy: "open",
+});
 // ─────────────────────────────────────────────────────────────────
 // CODE EXECUTION
 // ─────────────────────────────────────────────────────────────────
@@ -240,8 +249,8 @@ export const magicLinkLimiter = rateLimit({
 });
 export const forgotPasswordLimiter = rateLimit({
     redis,
-    limit: 20,
-    window: 36,
+    limit: 5,
+    window: 3600,
     keyPrefix: "auth:forgot-password",
     identifier: (req) => {
         const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
