@@ -4,6 +4,7 @@ import PostMarkdownPreview from "../postMarkdownPreview/PostMarkdownPreview";
 import { usePostStore } from "@/features/postStore";
 import { useSearchParams } from "next/navigation";
 import { PostEditorPanelsSkeleton } from "./PostEditorPanelsSkeleton";
+import AIWritePanel from "../../postToolbar/generatePost/AIWritePanel";
 
 type PostEditorPanelsProps = {
   content: string;
@@ -13,6 +14,13 @@ type PostEditorPanelsProps = {
   setOriginalTemplate?: (template: string) => void;
   hasChanges?: boolean;
   isDraftMode?: boolean;
+  // AI panel props
+  isAIPanelOpen: boolean;
+  aiPrompt: string;
+  isGeneratingPost: boolean;
+  onAiPromptChange: (value: string) => void;
+  onAiGenerate: () => void;
+  onAiCancel: () => void;
 };
 
 const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
@@ -23,6 +31,12 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   setOriginalTemplate,
   hasChanges,
   isDraftMode = false,
+  isAIPanelOpen,
+  aiPrompt,
+  isGeneratingPost,
+  onAiPromptChange,
+  onAiGenerate,
+  onAiCancel,
 }) => {
   const [problemTitle, setProblemTitle] = useState<string | null>(null);
   const hasLoadedInitialContent = useRef(false);
@@ -37,7 +51,7 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
 
   const searchParams = useSearchParams();
 
-  // Effect to get problem title and load template once
+  // Fetch problem title and load template once
   useEffect(() => {
     const title = searchParams.get("title");
     setProblemTitle(title);
@@ -55,7 +69,7 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
     loadTemplate();
   }, [searchParams, getPostBaseTemplate, isDraftMode]);
 
-  // Effect to set initial content once
+  // Set initial content once the template arrives
   useEffect(() => {
     if (
       postBaseTemplate &&
@@ -65,7 +79,6 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
     ) {
       setContent(postBaseTemplate);
       originalTemplateRef.current = postBaseTemplate;
-      // Send original template to parent
       if (setOriginalTemplate) {
         setOriginalTemplate(postBaseTemplate);
       }
@@ -76,7 +89,6 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   const handleReset = () => {
     if (postBaseTemplate && !isDraftMode) {
       setContent(postBaseTemplate);
-      // Notify parent about reset
       if (setOriginalTemplate) {
         setOriginalTemplate(postBaseTemplate);
       }
@@ -112,12 +124,24 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
     <div className="h-full w-full flex">
       {/* Left Panel (Editor) - Fixed 50% */}
       <div className="w-1/2 border mr-1 rounded-bl-xl overflow-hidden">
-        <div className="h-full w-full overflow-y-auto overflow-x-hidden">
+        {/* position:relative scopes the absolutely positioned AIWritePanel */}
+        <div className="relative h-full w-full overflow-y-auto overflow-x-hidden">
           <PostMarkdownEditor
             content={content}
             setContent={setContent}
             onSelectionChange={onSelectionChange}
             onReset={handleReset}
+          />
+
+          {/* AI panel floats over the bottom of the textarea,
+              starting after the line-numbers column (~36px) */}
+          <AIWritePanel
+            isOpen={isAIPanelOpen}
+            aiPrompt={aiPrompt}
+            isGenerating={isGeneratingPost}
+            onPromptChange={onAiPromptChange}
+            onGenerate={onAiGenerate}
+            onCancel={onAiCancel}
           />
         </div>
       </div>
