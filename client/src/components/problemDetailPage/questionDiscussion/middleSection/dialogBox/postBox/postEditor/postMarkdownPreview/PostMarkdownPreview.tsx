@@ -14,11 +14,11 @@ const escapeHtml = (raw: string): string =>
 
 interface PostMarkdownPreviewProps {
   markdown: string;
+  // When true, a pulsing violet cursor character is appended to the preview
+  isStreaming?: boolean;
 }
 
 // ─── List helpers ────────────────────────────────────────────────────────────
-// All list styles use inline style — prose resets list-style/margin/padding
-// to 0 on ol/ul so Tailwind classes like ml-5 get wiped out.
 
 const renderListItem = (item: any, parser: any): string => {
   let html = "";
@@ -234,10 +234,15 @@ const preprocessMarkdown = (markdown: string): string => {
   return result.join("\n").replace(/!\[uploading\.\.\.\]/g, "");
 };
 
+// ─── Component ───────────────────────────────────────────────────────────────
+
+// Pulsing cursor injected at the end of the preview during streaming.
+const STREAM_CURSOR_HTML = `<span class="text-violet-500 animate-pulse inline-block select-none" aria-hidden="true">▍</span>`;
+
 const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
   markdown,
+  isStreaming = false,
 }) => {
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const isTypingRef = useRef(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -275,15 +280,32 @@ const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
     return () => window.removeEventListener("editorTyping", handleTyping);
   }, []);
 
+  // Auto-scroll during streaming and typing
   useEffect(() => {
-    if (isTypingRef.current && scrollRef.current) {
+    if (isStreaming && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    } else if (isTypingRef.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [markdown]);
+  }, [markdown, isStreaming]);
 
   const getPreviewHTML = () => {
     try {
-      const html = marked.parse(preprocessMarkdown(markdown));
+      let html = marked.parse(preprocessMarkdown(markdown)) as string;
+
+      // Append the pulsing streaming cursor at the very end of the HTML
+      if (isStreaming) {
+        // Insert before the last closing block tag so cursor appears inline
+        html = html.replace(
+          /(<\/(?:p|li|h[1-6]|blockquote)>)\s*$/,
+          (match) => STREAM_CURSOR_HTML + match,
+        );
+        // Fallback: if no block tag found just append at the end
+        if (!html.includes(STREAM_CURSOR_HTML)) {
+          html += STREAM_CURSOR_HTML;
+        }
+      }
+
       return { __html: html };
     } catch (error) {
       console.error("Markdown parsing error:", error);
@@ -292,7 +314,10 @@ const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
   };
 
   return (
-    <div ref={scrollRef} className="h-full w-full bg-background text-foreground overflow-auto text-lg">
+    <div
+      ref={scrollRef}
+      className="h-full w-full bg-background text-foreground overflow-auto text-lg"
+    >
       <div
         className="prose prose-invert max-w-none prose-pre:p-0 prose-pre:m-0 leading-6 pl-3 pr-2 pt-0 break-words text-lg font-sans"
         style={{
