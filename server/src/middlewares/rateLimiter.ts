@@ -108,7 +108,7 @@ export const generateFeedbackLimiter = rateLimit({
 
 export const generatePostLimiter = rateLimit({
   redis,
-  limit: 5,
+  limit: 10,
   window: 3600,
   keyPrefix: "ai:post:generate",
   identifier,
