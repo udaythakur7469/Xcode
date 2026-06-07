@@ -12,6 +12,11 @@ type PostTitleProps = {
   handleCreateNewPost: () => void;
   handleCreateDraftPost: () => void;
   isDraftMode?: boolean;
+  // AI suggest props
+  onSuggestTitle: () => void;
+  isSuggestingTitle: boolean;
+  onSuggestTags: () => Promise<string[]>;
+  isSuggestingTags: boolean;
 };
 
 const PostTitle: React.FC<PostTitleProps> = ({
@@ -23,17 +28,28 @@ const PostTitle: React.FC<PostTitleProps> = ({
   handleCreateNewPost,
   handleCreateDraftPost,
   isDraftMode = false,
+  onSuggestTitle,
+  isSuggestingTitle,
+  onSuggestTags,
+  isSuggestingTags,
 }) => {
   return (
     <div className="h-full w-full rounded-t-xl flex flex-row">
       <div className="h-full w-full rounded-tl-xl flex-[8] flex flex-col">
         <div className="rounded-tl-xl flex-[4]">
-          <PostBoxTitle postTitle={postTitle} setPostTitle={setPostTitle} />
+          <PostBoxTitle
+            postTitle={postTitle}
+            setPostTitle={setPostTitle}
+            onSuggestTitle={onSuggestTitle}
+            isSuggestingTitle={isSuggestingTitle}
+          />
         </div>
         <div className="flex-[6]">
           <PostBoxTags
             selectedTags={selectedTags}
             setSelectedTags={setSelectedTags}
+            onSuggestTags={onSuggestTags}
+            isSuggestingTags={isSuggestingTags}
           />
         </div>
       </div>
@@ -48,4 +64,5 @@ const PostTitle: React.FC<PostTitleProps> = ({
     </div>
   );
 };
+
 export default PostTitle;
