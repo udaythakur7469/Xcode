@@ -159,6 +159,10 @@ interface PostData {
   fullPostError: any | null;
   isGeneratingPost: boolean;
   generatePostError: string | null;
+  isGeneratingTitle: boolean;
+  generateTitleError: string | null;
+  isGeneratingTags: boolean;
+  generateTagsError: string | null;
 
   manageDraftPost: (
     id: string,
@@ -200,7 +204,25 @@ interface PostData {
   generatePost: (
     prompt: string,
     onChunk: (chunk: string) => void,
+    options: {
+      mode: "write" | "continue" | "improve" | "summarize";
+      tone: "technical" | "beginner" | "concise" | "detailed";
+      problemTitle?: string;
+      currentContent?: string;
+      selectedText?: string;
+      signal?: AbortSignal;
+    },
   ) => Promise<void>;
+
+  generatePostTitle: (
+    content: string,
+    problemTitle?: string,
+  ) => Promise<string>;
+  generatePostTags: (
+    content: string,
+    existingTags: string[],
+    problemTitle?: string,
+  ) => Promise<string[]>;
 }
 
 const PAGE_LIMIT = 10;
@@ -249,6 +271,10 @@ export const usePostStore = create<PostData>()((set, get) => ({
   fullPostError: null,
   isGeneratingPost: false,
   generatePostError: null,
+  isGeneratingTitle: false,
+  generateTitleError: null,
+  isGeneratingTags: false,
+  generateTagsError: null,
 
   getPostBaseTemplate: async (title) => {
     set({ isPostBaseTemplateLoading: true, postBaseTemplateError: null });
@@ -767,15 +793,26 @@ export const usePostStore = create<PostData>()((set, get) => ({
     }
   },
 
-  generatePost: async (prompt, onChunk) => {
+  generatePost: async (prompt, onChunk, options) => {
     set({ isGeneratingPost: true, generatePostError: null });
+
+    const { mode, tone, problemTitle, currentContent, selectedText, signal } =
+      options;
 
     try {
       const response = await fetch(`${API_URL}/post/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ prompt }),
+        signal,
+        body: JSON.stringify({
+          prompt,
+          mode,
+          tone,
+          problemTitle,
+          currentContent,
+          selectedText,
+        }),
       });
 
       if (!response.ok) {
@@ -799,8 +836,52 @@ export const usePostStore = create<PostData>()((set, get) => ({
 
       set({ isGeneratingPost: false });
     } catch (error: any) {
+      if (error?.name === "AbortError") {
+        // Abort is intentional — clear generating state but don't set error
+        set({ isGeneratingPost: false });
+        return;
+      }
       const errMsg = error?.message || "Error generating post";
       set({ generatePostError: errMsg, isGeneratingPost: false });
+      throw error;
+    }
+  },
+
+  generatePostTitle: async (content, problemTitle) => {
+    set({ isGeneratingTitle: true, generateTitleError: null });
+
+    try {
+      const response = await axios.post(`${API_URL}/post/generateTitle`, {
+        content,
+        problemTitle,
+      });
+
+      const title: string = response.data.data.title;
+      set({ isGeneratingTitle: false });
+      return title;
+    } catch (error: any) {
+      const errMsg = error?.response?.data?.message || "Error generating title";
+      set({ generateTitleError: errMsg, isGeneratingTitle: false });
+      throw error;
+    }
+  },
+
+  generatePostTags: async (content, existingTags, problemTitle) => {
+    set({ isGeneratingTags: true, generateTagsError: null });
+
+    try {
+      const response = await axios.post(`${API_URL}/post/generateTags`, {
+        content,
+        existingTags,
+        problemTitle,
+      });
+
+      const tags: string[] = response.data.data.tags;
+      set({ isGeneratingTags: false });
+      return tags;
+    } catch (error: any) {
+      const errMsg = error?.response?.data?.message || "Error generating tags";
+      set({ generateTagsError: errMsg, isGeneratingTags: false });
       throw error;
     }
   },
