@@ -1,26 +1,36 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import PostMarkdownEditor from "../postMarkdownEditor/PostMarkdownEditor";
 import PostMarkdownPreview from "../postMarkdownPreview/PostMarkdownPreview";
 import { usePostStore } from "@/features/postStore";
 import { useSearchParams } from "next/navigation";
 import { PostEditorPanelsSkeleton } from "./PostEditorPanelsSkeleton";
-import AIWritePanel from "../../postToolbar/generatePost/AIWritePanel";
+import AIWritePanel, { AIMode, AITone } from "../../postToolbar/generatePost/AIWritePanel";
 
 type PostEditorPanelsProps = {
   content: string;
   setContent: (value: string) => void;
   onSelectionChange?: (start: number, end: number) => void;
-  onResetReady?: () => void;
+  onResetReady?: (fn: () => void) => void;
   setOriginalTemplate?: (template: string) => void;
   hasChanges?: boolean;
   isDraftMode?: boolean;
+  isStreaming: boolean;
   // AI panel props
   isAIPanelOpen: boolean;
   aiPrompt: string;
+  aiMode: AIMode;
+  aiTone: AITone;
+  promptHistory: string[];
+  hasGenerated: boolean;
   isGeneratingPost: boolean;
+  problemTitle?: string;
   onAiPromptChange: (value: string) => void;
   onAiGenerate: () => void;
+  onAiAbort: () => void;
+  onAiRegenerate: () => void;
   onAiCancel: () => void;
+  onAiModeChange: (mode: AIMode) => void;
+  onAiToneChange: (tone: AITone) => void;
 };
 
 const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
@@ -31,14 +41,24 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
   setOriginalTemplate,
   hasChanges,
   isDraftMode = false,
+  isStreaming,
   isAIPanelOpen,
   aiPrompt,
+  aiMode,
+  aiTone,
+  promptHistory,
+  hasGenerated,
   isGeneratingPost,
+  problemTitle,
   onAiPromptChange,
   onAiGenerate,
+  onAiAbort,
+  onAiRegenerate,
   onAiCancel,
+  onAiModeChange,
+  onAiToneChange,
 }) => {
-  const [problemTitle, setProblemTitle] = useState<string | null>(null);
+  const [problemTitle_, setProblemTitle_] = useState<string | null>(null);
   const hasLoadedInitialContent = useRef(false);
   const originalTemplateRef = useRef<string>("");
 
@@ -51,25 +71,21 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
 
   const searchParams = useSearchParams();
 
-  // Fetch problem title and load template once
   useEffect(() => {
     const title = searchParams.get("title");
-    setProblemTitle(title);
+    setProblemTitle_(title);
 
     const loadTemplate = async () => {
       if (!title || hasLoadedInitialContent.current || isDraftMode) return;
-
       try {
         await getPostBaseTemplate(title);
       } catch (error) {
         console.error("Error fetching post template:", error);
       }
     };
-
     loadTemplate();
   }, [searchParams, getPostBaseTemplate, isDraftMode]);
 
-  // Set initial content once the template arrives
   useEffect(() => {
     if (
       postBaseTemplate &&
@@ -79,30 +95,24 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
     ) {
       setContent(postBaseTemplate);
       originalTemplateRef.current = postBaseTemplate;
-      if (setOriginalTemplate) {
-        setOriginalTemplate(postBaseTemplate);
-      }
+      if (setOriginalTemplate) setOriginalTemplate(postBaseTemplate);
       hasLoadedInitialContent.current = true;
     }
   }, [postBaseTemplate, content, setContent, setOriginalTemplate, isDraftMode]);
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     if (postBaseTemplate && !isDraftMode) {
       setContent(postBaseTemplate);
-      if (setOriginalTemplate) {
-        setOriginalTemplate(postBaseTemplate);
-      }
-      console.log("🔄 Content reset to original template");
+      if (setOriginalTemplate) setOriginalTemplate(postBaseTemplate);
     }
-  };
+  }, [postBaseTemplate, isDraftMode, setContent, setOriginalTemplate]);
 
   useEffect(() => {
-    if (onResetReady && originalTemplateRef.current) {
-      onResetReady(() => handleReset);
+    if (onResetReady && postBaseTemplate) {
+      onResetReady(handleReset);
     }
-  }, [onResetReady, originalTemplateRef.current]);
+  }, [onResetReady, handleReset, postBaseTemplate]);
 
-  // Loading state
   if (isPostBaseTemplateLoading && content === "" && !isDraftMode) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -111,7 +121,6 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
     );
   }
 
-  // Error state
   if (postBaseTemplateError && content === "" && !isDraftMode) {
     return (
       <div className="h-full flex items-center justify-center text-red-500 text-lg">
@@ -122,7 +131,7 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
 
   return (
     <div className="h-full w-full flex">
-      {/* Left Panel (Editor) - Fixed 50% */}
+      {/* Left Panel — editor + floating AI panel */}
       <div className="w-1/2 border mr-1 rounded-bl-xl overflow-hidden">
         {/* position:relative scopes the absolutely positioned AIWritePanel */}
         <div className="relative h-full w-full overflow-y-auto overflow-x-hidden">
@@ -133,15 +142,24 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
             onReset={handleReset}
           />
 
-          {/* AI panel floats over the bottom of the textarea,
-              starting after the line-numbers column (~36px) */}
+          {/* AI panel — floats over the bottom of the textarea.
+              left offset clears the line-numbers column (~36px). */}
           <AIWritePanel
             isOpen={isAIPanelOpen}
             aiPrompt={aiPrompt}
             isGenerating={isGeneratingPost}
+            hasGenerated={hasGenerated}
+            mode={aiMode}
+            tone={aiTone}
+            promptHistory={promptHistory}
+            problemTitle={problemTitle}
             onPromptChange={onAiPromptChange}
             onGenerate={onAiGenerate}
+            onAbort={onAiAbort}
+            onRegenerate={onAiRegenerate}
             onCancel={onAiCancel}
+            onModeChange={onAiModeChange}
+            onToneChange={onAiToneChange}
           />
         </div>
       </div>
@@ -149,10 +167,10 @@ const PostEditorPanels: React.FC<PostEditorPanelsProps> = ({
       {/* Divider */}
       <div className="w-1 bg-border rounded-md my-1" />
 
-      {/* Right Panel (Preview) - Fixed 50% */}
+      {/* Right Panel — preview with streaming cursor */}
       <div className="w-1/2 border ml-1 rounded-br-xl overflow-hidden">
         <div className="h-full w-full overflow-y-auto overflow-x-hidden">
-          <PostMarkdownPreview markdown={content} />
+          <PostMarkdownPreview markdown={content} isStreaming={isStreaming} />
         </div>
       </div>
     </div>
