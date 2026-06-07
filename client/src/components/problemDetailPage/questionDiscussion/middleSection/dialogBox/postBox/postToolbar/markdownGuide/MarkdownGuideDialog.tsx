@@ -13,7 +13,7 @@ const MarkdownGuideDialog: React.FC<MarkdownGuideDialogProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl w-[90vw]">
+      <DialogContent className="max-w-6xl w-[100vw]">
         <VisuallyHidden.Root>
           <DialogTitle>Markdown guide</DialogTitle>
         </VisuallyHidden.Root>
