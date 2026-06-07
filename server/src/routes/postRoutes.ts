@@ -6,6 +6,9 @@ import {
   checkCommentTagsUsingAI,
   createPost,
   fetchTagsFromCloudinary,
+  generatePost,
+  generatePostTags,
+  generatePostTitle,
   getCombinedTags,
   getDraftPostById,
   getDraftPosts,
@@ -21,6 +24,7 @@ import {
 } from "../controllers/postController.js";
 import {
   createPostLimiter,
+  generatePostLimiter,
   reactionLimiter,
   readLimiter,
   tagUploadLimiter,
@@ -255,5 +259,17 @@ router.route("/getPostDataById").get(
   }),
   getPostById,
 );
+
+router
+  .route("/generate")
+  .post(authMiddleware, generatePostLimiter, generatePost);
+
+router
+  .route("/generateTitle")
+  .post(authMiddleware, generatePostLimiter, generatePostTitle);
+
+router
+  .route("/generateTags")
+  .post(authMiddleware, generatePostLimiter, generatePostTags);
 
 export default router;
