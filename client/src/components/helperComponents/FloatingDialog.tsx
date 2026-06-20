@@ -103,7 +103,6 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
     };
   });
 
-
   const dialogRef = useRef<HTMLDivElement>(null);
   const startPos = useRef({ x: 0, y: 0 });
   const startSize = useRef({ width: 0, height: 0 });
@@ -188,7 +187,6 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   useEffect(() => {
     save(dialogType, "isMaximized", isMaximized);
   }, [dialogType, isMaximized]);
-
 
   // Boundary-aware position setter
   const setBoundaryPosition = useCallback(
@@ -489,9 +487,11 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center"
+          className="fixed inset-0 z-[9999] flex items-center justify-center"
           onMouseDown={handleOverlayClick}
         >
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-md will-change-auto pointer-events-none z-[0]" />
+
           <motion.div
             ref={dialogRef}
             initial={{ scale: 0.95, opacity: 0 }}
