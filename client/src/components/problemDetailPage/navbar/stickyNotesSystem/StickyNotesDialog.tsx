@@ -89,9 +89,13 @@ const StickyNoteDialog: React.FC<StickyNoteDialogProps> = ({
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
+    const hasManualTitle = !!note.title && note.title.trim().length > 0;
+
     updateNote(
       note.id,
-      { content: newContent, title: deriveTitle(newContent) },
+      hasManualTitle
+        ? { content: newContent }
+        : { content: newContent, title: deriveTitle(newContent) },
       isAuthenticated,
     );
   };
