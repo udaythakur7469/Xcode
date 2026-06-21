@@ -115,7 +115,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         onCodeRun();
       }
       await runCode(language, code, problemTitle);
-      toast.success("Code executed");
+      console.log("Code executed");
     } catch (error) {
       toast.error("Failed to run code");
       console.error("runCodeError", error);
@@ -149,7 +149,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         onCodeSubmit();
       }
       await submitCode(language, code, problemTitle);
-      toast.success("Code submitted");
+      console.log("Code submitted");
     } catch (error) {
       toast.error("Failed to submit code");
       console.error("submitCodeError", error);
