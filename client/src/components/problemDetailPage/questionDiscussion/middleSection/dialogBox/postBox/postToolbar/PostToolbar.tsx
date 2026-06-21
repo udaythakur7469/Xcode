@@ -374,28 +374,27 @@ const PostToolbar: React.FC<PostToolbarProps> = ({
             <HoverCardTrigger asChild>
               <button
                 className={buttonClasses}
+                onClick={() => setIsMarkdownGuideOpen(true)}
+              >
+                <Lightbulb />
+              </button>
+            </HoverCardTrigger>
+            <HoverCardContent side="top" className="p-1">
+              Markdown guide
+            </HoverCardContent>
+          </HoverCard>
+          <HoverCard>
+            <HoverCardTrigger asChild>
+              <button
+                className={buttonClasses}
                 onClick={() => onReset?.()}
                 disabled={!onReset}
               >
                 <History />
               </button>
             </HoverCardTrigger>
-            <HoverCardContent side="left" className="p-1">
+            <HoverCardContent side="top" className="p-1 mr-8">
               Reset post
-            </HoverCardContent>
-          </HoverCard>
-
-          <HoverCard>
-            <HoverCardTrigger asChild>
-              <button
-                className={buttonClasses}
-                onClick={() => setIsMarkdownGuideOpen(true)}
-              >
-                <Lightbulb />
-              </button>
-            </HoverCardTrigger>
-            <HoverCardContent side="top" className="p-1 mr-10">
-              Markdown guide
             </HoverCardContent>
           </HoverCard>
         </div>
