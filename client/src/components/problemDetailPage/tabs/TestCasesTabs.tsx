@@ -26,16 +26,13 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
   verticalSizes,
 }) => {
   const [activeTab, setActiveTab] = useState<"Test cases" | "Results">(
-    "Test cases"
+    "Test cases",
   );
   const { clearRunCodeResult } = useSubmissionStore();
-
   const prevShowTestCasesResultsTab = useRef(showTestCasesResultsTab);
 
   const handleMaximizeMinimize = useCallback(() => {
-    if (onMaximize) {
-      onMaximize();
-    }
+    if (onMaximize) onMaximize();
   }, [onMaximize]);
 
   const handleTabChange = (tab: "Results" | "Test cases") => {
@@ -53,9 +50,7 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
   };
 
   useEffect(() => {
-    if (showTestCasesResultsTab) {
-      setActiveTab("Results");
-    }
+    if (showTestCasesResultsTab) setActiveTab("Results");
   }, [showTestCasesResultsTab]);
 
   useEffect(() => {
@@ -68,60 +63,38 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
       const isControl = e.ctrlKey || e.metaKey;
-      const isUpArrow = e.key === "ArrowUp";
-      const isDownArrow = e.key === "ArrowDown";
-
-      // Ctrl + Up Arrow to maximize (when not maximized)
-      if (isControl && isUpArrow && !isMaximized) {
+      if (isControl && e.key === "ArrowUp" && !isMaximized) {
         e.preventDefault();
         e.stopPropagation();
         handleMaximizeMinimize();
-      }
-
-      // Ctrl + Down Arrow to minimize (when maximized)
-      else if (isControl && isDownArrow && isMaximized) {
+      } else if (isControl && e.key === "ArrowDown" && isMaximized) {
         e.preventDefault();
         e.stopPropagation();
         handleMaximizeMinimize();
       }
     };
-
     window.addEventListener("keydown", keyboardShortcut);
-
-    return () => {
-      window.removeEventListener("keydown", keyboardShortcut);
-    };
+    return () => window.removeEventListener("keydown", keyboardShortcut);
   }, [isMaximized, handleMaximizeMinimize]);
 
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
-      // Only trigger if maximized
       if (verticalSizes[1] <= 7) return;
-
       const isShift = e.shiftKey;
-      const isOneKey =
+      const isOne =
         e.key === "1" || e.code === "Digit1" || e.code === "Numpad1";
-      const isTwoKey =
+      const isTwo =
         e.key === "2" || e.code === "Digit2" || e.code === "Numpad2";
-
-      // Shift + 1 Arrow to open Test cases
-      if (isShift && isOneKey) {
+      if (isShift && isOne) {
         e.preventDefault();
         setActiveTab("Test cases");
-      }
-
-      // Shift + 2 Arrow to open Results
-      else if (isShift && isTwoKey) {
+      } else if (isShift && isTwo) {
         e.preventDefault();
         setActiveTab("Results");
       }
     };
-
     window.addEventListener("keydown", keyboardShortcut);
-
-    return () => {
-      window.removeEventListener("keydown", keyboardShortcut);
-    };
+    return () => window.removeEventListener("keydown", keyboardShortcut);
   }, [verticalSizes]);
 
   return (
@@ -129,10 +102,9 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
       <Tabs
         value={activeTab}
         onValueChange={handleValueChange}
-        className="h-full w-full"
+        className="h-full w-full flex flex-col"
       >
-        {/* Toolbar */}
-        <div className="h-[43px] bg-secondary rounded-md flex flex-row justify-start px-1 items-center">
+        <div className="h-[43px] bg-secondary rounded-md flex flex-row justify-start px-1 items-center flex-shrink-0">
           <div className="flex flex-1 flex-row justify-start h-full w-full pt-0 mt-2 items-center">
             <TabsList className="w-full">
               <TabsTrigger
@@ -149,7 +121,6 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
                 <ScrollText size={16} className="mr-2 text-green-500" />
                 Results
               </TabsTrigger>
-              {/* Maximize/Minimize Icon */}
               {isMaximized ? (
                 <HoverCard>
                   <HoverCardTrigger asChild>
@@ -180,13 +151,11 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
             </TabsList>
           </div>
         </div>
-
-        {/* Tab Content Area */}
-        <div className="flex-1 overflow-auto">
-          <TabsContent value="Test cases" className="h-full">
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <TabsContent value="Test cases" className="h-full m-0">
             <TestCasesPanel />
           </TabsContent>
-          <TabsContent value="Results" className="h-full">
+          <TabsContent value="Results" className="h-full m-0">
             <ResultsPanel />
           </TabsContent>
         </div>
