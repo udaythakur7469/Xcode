@@ -82,7 +82,7 @@ const llmBasedArtifactDetection = async ({ userMessage, normalizedQuery, intent,
         console.log("[llmBasedArtifactDetection] Invoking LLM for artifact detection");
         const prompt = llmBasedArtifactsDetectionPromptBuilder(userMessage, normalizedQuery, intent, ifCodePresent, ifTestCasePresent, ifErrorPresent, ifIOPresent);
         const result = await generateText({
-            model: google("gemini-2.0-flash-001"),
+            model: google("gemini-2.5-flash"),
             prompt,
             temperature: 0,
         });
