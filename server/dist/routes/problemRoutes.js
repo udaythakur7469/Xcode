@@ -1,6 +1,6 @@
 import express from "express";
 import { cacheMiddleware } from "@periodic/osmium";
-import { addEditorials, addHints, addTestCases, createProblem, generateHints, getEditorialByProblemTitle, getProblemByTitle, getProblemReactions, getProblems, getTestCases, problemReaction, searchProblems, } from "../controllers/problemController.js";
+import { addEditorials, addHints, addTestCases, createProblem, generateHints, getEditorialByProblemTitle, getProblemByTitle, getProblemReactions, getProblems, getTestCases, problemReaction, searchProblems, updateHintUnlock, } from "../controllers/problemController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { generateHintsLimiter, reactionLimiter, readLimiter, } from "../middlewares/rateLimiter.js";
 import redis from "../configs/redisConfig.js";
@@ -14,8 +14,12 @@ router.route("/hints").post(readLimiter, addHints);
 router.route("/addEditorials").post(readLimiter, addEditorials);
 router.route("/testCases").post(readLimiter, addTestCases);
 // ── AI hint generation ───────────────────────────────────────────
-/** POST /problem/getHints — Gemini call, rate limited */
-router.route("/getHints").post(generateHintsLimiter, generateHints);
+router
+    .route("/getHints")
+    .post(authMiddleware, generateHintsLimiter, generateHints);
+router
+    .route("/updateHintUnlock")
+    .patch(authMiddleware, readLimiter, updateHintUnlock);
 // ── Reactions (mutations — no cache) ────────────────────────────
 router.post("/reaction", authMiddleware, reactionLimiter, cacheMiddleware(redis, { strategy: "none" }), problemReaction);
 // ── Reads (cached) ───────────────────────────────────────────────
@@ -84,7 +88,7 @@ router.route("/getTestCases").get(optionalAuthMiddleware, readLimiter, cacheMidd
  * 30s TTL — reactions update in near real-time.
  */
 router.get("/getProblemReactions", authMiddleware, readLimiter, cacheMiddleware(redis, {
-    ttl: 30,
+    ttl: 60,
     autoCache: {
         tags: (req) => [`problem:reactions:${req.query.title}`],
         includeAuth: true,

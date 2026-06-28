@@ -13,6 +13,7 @@ import {
   getTestCases,
   problemReaction,
   searchProblems,
+  updateHintUnlock,
 } from "../controllers/problemController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import {
@@ -40,8 +41,13 @@ router.route("/testCases").post(readLimiter, addTestCases);
 
 // ── AI hint generation ───────────────────────────────────────────
 
-/** POST /problem/getHints — Gemini call, rate limited */
-router.route("/getHints").post(generateHintsLimiter, generateHints);
+router
+  .route("/getHints")
+  .post(authMiddleware, generateHintsLimiter, generateHints);
+
+router
+  .route("/updateHintUnlock")
+  .patch(authMiddleware, readLimiter, updateHintUnlock);
 
 // ── Reactions (mutations — no cache) ────────────────────────────
 
@@ -153,7 +159,7 @@ router.get(
   authMiddleware,
   readLimiter,
   cacheMiddleware(redis, {
-    ttl: 30,
+    ttl: 60,
     autoCache: {
       tags: (req: any) => [`problem:reactions:${req.query.title}`],
       includeAuth: true,
