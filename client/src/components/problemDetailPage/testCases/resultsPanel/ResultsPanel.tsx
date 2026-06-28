@@ -3,6 +3,7 @@ import {
   useSubmissionStore,
   RunCodeSuccess,
   RunCodeError,
+  NetworkError,
 } from "@/features/submissionStore";
 import QuestionResultsLoader from "../../questionResults/QuestionResultsLoader";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -336,6 +337,10 @@ function RunResultCard({ result }: { result: RunCodeSuccess | RunCodeError }) {
 
 // ─── ResultsPanel ─────────────────────────────────────────────────────────────
 
+function isNetworkError(r: any): r is NetworkError {
+  return r != null && r._networkError === true;
+}
+
 const ResultsPanel: React.FC = () => {
   const { runCodeResult, isRunningCode } = useSubmissionStore();
   return (
@@ -346,7 +351,15 @@ const ResultsPanel: React.FC = () => {
         </div>
       )}
       {!isRunningCode && !runCodeResult && <EmptyState />}
-      {!isRunningCode && runCodeResult && (
+      {!isRunningCode && runCodeResult && isNetworkError(runCodeResult) && (
+        <div className="h-full w-full flex flex-col items-center justify-center gap-3 py-14 text-destructive select-none">
+          <p className="text-sm font-medium">Connection Error</p>
+          <p className="text-xs opacity-70 text-center max-w-[220px]">
+            {runCodeResult.message}
+          </p>
+        </div>
+      )}
+      {!isRunningCode && runCodeResult && !isNetworkError(runCodeResult) && (
         <div className="p-4">
           <RunResultCard result={runCodeResult} />
         </div>
