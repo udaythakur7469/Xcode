@@ -4,80 +4,7 @@ import logger from "../configs/loggerConfig.js";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { getIO } from "../configs/socketConfig.js";
-/*
-export const createProblem = async (req, res, next) => {
-  try {
-    const {
-      title,
-      description,
-      difficulty,
-      tags,
-      examples,
-      testCases,
-      hints,
-    }: CreateProblemInput = req.body;
-
-    if (
-      !title ||
-      !description ||
-      !difficulty ||
-      !tags ||
-      !examples ||
-      !testCases ||
-      !hints
-    ) {
-      throw createHttpError.BadRequest("Please fill all fields");
-    }
-
-    if (examples.length === 0 || testCases.length === 0 || hints.length === 0) {
-      throw createHttpError.BadRequest(
-        "Examples and test cases cannot be empty"
-      );
-    }
-
-    const newProblem = await prisma.problem.create({
-      data: {
-        title,
-        description,
-        difficulty,
-        tags,
-        solved: false,
-        examples: {
-          create: examples,
-        },
-        testCases: {
-          create: testCases,
-        },
-        hints: {
-          create: hints.map((hint) => ({ hint })),
-        },
-        problemStats: {
-          create: {
-            totalAttempts: 0,
-            totalSolved: 0,
-            acceptanceRate: 0,
-          },
-        },
-      },
-      include: {
-        examples: true,
-        testCases: true,
-        hints: true,
-        problemStats: true,
-      },
-    });
-
-    res
-      .status(201)
-      .json({ message: "problem created successfully", problem: newProblem });
-  } catch (error) {
-    logger.error("error in creating problem", error);
-    next(error);
-  }
-};
-
-*/
-// After
+import { buildPrompt, hasCodeChangedSignificantly, hashCode, isLowEffort, normalizeCode, } from "../services/hintsService.js";
 export const getProblems = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
@@ -604,38 +531,143 @@ export const getTestCases = async (req, res, next) => {
     }
 };
 export const generateHints = async (req, res, next) => {
-    const { problemTitle, problemDesc, userCode } = req.body;
-    try {
-        const { text: hints } = await generateText({
-            model: google("gemini-2.0-flash-001"),
-            prompt: `
-You are an AI assistant for a LeetCode clone. A user is trying to solve the following problem:
-
-Problem Title: ${problemTitle}
-Problem Description: ${problemDesc}
-User's Partial Code: 
-\\\`
-${userCode}
-\\\`
-
-Generate *exactly 3 hints* to help the user progress. Follow these rules:
-1. Never provide the full solution code, even if requested.  
-2. Hints must be *suggestive, not explicit solutions*.  
-3. Each hint should be *concise and no more than 2 lines*.  
-4. Hint 1: Suggest the overall *approach* the user can use.  
-5. Hint 2: Suggest possible *algorithms or data structures* (give options, do not specify the exact one).  
-6. Hint 3: Instruct the user which *algorithm or data structure* to use.  
-7. Number the hints as 1, 2, 3 in a markdown list.  
-
-Return *only the 3 hints in a numbered markdown list*.
-      `,
+    const { problemTitle, problemDescription, userCode, language } = req.body;
+    const userId = req.user.userId;
+    // ── Input validation ───────────────────────────────────────────────────────
+    if (!problemTitle || !problemDescription || !language) {
+        return res
+            .status(400)
+            .json({
+            message: "problemTitle, problemDescription, and language are required.",
         });
-        console.log("Hints:\n", hints);
-        res.status(200).json({ hints: hints });
+    }
+    const code = (userCode ?? "").trim();
+    try {
+        // ── Resolve problemId ──────────────────────────────────────────────────
+        const problem = await prisma.problem.findFirst({
+            where: { title: problemTitle },
+            select: { id: true },
+        });
+        if (!problem) {
+            return res.status(404).json({ message: "Problem not found." });
+        }
+        const problemId = problem.id;
+        // ── Normalize + hash ───────────────────────────────────────────────────
+        const normalized = normalizeCode(code);
+        const currentHash = hashCode(normalized);
+        const lowEffort = isLowEffort(normalized);
+        // ── Check existing cache row ───────────────────────────────────────────
+        const cached = await prisma.aiHintCache.findUnique({
+            where: {
+                userId_problemId_language: { userId, problemId, language },
+            },
+        });
+        // ── Serve cache if code has not changed significantly ──────────────────
+        if (cached &&
+            !hasCodeChangedSignificantly(cached.normalizedCodeHash, currentHash)) {
+            return res.status(200).json({
+                hints: cached.hints,
+                unlockedLevel: cached.unlockedLevel,
+            });
+        }
+        // ── Generate fresh hints via Gemini ────────────────────────────────────
+        const prompt = buildPrompt(problemTitle, problemDescription, code, language, lowEffort);
+        let parsedHints;
+        try {
+            const { text } = await generateText({
+                model: google("gemini-2.5-flash"),
+                prompt,
+            });
+            const clean = text.replace(/```json|```/g, "").trim();
+            const parsed = JSON.parse(clean);
+            if (!parsed.hints ||
+                !Array.isArray(parsed.hints) ||
+                parsed.hints.length !== 3 ||
+                parsed.hints.some((h) => typeof h !== "string")) {
+                throw new Error("Malformed hints shape from AI");
+            }
+            parsedHints = parsed.hints;
+        }
+        catch (aiError) {
+            logger.error("AI hint generation failed", aiError);
+            return res
+                .status(503)
+                .json({
+                message: "Hints are temporarily unavailable. Please try again shortly.",
+            });
+        }
+        // ── Upsert cache row ───────────────────────────────────────────────────
+        // Language change or first generation → reset unlockedLevel to 1.
+        // Significant code change on same language → also reset to 1
+        // so the user re-reads from the beginning with fresh hints.
+        const upserted = await prisma.aiHintCache.upsert({
+            where: {
+                userId_problemId_language: { userId, problemId, language },
+            },
+            update: {
+                normalizedCodeHash: currentHash,
+                codeSnapshot: code,
+                hints: parsedHints,
+                unlockedLevel: 1,
+            },
+            create: {
+                userId,
+                problemId,
+                language,
+                normalizedCodeHash: currentHash,
+                codeSnapshot: code,
+                hints: parsedHints,
+                unlockedLevel: 1,
+            },
+        });
+        return res.status(200).json({
+            hints: upserted.hints,
+            unlockedLevel: upserted.unlockedLevel,
+        });
     }
     catch (error) {
-        console.error("Error generating hints:", error);
-        next();
+        logger.error("Error in generateHints", error);
+        next(error);
+    }
+};
+export const updateHintUnlock = async (req, res, next) => {
+    const { problemTitle, language, unlockedLevel } = req.body;
+    const userId = req.user.userId;
+    if (!problemTitle || !language || typeof unlockedLevel !== "number") {
+        return res
+            .status(400)
+            .json({
+            message: "problemTitle, language, and unlockedLevel are required.",
+        });
+    }
+    if (unlockedLevel < 1 || unlockedLevel > 3) {
+        return res
+            .status(400)
+            .json({ message: "unlockedLevel must be between 1 and 3." });
+    }
+    try {
+        const problem = await prisma.problem.findFirst({
+            where: { title: problemTitle },
+            select: { id: true },
+        });
+        if (!problem) {
+            return res.status(404).json({ message: "Problem not found." });
+        }
+        // Only update if the new level is higher — never regress
+        await prisma.aiHintCache.updateMany({
+            where: {
+                userId,
+                problemId: problem.id,
+                language,
+                unlockedLevel: { lt: unlockedLevel },
+            },
+            data: { unlockedLevel },
+        });
+        return res.status(200).json({ ok: true });
+    }
+    catch (error) {
+        logger.error("Error in updateHintUnlock", error);
+        next(error);
     }
 };
 export const createProblem = async (req, res, next) => {
