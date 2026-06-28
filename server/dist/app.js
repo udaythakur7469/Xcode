@@ -6,6 +6,8 @@ import helmet from "helmet";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import routes from "./routes/mergedRoutes.js";
+import "./workers/statsWorker.js";
+import "./workers/executionWorker.js";
 dotenv.config();
 const app = express();
 app.set("etag", false);

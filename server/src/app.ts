@@ -6,6 +6,8 @@ import helmet from "helmet";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import routes from "./routes/mergedRoutes.js";
+import "./workers/statsWorker.js";
+import "./workers/executionWorker.js";
 
 interface CustomError extends Error {
   status?: number;
