@@ -79,11 +79,12 @@ export interface RunCodeError {
   testCase: { input: string; userOutput: string | null } | null;
 }
 
-export type RunCodeResponse = RunCodeSuccess | RunCodeError;
+export type RunCodeResponse = RunCodeSuccess | RunCodeError | NetworkError;
 
 // ─── submitCode types ─────────────────────────────────────────────────────────
 
 export interface SubmitCodeSuccess {
+  success: true;
   message: string;
   language: string;
   code: string;
@@ -91,12 +92,12 @@ export interface SubmitCodeSuccess {
   memoryInMegabytes: number;
   testCasesPassed: number;
   totalTestCases: number;
-  passRate: string;               // e.g. "80.0"
+  passRate: string; // e.g. "80.0"
   avgRuntimeInMilliseconds: number;
   submittedAt: string;
   testCaseResults: TestCaseResult[];
-  percentile: number;             // only on success
-  runtimeDistribution: RuntimeBucket[];  // only on success
+  percentile: number; // only on success
+  runtimeDistribution: RuntimeBucket[]; // only on success
 }
 
 export interface FailedTestCase {
@@ -128,13 +129,21 @@ export interface SubmitCodeError {
   testCaseResults: TestCaseResult[];
 }
 
-export type SubmitCodeResponse = SubmitCodeSuccess | SubmitCodeError;
+export type SubmitCodeResponse =
+  | SubmitCodeSuccess
+  | SubmitCodeError
+  | NetworkError;
 
 export interface ErrorInfo {
   file: string;
   line: number;
   column: number;
   type: string;
+  message: string;
+}
+
+export interface NetworkError {
+  _networkError: true;
   message: string;
 }
 
@@ -163,6 +172,9 @@ interface SubmissionStore {
   clearSubmitCodeResult: () => void;
 }
 
+let runCodeAbortController: AbortController | null = null;
+let submitCodeAbortController: AbortController | null = null;
+
 export const useSubmissionStore = create<SubmissionStore>((set) => ({
   baseCode: null,
   isLoading: false,
@@ -171,8 +183,16 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
   baseCodeError: null,
   userSubmissions: [],
   allSubmissions: [],
-  submissionPagination: { currentPage: 1, totalPages: null, totalSubmissions: null },
-  allSubmissionsPagination: { currentPage: 1, totalPages: null, totalSubmissions: null },
+  submissionPagination: {
+    currentPage: 1,
+    totalPages: null,
+    totalSubmissions: null,
+  },
+  allSubmissionsPagination: {
+    currentPage: 1,
+    totalPages: null,
+    totalSubmissions: null,
+  },
   runCodeResult: null,
   submitCodeResult: null,
   isRunningCode: false,
@@ -186,7 +206,8 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
       });
       set({ baseCode: response.data.baseClassCode, isBaseCodeLoading: false });
     } catch (error: any) {
-      const errMsg = error.response?.data?.message || "Failed to fetch base class code";
+      const errMsg =
+        error.response?.data?.message || "Failed to fetch base class code";
       set({ baseCodeError: errMsg, isBaseCodeLoading: false });
       throw error;
     }
@@ -197,7 +218,10 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     try {
       const params: any = { page };
       if (problemTitle) params.title = problemTitle;
-      const response = await axios.get(`${API_URL}/submission/getUserSubmissions`, { params });
+      const response = await axios.get(
+        `${API_URL}/submission/getUserSubmissions`,
+        { params },
+      );
       set({
         userSubmissions: response.data.data,
         isLoading: false,
@@ -208,7 +232,9 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
         },
       });
     } catch (error: any) {
-      const errMsg = error.response?.data?.message || "An error occurred while fetching user submissions.";
+      const errMsg =
+        error.response?.data?.message ||
+        "An error occurred while fetching user submissions.";
       set({ error: errMsg, isLoading: false });
     }
   },
@@ -216,9 +242,12 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
   getAllSubmissions: async (problemTitle, page) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await axios.get(`${API_URL}/submission/getAllSubmissions`, {
-        params: { title: problemTitle, page },
-      });
+      const response = await axios.get(
+        `${API_URL}/submission/getAllSubmissions`,
+        {
+          params: { title: problemTitle, page },
+        },
+      );
       set({
         allSubmissions: response.data.data,
         isLoading: false,
@@ -229,36 +258,68 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
         },
       });
     } catch (error: any) {
-      const errMsg = error.response?.data?.message || "An error occurred while fetching all submissions.";
+      const errMsg =
+        error.response?.data?.message ||
+        "An error occurred while fetching all submissions.";
       set({ error: errMsg, isLoading: false });
     }
   },
 
   runCode: async (language, code, problemTitle) => {
+    runCodeAbortController?.abort();
+    runCodeAbortController = new AbortController();
+
     set({ isRunningCode: true, error: null, runCodeResult: null });
     try {
       const response = await axios.post(
         `${API_URL}/submission/runCode`,
         { language, code },
-        { params: { title: problemTitle } },
+        {
+          params: { title: problemTitle },
+          signal: runCodeAbortController.signal,
+        },
       );
-      set({ runCodeResult: response.data as RunCodeSuccess, isRunningCode: false });
+      set({
+        runCodeResult: response.data as RunCodeSuccess,
+        isRunningCode: false,
+      });
     } catch (error: any) {
-      set({ runCodeResult: (error.response?.data as RunCodeError) || null, isRunningCode: false });
+      if (axios.isCancel(error)) return;
+      const payload: RunCodeResponse = error.response?.data ?? {
+        _networkError: true,
+        message:
+          "Could not reach the server. Check your connection and try again.",
+      };
+      set({ runCodeResult: payload, isRunningCode: false });
     }
   },
 
   submitCode: async (language, code, problemTitle) => {
+    submitCodeAbortController?.abort();
+    submitCodeAbortController = new AbortController();
+
     set({ isSubmittingCode: true, error: null, submitCodeResult: null });
     try {
       const response = await axios.post(
         `${API_URL}/submission/submitCode`,
         { language, code },
-        { params: { title: problemTitle } },
+        {
+          params: { title: problemTitle },
+          signal: submitCodeAbortController.signal,
+        },
       );
-      set({ submitCodeResult: response.data as SubmitCodeSuccess, isSubmittingCode: false });
+      set({
+        submitCodeResult: response.data as SubmitCodeSuccess,
+        isSubmittingCode: false,
+      });
     } catch (error: any) {
-      set({ submitCodeResult: (error.response?.data as SubmitCodeError) || null, isSubmittingCode: false });
+      if (axios.isCancel(error)) return;
+      const payload: SubmitCodeResponse = error.response?.data ?? {
+        _networkError: true,
+        message:
+          "Could not reach the server. Check your connection and try again.",
+      };
+      set({ submitCodeResult: payload, isSubmittingCode: false });
     }
   },
 
