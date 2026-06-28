@@ -23,7 +23,7 @@ export const validateTagUsingAI = async (tag) => {
 
   try {
     const { text: validation } = await generateText({
-      model: google("gemini-2.0-flash-001"),
+      model: google("gemini-2.5-flash"),
       prompt: `
         You are an AI validator that checks whether a given tag is valid for a LeetCode-style problem or programming discussion post.
 
