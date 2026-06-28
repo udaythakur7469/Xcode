@@ -8,6 +8,7 @@ import {
   FailedTestCase,
   TestCaseResult,
   RuntimeBucket,
+  NetworkError
 } from "@/features/submissionStore";
 import QuestionResultsLoader from "./QuestionResultsLoader";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -463,14 +464,28 @@ function EmptyState() {
 
 // ─── Result card ──────────────────────────────────────────────────────────────
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function isNetworkError(r: any): r is NetworkError {
+  return r != null && r._networkError === true;
+}
+
+function isSubmitSuccess(
+  r: SubmitCodeSuccess | SubmitCodeError | null,
+): r is SubmitCodeSuccess {
+  return r != null && (r as SubmitCodeSuccess).success === true;
+}
+
+// ─── Result card ──────────────────────────────────────────────────────────────
+
 function SubmitResultCard({
   result,
-  httpStatus,
+  isSuccess,
 }: {
   result: SubmitCodeSuccess | SubmitCodeError;
-  httpStatus: number;
+  isSuccess: boolean;
 }) {
-  const isSuccess = httpStatus === 200;
+  // isSuccess is passed in directly — no derivation needed here
   const success = result as SubmitCodeSuccess;
   const failure = result as SubmitCodeError;
   const ft: FailedTestCase | null = isSuccess ? null : failure.failedTestCase;
@@ -656,13 +671,7 @@ function SubmitResultCard({
 const QuestionResults: React.FC = () => {
   const { submitCodeResult, isSubmittingCode } = useSubmissionStore();
 
-  const httpStatus =
-    submitCodeResult && !(submitCodeResult as SubmitCodeError).failedTestCase
-      ? 200
-      : 400;
-
   return (
-
     <div className="absolute inset-0 overflow-y-auto scrollbar-white">
       {isSubmittingCode && (
         <div className="h-full w-full flex items-center justify-center">
@@ -670,11 +679,26 @@ const QuestionResults: React.FC = () => {
         </div>
       )}
       {!isSubmittingCode && !submitCodeResult && <EmptyState />}
-      {!isSubmittingCode && submitCodeResult && (
-        <div className="p-4 mb-16">
-          <SubmitResultCard result={submitCodeResult} httpStatus={httpStatus} />
-        </div>
-      )}
+      {!isSubmittingCode &&
+        submitCodeResult &&
+        isNetworkError(submitCodeResult) && (
+          <div className="h-full w-full flex flex-col items-center justify-center gap-3 py-14 text-destructive select-none">
+            <p className="text-sm font-medium">Connection Error</p>
+            <p className="text-xs opacity-70 text-center max-w-[220px]">
+              {submitCodeResult.message}
+            </p>
+          </div>
+        )}
+      {!isSubmittingCode &&
+        submitCodeResult &&
+        !isNetworkError(submitCodeResult) && (
+          <div className="p-4 mb-16">
+            <SubmitResultCard
+              result={submitCodeResult}
+              isSuccess={isSubmitSuccess(submitCodeResult)}
+            />
+          </div>
+        )}
     </div>
   );
 };
