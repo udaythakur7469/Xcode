@@ -6,6 +6,8 @@ import logger from "../configs/loggerConfig.js";
 import { addTagToCloudinary, validateTagUsingAI, } from "../services/postTagsService.js";
 import cloudinary from "../services/uploadService.js";
 import { getIO } from "../configs/socketConfig.js";
+import { generateText, streamText } from "ai";
+import { google } from "@ai-sdk/google";
 export const fetchCommentTagsFromS3 = (req, res, next) => { };
 export const uploadTagsToCloudinary = async (req, res) => {
     try {
@@ -918,6 +920,156 @@ export const getPostById = async (req, res, next) => {
         });
     }
     catch (error) {
+        next(error);
+    }
+};
+export const generatePost = async (req, res, next) => {
+    const { prompt, mode, tone, problemTitle, currentContent, selectedText } = req.body;
+    if (!prompt || !prompt.trim()) {
+        return next(createHttpError.BadRequest("Prompt is required"));
+    }
+    // ── Build mode-aware system prompt ────────────────────────────────────────
+    const toneInstruction = tone === "beginner"
+        ? "Write in a beginner-friendly style, avoiding jargon and explaining every concept clearly."
+        : tone === "concise"
+            ? "Write concisely. Avoid padding. Every sentence must add value."
+            : tone === "detailed"
+                ? "Write in detailed, thorough style. Cover edge cases, nuances, and implementation details."
+                : "Write in a technical style suitable for experienced software engineers.";
+    const problemContext = problemTitle && mode !== "write"
+        ? `The post is specifically about the coding problem: "${problemTitle}". Make all examples and explanations relevant to this problem.`
+        : "";
+    let systemPrompt = `You are an expert technical writer for a competitive programming and software engineering platform.
+ 
+${toneInstruction}
+${problemContext}
+ 
+STRICT OUTPUT RULES:
+- Return only valid markdown — nothing else
+- Never wrap your entire output in triple-backtick fences
+- Use proper heading hierarchy (##, ###)
+- Use blank lines between sections
+- Use fenced code blocks with language tags (e.g. \`\`\`python)
+- Use bullet or numbered lists where appropriate
+- Never output raw HTML
+- No preamble, no closing commentary — just the markdown`;
+    let userPrompt = prompt.trim();
+    if (mode === "continue" && currentContent) {
+        systemPrompt += `\n\nYou are continuing an existing markdown post. Append seamlessly to the content below without repeating it or adding transition phrases like "Continuing from above".`;
+        userPrompt = `Existing content:\n\n${currentContent}\n\n---\n\nContinue writing: ${userPrompt}`;
+    }
+    else if (mode === "improve") {
+        if (selectedText) {
+            systemPrompt += `\n\nYou are rewriting a specific selected section of an existing post. Return ONLY the improved replacement for that section — do not include any surrounding content.`;
+            userPrompt = `Selected section to improve:\n\n${selectedText}\n\n---\n\nImprovement instruction: ${userPrompt}`;
+        }
+        else {
+            systemPrompt += `\n\nYou are improving an existing markdown post. Return the full improved version.`;
+            userPrompt = `Existing content:\n\n${currentContent}\n\n---\n\nImprovement instruction: ${userPrompt}`;
+        }
+    }
+    else if (mode === "summarize") {
+        systemPrompt += `\n\nYou are summarizing an existing markdown post. Return a concise, well-structured summary in markdown.`;
+        userPrompt = `Content to summarize:\n\n${currentContent}\n\n---\n\nSummarize: ${userPrompt}`;
+    }
+    try {
+        const result = streamText({
+            model: google("gemini-2.5-flash"),
+            system: systemPrompt,
+            prompt: userPrompt,
+        });
+        result.pipeTextStreamToResponse(res);
+    }
+    catch (error) {
+        logger.error("error in generatePost", error);
+        next(error);
+    }
+};
+export const generatePostTitle = async (req, res, next) => {
+    const { content, problemTitle } = req.body;
+    if (!content || !content.trim()) {
+        return next(createHttpError.BadRequest("Post content is required"));
+    }
+    try {
+        const problemContext = problemTitle
+            ? `The post is about the coding problem: "${problemTitle}".`
+            : "";
+        const { text } = await generateText({
+            model: google("gemini-2.5-flash"),
+            system: `You are an expert technical writer. ${problemContext}
+Generate a single, highly optimized blog post title based on the provided markdown content.
+ 
+RULES:
+- Return ONLY the title as plain text — no quotes, no markdown, no explanation
+- The title must be specific, descriptive, and engaging
+- Ideal length is 6-12 words
+- Do not use generic titles like "My Approach" or "Solution"`,
+            prompt: `Generate a title for this post:\n\n${content.trim().slice(0, 2000)}`,
+        });
+        res.status(200).json({
+            success: true,
+            message: "Title generated successfully",
+            data: { title: text.trim() },
+        });
+    }
+    catch (error) {
+        logger.error("error in generatePostTitle", error);
+        next(error);
+    }
+};
+export const generatePostTags = async (req, res, next) => {
+    const { content, problemTitle, existingTags = [] } = req.body;
+    if (!content || !content.trim()) {
+        return next(createHttpError.BadRequest("Post content is required"));
+    }
+    try {
+        const exclusionNote = existingTags.length > 0
+            ? `Do NOT suggest any of these already-selected tags: ${existingTags.join(", ")}.`
+            : "";
+        const problemContext = problemTitle
+            ? `The post is about the coding problem: "${problemTitle}".`
+            : "";
+        const { text } = await generateText({
+            model: google("gemini-2.5-flash"),
+            system: `You are an expert tagger for a competitive programming and software engineering platform.
+${problemContext}
+${exclusionNote}
+ 
+Generate exactly 4-5 relevant tags for the provided markdown post.
+ 
+RULES:
+- Return ONLY a JSON array of tag strings — no markdown, no explanation, no backticks
+- Each tag must be lowercase, hyphenated (e.g. "hash-map", "dynamic-programming")
+- Tags must be relevant to the technical content of the post
+- Prefer well-known CS/programming concepts as tags
+- Example output: ["hash-map","two-pointers","array","sliding-window","greedy"]`,
+            prompt: `Generate tags for this post:\n\n${content.trim().slice(0, 2000)}`,
+        });
+        let tags = [];
+        try {
+            const clean = text
+                .trim()
+                .replace(/```json|```/g, "")
+                .trim();
+            tags = JSON.parse(clean);
+            if (!Array.isArray(tags))
+                tags = [];
+            // Frontend safety: strip any that slipped through matching existing tags
+            tags = tags.filter((t) => !existingTags.map((e) => e.toLowerCase()).includes(t.toLowerCase()));
+            tags = tags.slice(0, 5);
+        }
+        catch {
+            logger.error("Failed to parse generatePostTags JSON response", text);
+            tags = [];
+        }
+        res.status(200).json({
+            success: true,
+            message: "Tags generated successfully",
+            data: { tags },
+        });
+    }
+    catch (error) {
+        logger.error("error in generatePostTags", error);
         next(error);
     }
 };
