@@ -1,6 +1,7 @@
 import prisma from "../configs/db.js";
 import createHttpError from "http-errors";
 import logger from "../configs/loggerConfig.js";
+import { deleteStickyNoteEmbedding, upsertStickyNoteEmbedding } from "../services/rag/stickyNoteEmbeddingService.js";
 
 // ─────────────────────────────────────────────
 // GET /api/sticky-notes
@@ -53,6 +54,13 @@ export const createStickyNote = async (req, res, next) => {
       logger.error("Cache invalidation error in createStickyNote", cacheErr);
     }
 
+    upsertStickyNoteEmbedding({
+      noteId: note.id,
+      userId,
+      title: note.title,
+      content: note.content,
+    }).catch((err) => logger.error("sticky embed upsert failed", err));
+
     return res.status(201).json({
       message: "Sticky note created successfully",
       note,
@@ -104,6 +112,13 @@ export const updateStickyNote = async (req, res, next) => {
       logger.error("Cache invalidation error in updateStickyNote", cacheErr);
     }
 
+    upsertStickyNoteEmbedding({
+      noteId: updatedNote.id,
+      userId,
+      title: updatedNote.title,
+      content: updatedNote.content,
+    }).catch((err) => logger.error("sticky embed update failed", err));
+
     return res.status(200).json({
       message: "Sticky note updated successfully",
       note: updatedNote,
@@ -139,6 +154,10 @@ export const deleteStickyNote = async (req, res, next) => {
     } catch (cacheErr) {
       logger.error("Cache invalidation error in deleteStickyNote", cacheErr);
     }
+
+    deleteStickyNoteEmbedding(id).catch((err) =>
+      logger.error("sticky embed delete failed", err),
+    );
 
     return res.status(200).json({
       message: "Sticky note deleted successfully",
