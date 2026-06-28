@@ -16,7 +16,7 @@ export const normalizeAiResponse = async (context) => {
         aiModelChanged,
     });
     const result = await generateText({
-        model: google("gemini-2.0-flash-001"),
+        model: google("gemini-2.5-flash"),
         prompt,
         temperature: 0, // normalization must be deterministic
     });
