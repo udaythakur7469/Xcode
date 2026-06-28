@@ -31,3 +31,10 @@ export var EditorialAccessTier;
     EditorialAccessTier[EditorialAccessTier["HINTS_ONLY"] = 1] = "HINTS_ONLY";
     EditorialAccessTier[EditorialAccessTier["FULL"] = 2] = "FULL";
 })(EditorialAccessTier || (EditorialAccessTier = {}));
+export var RefusalStyle;
+(function (RefusalStyle) {
+    RefusalStyle["ENCOURAGING"] = "ENCOURAGING";
+    RefusalStyle["NEUTRAL"] = "NEUTRAL";
+    RefusalStyle["DIRECT"] = "DIRECT";
+    RefusalStyle["MINIMAL"] = "MINIMAL";
+})(RefusalStyle || (RefusalStyle = {}));
