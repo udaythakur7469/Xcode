@@ -860,13 +860,17 @@ model MessageEmbedding {
 
 model ConversationSummary {
   id            String   @id @default(cuid())
-  chatId        String   @unique
+  chatId        String
+  leafMessageId String
   summary       String   @db.Text
   messageCount  Int      @default(0)
   lastMessageId String?
   topicContext  String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@unique([chatId, leafMessageId])
+  @@index([chatId])
 }
 
 model RefusalState {
@@ -878,6 +882,7 @@ model RefusalState {
   intensity     Int      @default(3)
   denialCount   Int      @default(0)
   lastUpdatedAt DateTime @default(now())
+  branchRootMessageId String?
 
   @@unique([userId, problemId])
   @@index([userId])
