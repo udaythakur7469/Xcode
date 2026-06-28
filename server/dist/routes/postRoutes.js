@@ -2,8 +2,8 @@ import express from "express";
 import { cacheMiddleware } from "@periodic/osmium";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js";
-import { checkCommentTagsUsingAI, createPost, fetchTagsFromCloudinary, getCombinedTags, getDraftPostById, getDraftPosts, getMarkdownEditorBasePostFormat, getPostById, getPostReactions, getPosts, manageDraftPost, postReaction, searchPosts, updateDraftPost, uploadTagsToCloudinary, } from "../controllers/postController.js";
-import { createPostLimiter, reactionLimiter, readLimiter, tagUploadLimiter, userReadLimiter, } from "../middlewares/rateLimiter.js";
+import { checkCommentTagsUsingAI, createPost, fetchTagsFromCloudinary, generatePost, generatePostTags, generatePostTitle, getCombinedTags, getDraftPostById, getDraftPosts, getMarkdownEditorBasePostFormat, getPostById, getPostReactions, getPosts, manageDraftPost, postReaction, searchPosts, updateDraftPost, uploadTagsToCloudinary, } from "../controllers/postController.js";
+import { createPostLimiter, generatePostLimiter, reactionLimiter, readLimiter, tagUploadLimiter, userReadLimiter, } from "../middlewares/rateLimiter.js";
 import redis from "../configs/redisConfig.js";
 const router = express.Router();
 // ── Base post template (cached) ──────────────────────────────────
@@ -149,4 +149,13 @@ router.route("/getPostDataById").get(optionalAuthMiddleware, readLimiter, cacheM
         },
     },
 }), getPostById);
+router
+    .route("/generate")
+    .post(authMiddleware, generatePostLimiter, generatePost);
+router
+    .route("/generateTitle")
+    .post(authMiddleware, generatePostLimiter, generatePostTitle);
+router
+    .route("/generateTags")
+    .post(authMiddleware, generatePostLimiter, generatePostTags);
 export default router;
