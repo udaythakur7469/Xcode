@@ -58,7 +58,7 @@ const ruleBasedDetection = (message) => {
 const llmBasedRuleDetection = async ({ userMessage, previousUserMessages, problemTitle, difficulty, hasSolved, }) => {
     const prompt = solutionIntentClassificationPromptBuilder(userMessage, previousUserMessages, hasSolved, problemTitle, difficulty);
     const result = await generateText({
-        model: google("gemini-2.0-flash-001"),
+        model: google("gemini-2.5-flash"),
         prompt,
         temperature: 0,
     });
