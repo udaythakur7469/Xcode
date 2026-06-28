@@ -1,6 +1,7 @@
-import axios from "axios";
 import prisma from "../configs/db.js";
 import { getLanguageId, parseErrorPosition, processSubmissionResult, } from "../services/submissionService.js";
+import { enqueueStatsUpdate } from "../queues/statsQueue.js";
+import { enqueueAndWait } from "../queues/waitForJob.js";
 import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
 export const JUDGE0_URL = process.env.JUDGE0_BASE_URL;
@@ -16,7 +17,13 @@ function buildRuntimeDistribution(allRuntimes, userRuntime) {
     const min = Math.min(...allRuntimes, userRuntime);
     const max = Math.max(...allRuntimes, userRuntime);
     if (min === max) {
-        return [{ bucketLabel: `${min}ms`, count: allRuntimes.length + 1, isUserBucket: true }];
+        return [
+            {
+                bucketLabel: `${min}ms`,
+                count: allRuntimes.length + 1,
+                isUserBucket: true,
+            },
+        ];
     }
     const BUCKET_COUNT = 8;
     const bucketSize = Math.ceil((max - min + 1) / BUCKET_COUNT);
@@ -47,14 +54,18 @@ function computePercentile(allRuntimes, userRuntime) {
 export const storeBaseClassCode = async (req, res) => {
     const { problemId, language, baseClassCode, headerFiles, mainClassCode } = req.body;
     try {
-        const problem = await prisma.problem.findUnique({ where: { id: problemId } });
+        const problem = await prisma.problem.findUnique({
+            where: { id: problemId },
+        });
         if (!problem)
             return res.status(404).json({ error: "Problem not found" });
         const existingCode = await prisma.baseCode.findUnique({
             where: { problemId_language: { problemId, language } },
         });
         if (existingCode) {
-            return res.status(400).json({ error: "Base class code for this problem and language already exists" });
+            return res.status(400).json({
+                error: "Base class code for this problem and language already exists",
+            });
         }
         const newBaseClassCode = await prisma.baseCode.create({
             data: { problemId, language, baseClassCode, headerFiles, mainClassCode },
@@ -71,10 +82,14 @@ export const fetchBaseClassCode = async (req, res) => {
     const { problemId, language } = req.query;
     try {
         const baseClassCode = await prisma.baseCode.findUnique({
-            where: { problemId_language: { problemId: parseInt(problemId), language } },
+            where: {
+                problemId_language: { problemId: parseInt(problemId), language },
+            },
         });
         if (!baseClassCode) {
-            return res.status(404).json({ error: "Base code not found for this problem and language" });
+            return res
+                .status(404)
+                .json({ error: "Base code not found for this problem and language" });
         }
         res.status(200).json({ baseClassCode: baseClassCode.baseClassCode });
     }
@@ -86,12 +101,16 @@ export const fetchBaseClassCode = async (req, res) => {
 // ─── runCode ──────────────────────────────────────────────────────────────────
 export const runCode = async (req, res, next) => {
     if (!req.user) {
-        return res.status(401).json({ error: "Unauthorized: User not authenticated" });
+        return res
+            .status(401)
+            .json({ error: "Unauthorized: User not authenticated" });
     }
     const { language, code } = req.body;
     const { title } = req.query;
     if (!title || typeof title !== "string") {
-        return res.status(400).json({ message: "Title is required as a query parameter" });
+        return res
+            .status(400)
+            .json({ message: "Title is required as a query parameter" });
     }
     let fullCode = "";
     try {
@@ -103,21 +122,23 @@ export const runCode = async (req, res, next) => {
             return res.status(404).json({ error: "Problem not found" });
         const baseCode = problemData.baseCodes.find((b) => b.language === language);
         if (!baseCode)
-            return res.status(404).json({ error: "Base code not found for this language" });
+            return res
+                .status(404)
+                .json({ error: "Base code not found for this language" });
         fullCode = `${baseCode.headerFiles || ""}\n${code}\n${baseCode.mainClassCode || ""}`;
-        const judge0Response = await axios.post(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=true`, {
-            source_code: Buffer.from(fullCode).toString("base64"),
-            language_id: getLanguageId(language),
-            stdin: Buffer.from("1\n" + problemData.testCases[0].apiInput).toString("base64"),
-        }, { headers: JUDGE0_HEADERS });
-        const result = judge0Response.data;
-        if (result.stdout)
-            result.stdout = Buffer.from(result.stdout, "base64").toString();
-        if (result.stderr)
-            result.stderr = Buffer.from(result.stderr, "base64").toString();
-        if (result.compile_output) {
-            result.compile_output = Buffer.from(result.compile_output, "base64").toString();
-        }
+        const { judgeRawResult: result } = await enqueueAndWait("run-code", {
+            type: "run",
+            userId: req.user.id ?? req.user.userId,
+            language,
+            fullCode,
+            languageId: getLanguageId(language),
+            stdin: "1\n" + problemData.testCases[0].apiInput,
+            problemTitle: title,
+            code,
+            totalTestCasesInProblem: problemData.testCases.length,
+            testCaseInput: Buffer.from(problemData.testCases[0].userInput).toString(),
+            testCaseUserOutput: problemData.testCases[0].userExpectedOutput || null,
+        });
         const errorInfo = parseErrorPosition(result.compile_output, language);
         const processedResult = processSubmissionResult(result, errorInfo, language);
         // Shared metadata added to ALL runCode responses
@@ -129,9 +150,18 @@ export const runCode = async (req, res, next) => {
         };
         if (result.status.id >= 13) {
             return res.status(500).json({
-                error: "Internal server error",
-                message: "message" in processedResult ? processedResult.message : "An error occurred",
-                statusDescription: processedResult.statusDescription,
+                success: false,
+                status: "runtime_error",
+                statusDescription: processedResult.statusDescription ?? result.status.description,
+                message: "An internal error occurred in the execution engine. Please try again.",
+                stderr: null,
+                compile_output: null,
+                errorInfo: null,
+                language,
+                code,
+                submittedAt: new Date().toISOString(),
+                totalTestCasesInProblem: problemData.testCases.length,
+                testCase: null,
             });
         }
         if (!processedResult.success) {
@@ -165,105 +195,178 @@ export const runCode = async (req, res, next) => {
 // ─── submitCode ───────────────────────────────────────────────────────────────
 export const submitCode = async (req, res) => {
     if (!req.user) {
-        return res.status(401).json({ error: "Unauthorized: User not authenticated" });
+        return res
+            .status(401)
+            .json({ error: "Unauthorized: User not authenticated" });
     }
     const { language, code } = req.body;
     const { title } = req.query;
     if (!title || typeof title !== "string") {
-        return res.status(400).json({ message: "Title is required as a query parameter" });
+        return res
+            .status(400)
+            .json({ message: "Title is required as a query parameter" });
     }
     let fullCode = "";
     try {
         const problemData = await prisma.problem.findFirst({
             where: { title },
-            select: { testCases: true, baseCodes: true, id: true, difficulty: true, title: true },
+            select: {
+                testCases: true,
+                baseCodes: true,
+                id: true,
+                difficulty: true,
+                title: true,
+            },
         });
         if (!problemData)
             return res.status(404).json({ error: "Problem not found" });
         const baseCode = problemData.baseCodes.find((b) => b.language === language);
         if (!baseCode)
-            return res.status(404).json({ error: "Base code not found for this language" });
+            return res
+                .status(404)
+                .json({ error: "Base code not found for this language" });
         fullCode = `${baseCode.headerFiles || ""}\n${code}\n${baseCode.mainClassCode || ""}`;
         const totalTestCases = problemData.testCases.length;
-        const combinedStdin = totalTestCases + "\n" + problemData.testCases.map((tc) => tc.apiInput).join("\n");
-        const judge0Response = await axios.post(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=true`, {
-            source_code: Buffer.from(fullCode).toString("base64"),
-            language_id: getLanguageId(language),
-            stdin: Buffer.from(combinedStdin).toString("base64"),
-        }, { headers: JUDGE0_HEADERS, timeout: 30000 });
-        const judgeResult = judge0Response.data;
-        if (judgeResult.stdout)
-            judgeResult.stdout = Buffer.from(judgeResult.stdout, "base64").toString();
-        if (judgeResult.stderr)
-            judgeResult.stderr = Buffer.from(judgeResult.stderr, "base64").toString();
-        if (judgeResult.compile_output) {
-            judgeResult.compile_output = Buffer.from(judgeResult.compile_output, "base64").toString();
-        }
+        const combinedStdin = totalTestCases +
+            "\n" +
+            problemData.testCases.map((tc) => tc.apiInput).join("\n");
+        const { judgeRawResult: judgeResult } = await enqueueAndWait("submit-code", {
+            type: "submit",
+            userId: req.user.id ?? req.user.userId,
+            language,
+            fullCode,
+            languageId: getLanguageId(language),
+            stdin: combinedStdin,
+            problemTitle: title,
+            code,
+            problemId: problemData.id,
+            difficulty: problemData.difficulty,
+            testCases: problemData.testCases.map((tc) => ({
+                apiInput: tc.apiInput,
+                apiExpectedOutput: tc.apiExpectedOutput,
+                userInput: tc.userInput,
+                userExpectedOutput: tc.userExpectedOutput,
+            })),
+        });
         const submittedAt = new Date().toISOString();
         // ── Early-exit errors (before test case loop) ──────────────────────────
         if (judgeResult.status.id === 6) {
             const errorInfo = parseErrorPosition(judgeResult.compile_output, language);
             return res.status(400).json({
-                success: false, status: "compilation_error",
+                success: false,
+                status: "compilation_error",
                 statusDescription: judgeResult.status.description,
                 compile_output: judgeResult.compile_output,
-                stderr: judgeResult.stderr, errorInfo,
-                language, code,
-                runtimeInMilliseconds: 0, memoryInMegabytes: 0,
-                testCasesPassed: 0, totalTestCases,
-                passRate: "0.0", avgRuntimeInMilliseconds: 0,
-                submittedAt, testCaseResults: [],
+                stderr: judgeResult.stderr,
+                errorInfo,
+                language,
+                code,
+                runtimeInMilliseconds: 0,
+                memoryInMegabytes: 0,
+                testCasesPassed: 0,
+                totalTestCases,
+                passRate: "0.0",
+                avgRuntimeInMilliseconds: 0,
+                submittedAt,
+                testCaseResults: [],
             });
         }
         if ([7, 8, 9, 10, 11, 12].includes(judgeResult.status.id)) {
             return res.status(400).json({
-                success: false, status: "runtime_error",
+                success: false,
+                status: "runtime_error",
                 statusDescription: judgeResult.status.description,
                 stderr: judgeResult.stderr,
-                language, code,
+                language,
+                code,
                 runtimeInMilliseconds: Math.round((parseFloat(judgeResult.time) || 0) * 1000),
                 memoryInMegabytes: (parseFloat(judgeResult.memory) || 0) / 1024,
-                testCasesPassed: 0, totalTestCases,
-                passRate: "0.0", avgRuntimeInMilliseconds: 0,
-                submittedAt, testCaseResults: [],
+                testCasesPassed: 0,
+                totalTestCases,
+                passRate: "0.0",
+                avgRuntimeInMilliseconds: 0,
+                submittedAt,
+                testCaseResults: [],
             });
         }
         if (judgeResult.status.id === 5) {
             return res.status(400).json({
-                success: false, status: "time_limit_exceeded",
+                success: false,
+                status: "time_limit_exceeded",
                 statusDescription: judgeResult.status.description,
-                language, code,
+                language,
+                code,
                 runtimeInMilliseconds: Math.round((parseFloat(judgeResult.time) || 0) * 1000),
                 memoryInMegabytes: (parseFloat(judgeResult.memory) || 0) / 1024,
-                testCasesPassed: 0, totalTestCases,
-                passRate: "0.0", avgRuntimeInMilliseconds: 0,
-                submittedAt, testCaseResults: [],
+                testCasesPassed: 0,
+                totalTestCases,
+                passRate: "0.0",
+                avgRuntimeInMilliseconds: 0,
+                submittedAt,
+                testCaseResults: [],
             });
         }
         if (judgeResult.status.id >= 13) {
             return res.status(500).json({
-                error: "Internal server error occurred during submission",
+                success: false,
+                status: "runtime_error",
                 statusDescription: judgeResult.status.description,
+                message: "An internal error occurred in the execution engine. Please try again.",
+                language,
+                code,
+                runtimeInMilliseconds: 0,
+                memoryInMegabytes: 0,
+                testCasesPassed: 0,
+                totalTestCases,
+                passRate: "0.0",
+                avgRuntimeInMilliseconds: 0,
+                submittedAt: new Date().toISOString(),
+                testCaseResults: [],
+                failedTestCase: {
+                    input: null,
+                    expectedOutput: null,
+                    actualOutput: null,
+                    status: "runtime_error",
+                    statusDescription: judgeResult.status.description,
+                    message: "An internal error occurred in the execution engine.",
+                    stderr: null,
+                    compile_output: null,
+                    errorInfo: null,
+                    runtime: 0,
+                    memory: 0,
+                },
             });
         }
         // ── Per-test-case evaluation ───────────────────────────────────────────
-        const outputs = judgeResult.stdout ? judgeResult.stdout.trim().split("\n") : [];
+        const outputs = judgeResult.stdout
+            ? judgeResult.stdout.trim().split("\n")
+            : [];
         const submissionResults = problemData.testCases.map((testCase, index) => {
-            const actualOutput = outputs[index]?.trim() || "";
-            const expectedOutput = testCase.apiExpectedOutput?.trim() || "";
+            const actualOutput = outputs[index]?.trim() ?? "";
+            const expectedOutput = testCase.apiExpectedOutput?.trim() ?? "";
             const passed = actualOutput === expectedOutput;
             const runtime = parseFloat(judgeResult.time) || 0;
             const memory = parseFloat(judgeResult.memory) || 0;
+            const syntheticResult = {
+                stdout: actualOutput,
+                stderr: judgeResult.stderr,
+                compile_output: null,
+                time: judgeResult.time,
+                memory: judgeResult.memory,
+                status: passed
+                    ? { id: 3, description: "Accepted" }
+                    : { id: 4, description: "Wrong Answer" },
+            };
+            const processedResult = processSubmissionResult(syntheticResult, null, language);
             return {
-                index, testCase, passed, actualOutput, runtime, memory,
-                result: {
-                    stdout: actualOutput, stderr: judgeResult.stderr,
-                    status: passed ? { id: 3, description: "Accepted" } : { id: 4, description: "Wrong Answer" },
-                    time: judgeResult.time, memory: judgeResult.memory,
-                },
-                processedResult: passed
-                    ? { success: true, status: "accepted", statusDescription: "Accepted", stdout: actualOutput, time: judgeResult.time, memory: judgeResult.memory }
-                    : { success: false, status: "wrong_answer", statusDescription: "Wrong Answer", stdout: actualOutput },
+                index,
+                testCase,
+                passed,
+                actualOutput,
+                runtime,
+                memory,
+                result: syntheticResult,
+                processedResult,
             };
         });
         submissionResults.sort((a, b) => a.index - b.index);
@@ -292,37 +395,58 @@ export const submitCode = async (req, res) => {
             runtimeSum += runtime;
             if (result.status.id >= 13) {
                 return res.status(500).json({
-                    error: "Internal server error occurred during submission",
-                    message: processedResult.message || "An error occurred",
+                    success: false,
+                    status: "runtime_error",
                     statusDescription: processedResult.statusDescription,
+                    message: "An internal error occurred in the execution engine. Please try again.",
+                    language,
+                    code,
+                    runtimeInMilliseconds: 0,
+                    memoryInMegabytes: 0,
+                    testCasesPassed: 0,
+                    totalTestCases,
+                    passRate: "0.0",
+                    avgRuntimeInMilliseconds: 0,
+                    submittedAt,
+                    testCaseResults,
+                    failedTestCase: {
+                        input: null,
+                        expectedOutput: null,
+                        actualOutput: null,
+                        status: "runtime_error",
+                        statusDescription: processedResult.statusDescription,
+                        message: "An internal error occurred in the execution engine.",
+                        stderr: null,
+                        compile_output: null,
+                        errorInfo: null,
+                        runtime: 0,
+                        memory: 0,
+                    },
                 });
             }
+            // Single failure block — no Block B
             if (!processedResult.success && !failedTestCase) {
                 allTestCasesPassed = false;
                 const errorResult = processedResult;
                 failureReason = errorResult.status;
                 failedTestCase = {
-                    input: testCase.userInput, expectedOutput: testCase.userExpectedOutput,
+                    input: testCase.userInput,
+                    expectedOutput: testCase.userExpectedOutput,
                     actualOutput: result.stdout || null,
-                    status: errorResult.status, statusDescription: errorResult.statusDescription,
-                    message: errorResult.message, stderr: errorResult.stderr,
-                    compile_output: errorResult.compile_output, errorInfo: errorResult.errorInfo,
-                    runtime, memory,
+                    status: errorResult.status,
+                    statusDescription: errorResult.statusDescription,
+                    message: errorResult.message,
+                    stderr: errorResult.stderr,
+                    compile_output: errorResult.compile_output,
+                    errorInfo: errorResult.errorInfo,
+                    runtime,
+                    memory,
                 };
                 continue;
             }
-            if (result.stdout !== testCase.apiExpectedOutput && !failedTestCase) {
-                allTestCasesPassed = false;
-                failureReason = "wrong_answer";
-                failedTestCase = {
-                    input: testCase.userInput, expectedOutput: testCase.userExpectedOutput,
-                    actualOutput: result.stdout, status: "wrong_answer",
-                    statusDescription: "Wrong Answer", stderr: result.stderr,
-                    runtime, memory,
-                };
-                continue;
-            }
-            if (processedResult.success && result.stdout === testCase.apiExpectedOutput) {
+            // Pass counter uses processedResult.success — same trimmed comparison
+            // used to build processedResult in the map above
+            if (processedResult.success) {
                 testCasesPassed++;
             }
         }
@@ -330,23 +454,49 @@ export const submitCode = async (req, res) => {
         const memoryInMegabytes = maxMemory / 1024;
         const avgRuntimeInMilliseconds = Math.round((runtimeSum / submissionResults.length) * 1000);
         const passRate = ((testCasesPassed / totalTestCases) * 100).toFixed(1);
-        const userId = req.user.userId;
+        const userId = req.user.id || req.user.userId;
+        if (!userId) {
+            return res
+                .status(401)
+                .json({ error: "Unauthorized: could not resolve user ID" });
+        }
         const submissionStatus = allTestCasesPassed
             ? "accepted"
-            : failureReason === "compilation_error" ? "compilation_error"
-                : failureReason === "runtime_error" ? "runtime_error"
-                    : failureReason === "time_limit_exceeded" ? "time_limit_exceeded"
+            : failureReason === "compilation_error"
+                ? "compilation_error"
+                : failureReason === "runtime_error"
+                    ? "runtime_error"
+                    : failureReason === "time_limit_exceeded"
+                        ? "time_limit_exceeded"
                         : "wrong_answer";
         const sharedFields = {
-            language, code,
-            runtimeInMilliseconds, memoryInMegabytes,
-            testCasesPassed, totalTestCases,
-            passRate, avgRuntimeInMilliseconds,
-            submittedAt, testCaseResults,
+            language,
+            code,
+            runtimeInMilliseconds,
+            memoryInMegabytes,
+            testCasesPassed,
+            totalTestCases,
+            passRate,
+            avgRuntimeInMilliseconds,
+            submittedAt,
+            testCaseResults,
         };
         // ── Failure path ──────────────────────────────────────────────────────
         if (!allTestCasesPassed) {
-            updateStatistics(userId, problemData.id, problemData.difficulty, submissionStatus, code, language, runtimeInMilliseconds, memoryInMegabytes, testCasesPassed, totalTestCases);
+            enqueueStatsUpdate({
+                userId,
+                problemId: problemData.id,
+                difficulty: problemData.difficulty,
+                submissionStatus,
+                code,
+                language,
+                runtimeInMilliseconds,
+                memoryInMegabytes,
+                testCasesPassed,
+                totalTestCases,
+            }).catch((err) => {
+                logger.error("Failed to enqueue statistics update (background):", err);
+            });
             return res.status(400).json({
                 message: `Code failed: ${failedTestCase.statusDescription || "Wrong Answer"}`,
                 failedTestCase,
@@ -354,7 +504,20 @@ export const submitCode = async (req, res) => {
             });
         }
         // ── Success path: record + percentile ─────────────────────────────────
-        updateStatistics(userId, problemData.id, problemData.difficulty, "accepted", code, language, runtimeInMilliseconds, memoryInMegabytes, testCasesPassed, totalTestCases);
+        enqueueStatsUpdate({
+            userId,
+            problemId: problemData.id,
+            difficulty: problemData.difficulty,
+            submissionStatus: "accepted",
+            code,
+            language,
+            runtimeInMilliseconds,
+            memoryInMegabytes,
+            testCasesPassed,
+            totalTestCases,
+        }).catch((err) => {
+            logger.error("Failed to enqueue statistics update (background):", err);
+        });
         await prisma.submissionRuntime.create({
             data: { problemId: problemData.id, language, runtimeInMilliseconds },
         });
@@ -364,14 +527,18 @@ export const submitCode = async (req, res) => {
         });
         const allRuntimes = allRuntimeRows.map((r) => r.runtimeInMilliseconds);
         // Exclude the runtime we just inserted for a fair historical comparison
-        const historicalRuntimes = allRuntimes.filter((r, i, arr) => {
-            // Remove only one occurrence of runtimeInMilliseconds
-            const firstIdx = arr.indexOf(runtimeInMilliseconds);
-            return i !== firstIdx;
+        let selfExcluded = false;
+        const historicalRuntimes = allRuntimes.filter((r) => {
+            if (!selfExcluded && r === runtimeInMilliseconds) {
+                selfExcluded = true;
+                return false;
+            }
+            return true;
         });
         const percentile = computePercentile(historicalRuntimes, runtimeInMilliseconds);
         const runtimeDistribution = buildRuntimeDistribution(historicalRuntimes, runtimeInMilliseconds);
         res.status(200).json({
+            success: true,
             message: "All test cases passed",
             percentile,
             runtimeDistribution,
@@ -384,14 +551,20 @@ export const submitCode = async (req, res) => {
     }
 };
 // ─── updateStatistics ────────────────────────────────────────────────────────
-const updateStatistics = async (userId, problemId, difficulty, submissionStatus, code, language, runtime, memory, testCasesPassed, totalTestCases) => {
+export const updateStatistics = async (userId, problemId, difficulty, submissionStatus, code, language, runtime, memory, testCasesPassed, totalTestCases) => {
     await prisma.stats.upsert({
         where: { userId },
         update: {
             totalSolved: submissionStatus === "accepted" ? { increment: 1 } : undefined,
-            easySolved: submissionStatus === "accepted" && difficulty === "easy" ? { increment: 1 } : undefined,
-            mediumSolved: submissionStatus === "accepted" && difficulty === "medium" ? { increment: 1 } : undefined,
-            hardSolved: submissionStatus === "accepted" && difficulty === "hard" ? { increment: 1 } : undefined,
+            easySolved: submissionStatus === "accepted" && difficulty === "easy"
+                ? { increment: 1 }
+                : undefined,
+            mediumSolved: submissionStatus === "accepted" && difficulty === "medium"
+                ? { increment: 1 }
+                : undefined,
+            hardSolved: submissionStatus === "accepted" && difficulty === "hard"
+                ? { increment: 1 }
+                : undefined,
         },
         create: {
             userId,
@@ -401,9 +574,12 @@ const updateStatistics = async (userId, problemId, difficulty, submissionStatus,
             hardSolved: submissionStatus === "accepted" && difficulty === "hard" ? 1 : 0,
         },
     });
-    const problemStats = await prisma.problemStats.findUnique({ where: { problemId } });
+    const problemStats = await prisma.problemStats.findUnique({
+        where: { problemId },
+    });
     const totalAttempts = (problemStats?.totalAttempts || 0) + 1;
-    const totalSolved = (problemStats?.totalSolved || 0) + (submissionStatus === "accepted" ? 1 : 0);
+    const totalSolved = (problemStats?.totalSolved || 0) +
+        (submissionStatus === "accepted" ? 1 : 0);
     const acceptanceRate = (totalSolved / totalAttempts) * 100;
     await prisma.problemStats.upsert({
         where: { problemId },
@@ -413,7 +589,8 @@ const updateStatistics = async (userId, problemId, difficulty, submissionStatus,
             acceptanceRate,
         },
         create: {
-            problemId, totalAttempts: 1,
+            problemId,
+            totalAttempts: 1,
             totalSolved: submissionStatus === "accepted" ? 1 : 0,
             acceptanceRate: submissionStatus === "accepted" ? 100 : 0,
         },
@@ -448,10 +625,17 @@ const updateStatistics = async (userId, problemId, difficulty, submissionStatus,
     }
     await prisma.submission.create({
         data: {
-            userId, problemId, status: submissionStatus,
-            code, language, runtime, memory,
-            testCasesPassed, totalTestCases,
-            createdAt: new Date(), updatedAt: new Date(),
+            userId,
+            problemId,
+            status: submissionStatus,
+            code,
+            language,
+            runtime,
+            memory,
+            testCasesPassed,
+            totalTestCases,
+            createdAt: new Date(),
+            updatedAt: new Date(),
         },
     });
 };
@@ -466,13 +650,21 @@ export const getUserSubmissions = async (req, res, next) => {
         const { title } = req.query;
         let whereClause = { userId };
         if (title) {
-            whereClause = { ...whereClause, problem: { title: { equals: title, mode: "insensitive" } } };
+            whereClause = {
+                ...whereClause,
+                problem: { title: { equals: title, mode: "insensitive" } },
+            };
         }
         const submissions = await prisma.submission.findMany({
-            where: whereClause, orderBy: { createdAt: "desc" }, skip, take: limit,
+            where: whereClause,
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
             include: { problem: { select: { title: true, difficulty: true } } },
         });
-        const totalSubmissions = await prisma.submission.count({ where: whereClause });
+        const totalSubmissions = await prisma.submission.count({
+            where: whereClause,
+        });
         const totalPages = Math.ceil(totalSubmissions / limit);
         res.status(200).json({
             message: "Submissions fetched successfully",
@@ -495,7 +687,9 @@ export const getAllSubmissions = async (req, res, next) => {
         const skip = (currentPage - 1) * limit;
         const submissions = await prisma.submission.findMany({
             where: { problem: { title: { equals: title, mode: "insensitive" } } },
-            orderBy: { createdAt: "desc" }, skip, take: limit,
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
             include: {
                 problem: { select: { title: true, difficulty: true } },
                 user: { select: { name: true, id: true } },
@@ -530,7 +724,9 @@ export const getSubmissionById = async (req, res, next) => {
             throw createHttpError.NotFound("Submission not found");
         if (submission.userId !== userId)
             throw createHttpError.Forbidden("Access denied");
-        res.status(200).json({ message: "Submission fetched successfully", data: submission });
+        res
+            .status(200)
+            .json({ message: "Submission fetched successfully", data: submission });
     }
     catch (error) {
         logger.error("Error fetching submission details:", error);
