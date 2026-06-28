@@ -1,17 +1,23 @@
 import prisma from "../../configs/db.js";
 export const getOrUpdateRegenerateState = async (chatId, userMessageId, regenerate, aiModel, lastMessageModel) => {
-    // Check if model changed
     const aiModelChanged = lastMessageModel !== aiModel;
-    // If not regenerating and model hasn't changed, return default
+    // Fast path — no DB read needed for normal first request
     if (!regenerate && !aiModelChanged) {
-        return { regenerateCount: 0, aiModelChanged: false };
+        return {
+            regenerateCount: 0,
+            aiModelChanged: false,
+            lastRetrievalConfidence: 0,
+        };
     }
-    // Check for existing regenerate state
     const existing = await prisma.regenerateState.findUnique({
         where: { userMessageId },
+        select: {
+            regenerateCount: true,
+            lastUsedModel: true,
+            lastRetrievalConfidence: true, // ← NEW
+        },
     });
     if (aiModelChanged) {
-        // Model change: set count to 1
         if (existing) {
             await prisma.regenerateState.update({
                 where: { userMessageId },
@@ -32,11 +38,14 @@ export const getOrUpdateRegenerateState = async (chatId, userMessageId, regenera
                 },
             });
         }
-        return { regenerateCount: 0, aiModelChanged: true };
+        return {
+            regenerateCount: 0,
+            aiModelChanged: true,
+            lastRetrievalConfidence: existing?.lastRetrievalConfidence ?? 0,
+        };
     }
     if (regenerate) {
         if (existing) {
-            // Increment regenerate count
             const updated = await prisma.regenerateState.update({
                 where: { userMessageId },
                 data: {
@@ -44,14 +53,18 @@ export const getOrUpdateRegenerateState = async (chatId, userMessageId, regenera
                     lastUsedModel: aiModel,
                     updatedAt: new Date(),
                 },
+                select: {
+                    regenerateCount: true,
+                    lastRetrievalConfidence: true,
+                },
             });
             return {
                 regenerateCount: updated.regenerateCount,
                 aiModelChanged: false,
+                lastRetrievalConfidence: updated.lastRetrievalConfidence ?? 0,
             };
         }
         else {
-            // First regenerate: create with count = 1
             const created = await prisma.regenerateState.create({
                 data: {
                     chatId,
@@ -59,12 +72,21 @@ export const getOrUpdateRegenerateState = async (chatId, userMessageId, regenera
                     regenerateCount: 1,
                     lastUsedModel: aiModel,
                 },
+                select: {
+                    regenerateCount: true,
+                    lastRetrievalConfidence: true,
+                },
             });
             return {
                 regenerateCount: created.regenerateCount,
                 aiModelChanged: false,
+                lastRetrievalConfidence: created.lastRetrievalConfidence ?? 0,
             };
         }
     }
-    return { regenerateCount: 0, aiModelChanged: false };
+    return {
+        regenerateCount: 0,
+        aiModelChanged: false,
+        lastRetrievalConfidence: 0,
+    };
 };
