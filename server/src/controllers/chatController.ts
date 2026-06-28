@@ -3,6 +3,8 @@ import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
 import { generateAIResponse } from "../services/rag/aiService.js";
 import { sharedChatEmail } from "../emails/shareChatEmail.js";
+import { resetRefusalStateForBranch } from "../services/rag/refusalStateRepository.js";
+import { inheritSummaryForBranch } from "../services/rag/conversationSummaryManager.js";
 import { MailtrapClient } from "mailtrap";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -289,6 +291,23 @@ export const sendMessage = async (req, res, next) => {
       activePath: newActivePath,
     });
 
+    let problemId: number | undefined;
+    let userSolved: boolean | undefined;
+
+    if (problemTitle) {
+      const foundProblem = await prisma.problem.findFirst({
+        where: { title: { contains: problemTitle, mode: "insensitive" } },
+        select: {
+          id: true,
+          solved: true,
+        },
+      });
+      if (foundProblem) {
+        problemId = foundProblem.id;
+        userSolved = foundProblem.solved;
+      }
+    }
+
     // Generate AI response asynchronously
     generateAsync({
       aiPlaceholderId: aiPlaceholder.id,
@@ -299,6 +318,10 @@ export const sendMessage = async (req, res, next) => {
       lastMessageModel,
       userId,
       problemTitle,
+      problemId,
+      userSolved,
+      activePath: newActivePath, 
+      isBranch: false, 
     });
   } catch (error) {
     logger.error("error in sendMessage controller", error);
@@ -433,6 +456,34 @@ export const createBranch = async (req, res, next) => {
         data: { activePath: newActivePath, updatedAt: new Date() },
       });
 
+      // Reset denial style to NEUTRAL on branch creation (branch = fresh start)
+      if (problemTitle) {
+        const prob = await prisma.problem.findFirst({
+          where: { title: { contains: problemTitle, mode: "insensitive" } },
+          select: { id: true },
+        });
+        if (prob) {
+          resetRefusalStateForBranch(
+            userId,
+            prob.id,
+            sourceMessage.parentId,
+          ).catch((err) =>
+            logger.error("createBranch: resetRefusalStateForBranch failed", {
+              err,
+            }),
+          );
+        }
+      }
+
+      // Inherit parent branch's conversation summary into new branch leaf
+      inheritSummaryForBranch(
+        chatId,
+        sourceMessage.parentId,
+        newUserMessage.id,
+      ).catch((err) =>
+        logger.error("createBranch: inheritSummaryForBranch failed", { err }),
+      );
+
       // Respond immediately, then generate async
       res.status(200).json(responsePayload);
 
@@ -445,6 +496,8 @@ export const createBranch = async (req, res, next) => {
         lastMessageModel,
         userId,
         problemTitle,
+        activePath: newActivePath,
+        isBranch: true,
       });
     } else {
       // ── REGENERATE: branch at assistant level ─────────────────────────────
@@ -490,6 +543,28 @@ export const createBranch = async (req, res, next) => {
         data: { activePath: newActivePath, updatedAt: new Date() },
       });
 
+      // Reset denial style to NEUTRAL on regenerate (fresh attempt)
+      if (problemTitle) {
+        const prob = await prisma.problem.findFirst({
+          where: { title: { contains: problemTitle, mode: "insensitive" } },
+          select: { id: true },
+        });
+        if (prob) {
+          resetRefusalStateForBranch(userId, prob.id, sourceMessageId).catch(
+            (err) =>
+              logger.error("createBranch: resetRefusalStateForBranch failed", {
+                err,
+              }),
+          );
+        }
+      }
+
+      // Inherit parent branch's summary into new branch leaf
+      inheritSummaryForBranch(chatId, sourceMessageId, aiPlaceholder.id).catch(
+        (err) =>
+          logger.error("createBranch: inheritSummaryForBranch failed", { err }),
+      );
+
       res.status(200).json(responsePayload);
 
       generateAsync({
@@ -501,6 +576,8 @@ export const createBranch = async (req, res, next) => {
         lastMessageModel,
         userId,
         problemTitle,
+        activePath: newActivePath,
+        isBranch: true,
       });
     }
   } catch (error) {
@@ -807,6 +884,10 @@ function generateAsync({
   lastMessageModel,
   userId,
   problemTitle,
+  problemId,
+  userSolved,
+  activePath,
+  isBranch,
 }: {
   aiPlaceholderId: string;
   chatId: string;
@@ -816,6 +897,10 @@ function generateAsync({
   lastMessageModel: string;
   userId: any;
   problemTitle?: string;
+  problemId?: number;
+  userSolved?: boolean;
+  activePath: string[]; 
+  isBranch?: boolean; 
 }) {
   (async () => {
     try {
@@ -843,6 +928,8 @@ function generateAsync({
         lastMessageModel,
         userId,
         problemTitle,
+        activePath, 
+        isBranch,
       });
 
       const postCheck = await prisma.message.findUnique({
@@ -986,7 +1073,7 @@ export const shareChat = async (req: any, res: any, next: any) => {
         messages: messages as any,
         userId,
         sourceChatId: chatId,
-        expiresAt: new Date(Date.now() + 10 * 1000),
+        expiresAt: new Date(Date.now() + SHARE_TTL_DAYS * 24 * 60 * 60 * 1000),
       },
     });
 
