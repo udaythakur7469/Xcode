@@ -48,7 +48,7 @@ export const generateInterview = async (req, res, next) => {
 
   try {
     const { text: questions } = await generateText({
-      model: google("gemini-2.0-flash-001"),
+      model: google("gemini-2.5-flash"),
       prompt: `Prepare questions for a job interview.
         The job role is ${role}.
         The job experience level is ${level}.
@@ -222,7 +222,7 @@ export const generateFeedback = async (req, res, next) => {
       transcript.filter((m: { role: string }) => m.role === "assistant").length;
 
     const { object } = await generateObject({
-      model: google("gemini-2.0-flash-001", { structuredOutputs: false }),
+      model: google("gemini-2.5-flash", { structuredOutputs: false }),
       schema: feedbackSchema,
       prompt: `
 You are an AI interviewer analyzing a mock interview. Evaluate the candidate thoroughly and honestly across every dimension below. Do not be lenient — surface genuine weaknesses.
