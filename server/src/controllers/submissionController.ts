@@ -204,7 +204,7 @@ export const runCode = async (req, res, next) => {
     };
 
     if (result.status.id >= 13) {
-      return res.status(500).json({
+      return res.status(200).json({
         success: false,
         status: "runtime_error",
         statusDescription:
@@ -223,7 +223,7 @@ export const runCode = async (req, res, next) => {
     }
 
     if (!processedResult.success) {
-      return res.status(400).json({
+      return res.status(200).json({
         ...processedResult,
         ...runCodeMeta,
         testCase: {
@@ -327,7 +327,7 @@ export const submitCode = async (req, res) => {
         judgeResult.compile_output,
         language,
       );
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         status: "compilation_error",
         statusDescription: judgeResult.status.description,
@@ -348,7 +348,7 @@ export const submitCode = async (req, res) => {
     }
 
     if ([7, 8, 9, 10, 11, 12].includes(judgeResult.status.id)) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         status: "runtime_error",
         statusDescription: judgeResult.status.description,
@@ -369,7 +369,7 @@ export const submitCode = async (req, res) => {
     }
 
     if (judgeResult.status.id === 5) {
-      return res.status(400).json({
+      return res.status(200).json({
         success: false,
         status: "time_limit_exceeded",
         statusDescription: judgeResult.status.description,
@@ -389,7 +389,7 @@ export const submitCode = async (req, res) => {
     }
 
     if (judgeResult.status.id >= 13) {
-      return res.status(500).json({
+      return res.status(200).json({
         success: false,
         status: "runtime_error",
         statusDescription: judgeResult.status.description,
@@ -494,7 +494,7 @@ export const submitCode = async (req, res) => {
       runtimeSum += runtime;
 
       if (result.status.id >= 13) {
-        return res.status(500).json({
+        return res.status(200).json({
           success: false,
           status: "runtime_error",
           statusDescription: processedResult.statusDescription,
@@ -547,9 +547,8 @@ export const submitCode = async (req, res) => {
         continue;
       }
 
-      // Pass counter uses processedResult.success — same trimmed comparison
-      // used to build processedResult in the map above
-      if (processedResult.success && allTestCasesPassed) {
+      // Count ALL passing test cases — even if a failure was found earlier
+      if (processedResult.success) {
         testCasesPassed++;
       }
     }
@@ -607,7 +606,7 @@ export const submitCode = async (req, res) => {
       }).catch((err) => {
         logger.error("Failed to enqueue statistics update (background):", err);
       });
-      return res.status(400).json({
+      return res.status(200).json({
         message: `Code failed: ${failedTestCase.statusDescription || "Wrong Answer"}`,
         failedTestCase,
         ...sharedFields,
