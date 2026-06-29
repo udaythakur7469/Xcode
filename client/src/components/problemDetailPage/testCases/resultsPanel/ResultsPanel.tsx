@@ -209,9 +209,7 @@ function RunResultCard({ result }: { result: RunCodeSuccess | RunCodeError }) {
             </span>
           </div>
           <span className="text-xs text-muted-foreground pl-4">
-            {!isSuccess && error.statusDescription
-              ? error.statusDescription
-              : cfg.subtitleText}
+            {cfg.subtitleText}
           </span>
         </div>
         <span className="text-[11px] font-medium px-2.5 py-1 rounded-md border border-border/15 bg-secondary text-muted-foreground flex-shrink-0">
