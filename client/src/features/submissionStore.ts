@@ -30,7 +30,7 @@ interface PaginationState {
 // ─── Per-test-case result (new) ───────────────────────────────────────────────
 
 export interface TestCaseResult {
-  index: number;                  // 1-based
+  index: number; // 1-based
   status: "accepted" | "wrong_answer";
   input: string;
   expectedOutput: string;
@@ -42,7 +42,7 @@ export interface TestCaseResult {
 // ─── Runtime distribution bucket (new) ───────────────────────────────────────
 
 export interface RuntimeBucket {
-  bucketLabel: string;            // e.g. "0-10ms"
+  bucketLabel: string; // e.g. "0-10ms"
   count: number;
   isUserBucket: boolean;
 }
@@ -52,8 +52,8 @@ export interface RuntimeBucket {
 export interface RunCodeSuccess {
   message: string;
   stdout: string;
-  time: string;                   // seconds as string e.g. "0.004"
-  memory: number;                 // KB
+  time: string; // seconds as string e.g. "0.004"
+  memory: number; // KB
   status: "accepted";
   language: string;
   code: string;
@@ -104,7 +104,11 @@ export interface FailedTestCase {
   input: string | null;
   expectedOutput: string | null;
   actualOutput: string | null;
-  status: "wrong_answer" | "runtime_error" | "compilation_error" | "time_limit_exceeded";
+  status:
+    | "wrong_answer"
+    | "runtime_error"
+    | "compilation_error"
+    | "time_limit_exceeded";
   statusDescription: string;
   message?: string | null;
   stderr: string | null;
@@ -116,7 +120,7 @@ export interface FailedTestCase {
 
 export interface SubmitCodeError {
   message: string;
-  failedTestCase: FailedTestCase;
+  failedTestCase?: FailedTestCase | null;
   language: string;
   code: string;
   runtimeInMilliseconds: number;
@@ -166,8 +170,16 @@ interface SubmissionStore {
   fetchBaseClassCode: (problemId: number, language: string) => Promise<void>;
   getUserSubmissions: (page: number, problemTitle?: string) => Promise<void>;
   getAllSubmissions: (problemTitle: string, page: number) => Promise<void>;
-  runCode: (language: string, code: string, problemTitle: string) => Promise<void>;
-  submitCode: (language: string, code: string, problemTitle: string) => Promise<void>;
+  runCode: (
+    language: string,
+    code: string,
+    problemTitle: string,
+  ) => Promise<void>;
+  submitCode: (
+    language: string,
+    code: string,
+    problemTitle: string,
+  ) => Promise<void>;
   clearRunCodeResult: () => void;
   clearSubmitCodeResult: () => void;
 }
@@ -265,62 +277,100 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     }
   },
 
-  runCode: async (language, code, problemTitle) => {
-    runCodeAbortController?.abort();
+  runCode: (language, code, problemTitle) => {
+    const previousRunController = runCodeAbortController;
     runCodeAbortController = new AbortController();
+    previousRunController?.abort();
 
     set({ isRunningCode: true, error: null, runCodeResult: null });
-    try {
-      const response = await axios.post(
-        `${API_URL}/submission/runCode`,
-        { language, code },
-        {
-          params: { title: problemTitle },
-          signal: runCodeAbortController.signal,
-        },
-      );
-      set({
-        runCodeResult: response.data as RunCodeSuccess,
-        isRunningCode: false,
+    const controller = runCodeAbortController;
+    return new Promise<void>((resolve) => {
+      const abortPromise = new Promise<never>((_, reject) => {
+        controller.signal.addEventListener("abort", () =>
+          reject(Object.assign(new Error("canceled"), { __cancel: true })),
+        );
       });
-    } catch (error: any) {
-      if (axios.isCancel(error)) return;
-      const payload: RunCodeResponse = error.response?.data ?? {
-        _networkError: true,
-        message:
-          "Could not reach the server. Check your connection and try again.",
-      };
-      set({ runCodeResult: payload, isRunningCode: false });
-    }
+      Promise.race([
+        axios.post(
+          `${API_URL}/submission/runCode`,
+          { language, code },
+          { params: { title: problemTitle }, signal: controller.signal },
+        ),
+        abortPromise,
+      ])
+        .then((response) => {
+          set({
+            runCodeResult: response.data as RunCodeSuccess,
+            isRunningCode: false,
+          });
+          resolve();
+        })
+        .catch((error: any) => {
+          if (
+            axios.isCancel(error) ||
+            error?.__cancel ||
+            error?.code === "ERR_CANCELED"
+          ) {
+            set({ isRunningCode: false });
+          } else {
+            const payload: RunCodeResponse = error.response?.data ?? {
+              _networkError: true,
+              message:
+                "Could not reach the server. Check your connection and try again.",
+            };
+            set({ runCodeResult: payload, isRunningCode: false });
+          }
+          resolve();
+        });
+    });
   },
 
-  submitCode: async (language, code, problemTitle) => {
-    submitCodeAbortController?.abort();
+  submitCode: (language, code, problemTitle) => {
+    const previousSubmitController = submitCodeAbortController;
     submitCodeAbortController = new AbortController();
+    previousSubmitController?.abort();
 
     set({ isSubmittingCode: true, error: null, submitCodeResult: null });
-    try {
-      const response = await axios.post(
-        `${API_URL}/submission/submitCode`,
-        { language, code },
-        {
-          params: { title: problemTitle },
-          signal: submitCodeAbortController.signal,
-        },
-      );
-      set({
-        submitCodeResult: response.data as SubmitCodeSuccess,
-        isSubmittingCode: false,
+    const controller = submitCodeAbortController;
+    return new Promise<void>((resolve) => {
+      const abortPromise = new Promise<never>((_, reject) => {
+        controller.signal.addEventListener("abort", () =>
+          reject(Object.assign(new Error("canceled"), { __cancel: true })),
+        );
       });
-    } catch (error: any) {
-      if (axios.isCancel(error)) return;
-      const payload: SubmitCodeResponse = error.response?.data ?? {
-        _networkError: true,
-        message:
-          "Could not reach the server. Check your connection and try again.",
-      };
-      set({ submitCodeResult: payload, isSubmittingCode: false });
-    }
+      Promise.race([
+        axios.post(
+          `${API_URL}/submission/submitCode`,
+          { language, code },
+          { params: { title: problemTitle }, signal: controller.signal },
+        ),
+        abortPromise,
+      ])
+        .then((response) => {
+          set({
+            submitCodeResult: response.data as SubmitCodeSuccess,
+            isSubmittingCode: false,
+          });
+          resolve();
+        })
+        .catch((error: any) => {
+          if (
+            axios.isCancel(error) ||
+            error?.__cancel ||
+            error?.code === "ERR_CANCELED"
+          ) {
+            set({ isSubmittingCode: false });
+          } else {
+            const payload: SubmitCodeResponse = error.response?.data ?? {
+              _networkError: true,
+              message:
+                "Could not reach the server. Check your connection and try again.",
+            };
+            set({ submitCodeResult: payload, isSubmittingCode: false });
+          }
+          resolve();
+        });
+    });
   },
 
   clearRunCodeResult: () => set({ runCodeResult: null }),
