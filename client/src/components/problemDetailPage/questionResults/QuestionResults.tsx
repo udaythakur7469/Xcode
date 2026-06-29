@@ -529,7 +529,7 @@ function SubmitResultCard({
             </span>
           </div>
           <span className="text-xs text-muted-foreground pl-4">
-            {isSuccess ? "All test cases passed" : (ftDesc ?? "")}
+            {isSuccess ? "All test cases passed" : (ftDesc !== cfg.label ? (ftDesc ?? "") : "")}
           </span>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
