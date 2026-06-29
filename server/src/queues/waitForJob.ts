@@ -13,7 +13,7 @@ const executionQueueEvents = new QueueEvents("code-execution", {
 export async function enqueueAndWait(
   jobName: string,
   data: ExecutionJobData,
-  timeoutMs = 35000,
+  timeoutMs = 40000,
 ): Promise<ExecutionJobResult> {
   const job = await executionQueue.add(jobName, data);
   const result = await job.waitUntilFinished(executionQueueEvents, timeoutMs);
