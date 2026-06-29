@@ -313,11 +313,20 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
           ) {
             set({ isRunningCode: false });
           } else {
-            const payload: RunCodeResponse = error.response?.data ?? {
-              _networkError: true,
-              message:
-                "Could not reach the server. Check your connection and try again.",
-            };
+            const responseData = error.response?.data;
+            const isServerError =
+              !responseData ||
+              typeof responseData !== "object" ||
+              error.response?.status >= 500;
+            const payload: RunCodeResponse = isServerError
+              ? {
+                  _networkError: true,
+                  message:
+                    responseData?.error ??
+                    responseData?.message ??
+                    "Could not reach the server. Check your connection and try again.",
+                }
+              : (responseData as RunCodeResponse);
             set({ runCodeResult: payload, isRunningCode: false });
           }
           resolve();
@@ -361,11 +370,20 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
           ) {
             set({ isSubmittingCode: false });
           } else {
-            const payload: SubmitCodeResponse = error.response?.data ?? {
-              _networkError: true,
-              message:
-                "Could not reach the server. Check your connection and try again.",
-            };
+            const responseData = error.response?.data;
+            const isServerError =
+              !responseData ||
+              typeof responseData !== "object" ||
+              error.response?.status >= 500;
+            const payload: SubmitCodeResponse = isServerError
+              ? {
+                  _networkError: true,
+                  message:
+                    responseData?.error ??
+                    responseData?.message ??
+                    "Could not reach the server. Check your connection and try again.",
+                }
+              : (responseData as SubmitCodeResponse);
             set({ submitCodeResult: payload, isSubmittingCode: false });
           }
           resolve();
