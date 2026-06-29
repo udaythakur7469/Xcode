@@ -70,9 +70,14 @@ type StatusCfg = {
   failSegClass: string;
   countClass: string;
 };
+const SYNTAX_ERROR_PATTERNS =
+  /SyntaxError|IndentationError|ParseError|unexpected token|invalid syntax/i;
+
 function getStatusCfg(
   status: string,
   statusDescription?: string | null,
+  language?: string,
+  stderr?: string | null,
 ): StatusCfg {
   if (status === "accepted")
     return {
@@ -114,6 +119,25 @@ function getStatusCfg(
       failSegClass: "bg-[#E24B4A]",
       countClass: "text-[#E24B4A]",
     };
+
+  // For interpreted languages: remap NZEC runtime errors that contain syntax errors
+  if (
+    status === "runtime_error" &&
+    (language === "javascript" || language === "python") &&
+    stderr &&
+    SYNTAX_ERROR_PATTERNS.test(stderr)
+  ) {
+    return {
+      label: "Syntax Error",
+      accentColor: "#E24B4A",
+      textClass: "text-[#E24B4A]",
+      dotClass: "bg-[#E24B4A]",
+      passSegClass: "bg-[#1D9E75]",
+      failSegClass: "bg-[#E24B4A]",
+      countClass: "text-[#E24B4A]",
+    };
+  }
+
   return {
     label: "Runtime Error",
     accentColor: "#E24B4A",
@@ -217,17 +241,11 @@ function StatsFooter({
   passRate,
   avgRuntime,
   submittedAt,
-}: {
-  runtime: number | null;
-  memory: number | null;
-  language: string;
-  passRate?: string;
-  avgRuntime?: number;
-  submittedAt?: string;
 }) {
   const items: { label: string; value: string }[] = [];
-  if (runtime != null) items.push({ label: "Runtime", value: runtime + "ms" });
-  if (memory != null) {
+  if (runtime != null && typeof runtime === "number" && !isNaN(runtime))
+    items.push({ label: "Runtime", value: runtime + "ms" });
+  if (memory != null && typeof memory === "number" && !isNaN(memory)) {
     const v = formatMemoryMB(memory);
     if (v) items.push({ label: "Memory", value: v });
   }
@@ -294,7 +312,7 @@ function TestCaseTable({
                   {tc.runtimeInMilliseconds}ms
                 </span>
                 <span className="text-xs text-muted-foreground flex-shrink-0 tabular-nums w-16 text-right">
-                  {tc.memoryInMegabytes.toFixed(1)} MB
+                  {(tc.memoryInMegabytes ?? 0).toFixed(1)} MB
                 </span>
                 <svg
                   width="14"
@@ -492,14 +510,21 @@ function SubmitResultCard({
 
   const ftStatus = ft?.status ?? "wrong_answer";
   const ftDesc = ft?.statusDescription ?? null;
-  const cfg = getStatusCfg(isSuccess ? "accepted" : ftStatus, ftDesc);
+  const ftStderr = ft?.stderr ?? null;
+  const cfg = getStatusCfg(
+    isSuccess ? "accepted" : ftStatus,
+    ftDesc,
+    result.language,
+    ftStderr,
+  );
 
   const passed = result.testCasesPassed ?? 0;
   const total = result.totalTestCases ?? 0;
   const failedIdx = passed + 1;
 
-  const langLabel = LANG_LABELS[result.language] ?? result.language;
-  const hlLang = LANG_HL[result.language] ?? "cpp";
+  const langLabel =
+    LANG_LABELS[result.language ?? ""] ?? result.language ?? "Unknown";
+  const hlLang = LANG_HL[result.language ?? ""] ?? "cpp";
   const code = result.code ?? "";
 
   const errorContent = ft?.compile_output ?? ft?.stderr ?? null;
