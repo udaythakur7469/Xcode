@@ -549,7 +549,7 @@ export const submitCode = async (req, res) => {
 
       // Pass counter uses processedResult.success — same trimmed comparison
       // used to build processedResult in the map above
-      if (processedResult.success) {
+      if (processedResult.success && allTestCasesPassed) {
         testCasesPassed++;
       }
     }
