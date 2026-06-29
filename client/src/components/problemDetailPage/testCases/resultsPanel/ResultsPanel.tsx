@@ -58,44 +58,83 @@ type StatusCfg = {
   dotClass: string;
   subtitleText: string;
 };
+const SYNTAX_ERROR_PATTERNS =
+  /SyntaxError|IndentationError|ParseError|unexpected token|invalid syntax/i;
+
 function getStatusCfg(
   status: string,
   statusDescription?: string | null,
+  language?: string,
+  stderr?: string | null,
 ): StatusCfg {
-  switch (status) {
-    case "accepted":
-      return {
-        label: "Accepted",
-        accentColor: "#1D9E75",
-        textClass: "text-[#1D9E75]",
-        dotClass: "bg-[#1D9E75]",
-        subtitleText: "Code executed successfully",
-      };
-    case "compilation_error":
-      return {
-        label: "Compilation Error",
-        accentColor: "#E24B4A",
-        textClass: "text-[#E24B4A]",
-        dotClass: "bg-[#E24B4A]",
-        subtitleText: "Fix the errors below and run again",
-      };
-    case "time_limit_exceeded":
-      return {
-        label: "Time Limit Exceeded",
-        accentColor: "#BA7517",
-        textClass: "text-[#BA7517]",
-        dotClass: "bg-[#BA7517]",
-        subtitleText: "Execution exceeded the time limit",
-      };
-    default:
-      return {
-        label: "Runtime Error",
-        accentColor: "#E24B4A",
-        textClass: "text-[#E24B4A]",
-        dotClass: "bg-[#E24B4A]",
-        subtitleText: statusDescription ?? "An error occurred during execution",
-      };
+  if (status === "accepted")
+    return {
+      label: "Accepted",
+      accentColor: "#1D9E75",
+      textClass: "text-[#1D9E75]",
+      dotClass: "bg-[#1D9E75]",
+      passSegClass: "bg-[#1D9E75]",
+      failSegClass: "bg-[#E24B4A]",
+      countClass: "text-[#1D9E75]",
+    };
+  if (status === "time_limit_exceeded")
+    return {
+      label: "Time Limit Exceeded",
+      accentColor: "#BA7517",
+      textClass: "text-[#BA7517]",
+      dotClass: "bg-[#BA7517]",
+      passSegClass: "bg-[#1D9E75]",
+      failSegClass: "bg-[#BA7517]",
+      countClass: "text-[#BA7517]",
+    };
+  if (status === "wrong_answer")
+    return {
+      label: "Wrong Answer",
+      accentColor: "#E24B4A",
+      textClass: "text-[#E24B4A]",
+      dotClass: "bg-[#E24B4A]",
+      passSegClass: "bg-[#1D9E75]",
+      failSegClass: "bg-[#E24B4A]",
+      countClass: "text-[#E24B4A]",
+    };
+  if (status === "compilation_error")
+    return {
+      label: "Compilation Error",
+      accentColor: "#E24B4A",
+      textClass: "text-[#E24B4A]",
+      dotClass: "bg-[#E24B4A]",
+      passSegClass: "bg-[#1D9E75]",
+      failSegClass: "bg-[#E24B4A]",
+      countClass: "text-[#E24B4A]",
+    };
+
+  // For interpreted languages: remap NZEC runtime errors that contain syntax errors
+  if (
+    status === "runtime_error" &&
+    (language === "javascript" || language === "python") &&
+    stderr &&
+    SYNTAX_ERROR_PATTERNS.test(stderr)
+  ) {
+    return {
+      label: "Syntax Error",
+      accentColor: "#E24B4A",
+      textClass: "text-[#E24B4A]",
+      dotClass: "bg-[#E24B4A]",
+      passSegClass: "bg-[#1D9E75]",
+      failSegClass: "bg-[#E24B4A]",
+      countClass: "text-[#E24B4A]",
+    };
   }
+
+  return {
+    label: "Runtime Error",
+    accentColor: "#E24B4A",
+    textClass: "text-[#E24B4A]",
+    dotClass: "bg-[#E24B4A]",
+    passSegClass: "bg-[#1D9E75]",
+    failSegClass: "bg-[#E24B4A]",
+    countClass: "text-[#E24B4A]",
+  };
 }
 
 // ─── Atoms ────────────────────────────────────────────────────────────────────
@@ -170,7 +209,12 @@ function RunResultCard({ result }: { result: RunCodeSuccess | RunCodeError }) {
   const isSuccess = result.status === "accepted";
   const success = result as RunCodeSuccess;
   const error = result as RunCodeError;
-  const cfg = getStatusCfg(result.status, error.statusDescription);
+  const cfg = getStatusCfg(
+    result.status,
+    error.statusDescription,
+    result.language,
+    error.stderr ?? null,
+  );
 
   const language = result.language ?? "cpp";
   const code = result.code ?? "";
