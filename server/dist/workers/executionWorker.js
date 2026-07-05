@@ -6,31 +6,22 @@ import logger from "../configs/loggerConfig.js";
 const executionWorker = new Worker("code-execution", async (job) => {
     const { fullCode, languageId, stdin, language, type } = job.data;
     logger.info(`[executionWorker] Job ${job.id} started — type=${type} language=${language}`);
-    // Step 1: submit to Judge0 in async mode (no wait=true)
+    // Step 1: submit to Judge0 with wait=true — Judge0 blocks until execution
+    // completes and returns the full result directly. No polling needed.
+    // Timeout must cover: queue wait + compile time + CPU_TIME_LIMIT + buffer.
+    // CPU_TIME_LIMIT=5s + CPU_EXTRA_TIME=1s + EC2 cold-start buffer = ~25s total.
+    const JUDGE0_TIMEOUT_MS = 25000;
     const createResponse = await axios.post(`${JUDGE0_URL}/submissions?base64_encoded=true&wait=true`, {
         source_code: Buffer.from(fullCode).toString("base64"),
         language_id: languageId,
         stdin: Buffer.from(stdin).toString("base64"),
-    }, { headers: JUDGE0_HEADERS, timeout: 10000 });
-    const token = createResponse.data.token;
-    if (!token)
-        throw new Error("Judge0 did not return a submission token");
-    // Step 2: poll until Judge0 finishes
-    // status.id 1 = In Queue, 2 = Processing — keep polling while <= 2
-    const maxAttempts = 40; // 40 x 500ms = 20 seconds maximum
-    let attempts = 0;
-    let result;
-    do {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        const poll = await axios.get(`${JUDGE0_URL}/submissions/${token}?base64_encoded=true`, { headers: JUDGE0_HEADERS, timeout: 5000 });
-        result = poll.data;
-        attempts++;
-        if (attempts >= maxAttempts) {
-            throw new Error("Judge0 timed out after 20 seconds");
-        }
-    } while (result.status.id <= 2);
-    // Step 3: decode base64 fields
-    // The worker decodes here so the controller receives plain strings directly.
+    }, { headers: JUDGE0_HEADERS, timeout: JUDGE0_TIMEOUT_MS });
+    // wait=true returns the full result inline — no token poll needed.
+    const result = createResponse.data;
+    if (!result || !result.status) {
+        throw new Error("Judge0 returned an empty or malformed response");
+    }
+    // Step 2: decode base64 fields
     if (result.stdout) {
         result.stdout = Buffer.from(result.stdout, "base64").toString();
     }
