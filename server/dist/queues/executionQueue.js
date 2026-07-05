@@ -4,7 +4,7 @@ export const executionQueue = new Queue("code-execution", {
     connection: redisConnection,
     defaultJobOptions: {
         attempts: 2, // retry once on transient Judge0 failure
-        backoff: { type: "fixed", delay: 1000 },
+        backoff: { type: "fixed", delay: 3000 },
         removeOnComplete: { count: 200 },
         removeOnFail: { count: 200 },
     },
