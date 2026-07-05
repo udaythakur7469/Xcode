@@ -64,11 +64,16 @@ export interface RunCodeSuccess {
 
 export interface RunCodeError {
   success: false;
-  status: "runtime_error" | "compilation_error" | "time_limit_exceeded";
+  status:
+    | "wrong_answer"
+    | "runtime_error"
+    | "compilation_error"
+    | "time_limit_exceeded";
   statusDescription: string;
-  stderr: string | null;
-  compile_output: string | null;
-  errorInfo: ErrorInfo[] | null;
+  stdout?: string | null;
+  stderr?: string | null;
+  compile_output?: string | null;
+  errorInfo?: ErrorInfo[] | null;
   message?: string;
   time?: string | null;
   memory?: number | null;
@@ -121,6 +126,11 @@ export interface FailedTestCase {
 export interface SubmitCodeError {
   message: string;
   failedTestCase?: FailedTestCase | null;
+  status?: string | null;
+  statusDescription?: string | null;
+  stderr?: string | null;
+  compile_output?: string | null;
+  errorInfo?: ErrorInfo[] | null;
   language: string;
   code: string;
   runtimeInMilliseconds: number;
