@@ -1,10 +1,14 @@
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
+import { anthropic } from "@ai-sdk/anthropic";
 import logger from "../../configs/loggerConfig.js";
 import { EditorialAccessTier, HintLevel, SolutionPermissionMode, RefusalLevel, } from "./types.js";
 // Gemini model used for all answer generation.
 // Same model family used throughout the rest of the pipeline.
-const GENERATION_MODEL = "gemini-2.5-flash";
+const MODEL_GEMINI = "gemini-2.5-flash";
+const MODEL_CLAUDE = "claude-sonnet-4-5";
+const MODEL_OPENAI = "gpt-4o";
 const GENERATION_MAX_TOKENS = 2048;
 const GENERATION_TEMPERATURE = 0.7;
 const MAX_RETRIEVED_DOCS_IN_PROMPT = 3;
@@ -85,6 +89,20 @@ const buildDocumentContext = (docs) => {
     });
     return snippets.join("\n\n");
 };
+function resolveModel(aiModel) {
+    const normalized = aiModel.toLowerCase().trim();
+    if (normalized === "gemini")
+        return google(MODEL_GEMINI);
+    if (normalized === "claude")
+        return anthropic(MODEL_CLAUDE);
+    if (normalized === "chatgpt")
+        return openai(MODEL_OPENAI);
+    // Unknown model string — default to Gemini and log a warning
+    logger.warn("answerGeneration: unknown aiModel value, defaulting to Gemini", {
+        aiModel,
+    });
+    return google(MODEL_GEMINI);
+}
 const buildSystemPrompt = (input) => {
     const { intent, permissions, assembledContext, problemTitle, regenerateMode } = input;
     const permissionDirectives = buildPermissionDirectives(input);
@@ -135,10 +153,11 @@ export const answerGeneration = async (input) => {
     try {
         const systemPrompt = buildSystemPrompt(input);
         const userPrompt = buildUserPrompt(input);
-        logger.info("Answer generation: calling Gemini Flash", {
+        const selectedModel = resolveModel(aiModel);
+        logger.info("Answer generation: calling model", {
+            aiModel,
             problemTitle,
             intent,
-            aiModel,
             regenerateMode: regenerateMode === true,
             permissionMode: permissions.solutionPermissionMode,
             refusalLevel: permissions.refusalLevel,
@@ -148,13 +167,8 @@ export const answerGeneration = async (input) => {
             systemPromptLength: systemPrompt.length,
             userPromptLength: userPrompt.length,
         });
-        // ── Gemini Flash call ─────────────────────────────────────────────
-        // Uses messages array (system + user) rather than a single prompt
-        // string so the model reliably respects permission directives —
-        // especially solution-blocking ones.
-        // ─────────────────────────────────────────────────────────────────
         const result = await generateText({
-            model: google(GENERATION_MODEL),
+            model: selectedModel,
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt },
@@ -163,7 +177,8 @@ export const answerGeneration = async (input) => {
             maxTokens: GENERATION_MAX_TOKENS,
         });
         const rawAnswer = result.text.trim();
-        logger.info("Answer generation: Gemini response received", {
+        logger.info("Answer generation: model response received", {
+            aiModel,
             problemTitle,
             intent,
             responseLength: rawAnswer.length,
@@ -177,11 +192,11 @@ export const answerGeneration = async (input) => {
         };
     }
     catch (error) {
-        logger.error("Answer generation: Gemini call failed", {
+        logger.error("Answer generation: model call failed", {
             error,
+            aiModel,
             problemTitle,
             intent,
-            aiModel,
         });
         return {
             rawAnswer: "I encountered an error generating a response. Please try again.",
