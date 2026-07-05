@@ -1,19 +1,14 @@
 import axios from "axios";
 import { JUDGE0_HEADERS, JUDGE0_URL, } from "../controllers/submissionController.js";
+import { getLanguageConfig } from "../configs/languageConfig.js";
 // Helper function to map language to Judge0 language ID
 export const getLanguageId = (language) => {
-    switch (language) {
-        case "cpp":
-            return 54; // Judge0 language ID for C++
-        case "java":
-            return 62; // Judge0 language ID for Java
-        case "python":
-            return 71; // Judge0 language ID for Python
-        case "javascript":
-            return 63; // Judge0 language ID for JavaScript
-        default:
-            return 54; // Default to C++
+    const config = getLanguageConfig(language);
+    if (!config) {
+        // Loud failure instead of silently running the wrong compiler
+        throw new Error(`Unsupported language: "${language}"`);
     }
+    return config.judge0Id;
 };
 export const pollJudge0Result = async (submissionId) => {
     const maxAttempts = 40; // 20 seconds max
