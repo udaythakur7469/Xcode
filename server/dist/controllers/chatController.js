@@ -192,7 +192,7 @@ export const sendMessage = async (req, res, next) => {
             throw createHttpError.NotFound("Chat not found");
         }
         const isFirstMessage = chat.messages.length === 0;
-        const lastMessageModel = chat.messages[0]?.aiModel || "gpt-4";
+        const lastMessageModel = chat.messages[0]?.aiModel || aiModel;
         // Find the current tail of the active path — the new user message's parent
         // is the last message on the active path (null if this is the first message)
         let parentId = null;
@@ -344,7 +344,7 @@ export const createBranch = async (req, res, next) => {
             orderBy: { createdAt: "desc" },
             select: { aiModel: true },
         });
-        const lastMessageModel = lastAssistantMsg?.aiModel || "gpt-4";
+        const lastMessageModel = lastAssistantMsg?.aiModel || aiModel;
         let newActivePath;
         let responsePayload;
         if (branchType === "edit") {
