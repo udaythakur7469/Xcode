@@ -12,6 +12,8 @@ import cpp from "react-syntax-highlighter/dist/esm/languages/hljs/cpp";
 import java from "react-syntax-highlighter/dist/esm/languages/hljs/java";
 import python from "react-syntax-highlighter/dist/esm/languages/hljs/python";
 import javascript from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
+import { getLanguageConfig } from "@/lib/share/languageConfig";
+import { getStatusCfg } from "@/lib/share/getStatusConfig";
 
 SyntaxHighlighter.registerLanguage("cpp", cpp);
 SyntaxHighlighter.registerLanguage("java", java);
@@ -19,19 +21,6 @@ SyntaxHighlighter.registerLanguage("python", python);
 SyntaxHighlighter.registerLanguage("javascript", javascript);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const LANG_LABELS: Record<string, string> = {
-  cpp: "C++",
-  java: "Java",
-  python: "Python",
-  javascript: "JavaScript",
-};
-const LANG_HL: Record<string, string> = {
-  cpp: "cpp",
-  java: "java",
-  python: "python",
-  javascript: "javascript",
-};
 
 function formatMemoryKB(kb: number | null | undefined): string | null {
   if (kb == null) return null;
@@ -51,92 +40,6 @@ function formatTimestamp(iso: string): string {
   });
 }
 
-type StatusCfg = {
-  label: string;
-  accentColor: string;
-  textClass: string;
-  dotClass: string;
-  subtitleText: string;
-};
-const SYNTAX_ERROR_PATTERNS =
-  /SyntaxError|IndentationError|ParseError|unexpected token|invalid syntax/i;
-
-function getStatusCfg(
-  status: string,
-  statusDescription?: string | null,
-  language?: string,
-  stderr?: string | null,
-): StatusCfg {
-  if (status === "accepted")
-    return {
-      label: "Accepted",
-      accentColor: "#1D9E75",
-      textClass: "text-[#1D9E75]",
-      dotClass: "bg-[#1D9E75]",
-      passSegClass: "bg-[#1D9E75]",
-      failSegClass: "bg-[#E24B4A]",
-      countClass: "text-[#1D9E75]",
-    };
-  if (status === "time_limit_exceeded")
-    return {
-      label: "Time Limit Exceeded",
-      accentColor: "#BA7517",
-      textClass: "text-[#BA7517]",
-      dotClass: "bg-[#BA7517]",
-      passSegClass: "bg-[#1D9E75]",
-      failSegClass: "bg-[#BA7517]",
-      countClass: "text-[#BA7517]",
-    };
-  if (status === "wrong_answer")
-    return {
-      label: "Wrong Answer",
-      accentColor: "#E24B4A",
-      textClass: "text-[#E24B4A]",
-      dotClass: "bg-[#E24B4A]",
-      passSegClass: "bg-[#1D9E75]",
-      failSegClass: "bg-[#E24B4A]",
-      countClass: "text-[#E24B4A]",
-    };
-  if (status === "compilation_error")
-    return {
-      label: "Compilation Error",
-      accentColor: "#E24B4A",
-      textClass: "text-[#E24B4A]",
-      dotClass: "bg-[#E24B4A]",
-      passSegClass: "bg-[#1D9E75]",
-      failSegClass: "bg-[#E24B4A]",
-      countClass: "text-[#E24B4A]",
-    };
-
-  // For interpreted languages: remap NZEC runtime errors that contain syntax errors
-  if (
-    status === "runtime_error" &&
-    (language === "javascript" || language === "python") &&
-    stderr &&
-    SYNTAX_ERROR_PATTERNS.test(stderr)
-  ) {
-    return {
-      label: "Syntax Error",
-      accentColor: "#E24B4A",
-      textClass: "text-[#E24B4A]",
-      dotClass: "bg-[#E24B4A]",
-      passSegClass: "bg-[#1D9E75]",
-      failSegClass: "bg-[#E24B4A]",
-      countClass: "text-[#E24B4A]",
-    };
-  }
-
-  return {
-    label: "Runtime Error",
-    accentColor: "#E24B4A",
-    textClass: "text-[#E24B4A]",
-    dotClass: "bg-[#E24B4A]",
-    passSegClass: "bg-[#1D9E75]",
-    failSegClass: "bg-[#E24B4A]",
-    countClass: "text-[#E24B4A]",
-  };
-}
-
 // ─── Atoms ────────────────────────────────────────────────────────────────────
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -151,13 +54,14 @@ function PlainCodeBlock({
   variant = "default",
 }: {
   children: React.ReactNode;
-  variant?: "default" | "error";
+  variant?: "default" | "error" | "wrong";
 }) {
+  const isRed = variant === "error" || variant === "wrong";
   return (
     <pre
       className={[
         "rounded-lg px-3 py-2.5 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words overflow-x-auto",
-        variant === "error"
+        isRed
           ? "bg-destructive/5 border border-destructive/20 text-destructive"
           : "bg-secondary border border-border/10 text-foreground",
       ].join(" ")}
@@ -207,6 +111,7 @@ function EmptyState() {
 
 function RunResultCard({ result }: { result: RunCodeSuccess | RunCodeError }) {
   const isSuccess = result.status === "accepted";
+  const isWrongAnswer = result.status === "wrong_answer";
   const success = result as RunCodeSuccess;
   const error = result as RunCodeError;
   const cfg = getStatusCfg(
@@ -218,8 +123,8 @@ function RunResultCard({ result }: { result: RunCodeSuccess | RunCodeError }) {
 
   const language = result.language ?? "cpp";
   const code = result.code ?? "";
-  const langLabel = LANG_LABELS[language] ?? language;
-  const hlLang = LANG_HL[language] ?? "cpp";
+  const langLabel = getLanguageConfig(language)?.label ?? language;
+  const hlLang = getLanguageConfig(language)?.highlightKey ?? "cpp";
 
   const runtime = isSuccess
     ? formatRuntimeSeconds(success.time)
@@ -232,7 +137,13 @@ function RunResultCard({ result }: { result: RunCodeSuccess | RunCodeError }) {
   const errorLabel = error.compile_output
     ? "Compiler Output"
     : "Error (stderr)";
-  const showError = !isSuccess && errorContent != null;
+  const showError = !isSuccess && !isWrongAnswer && errorContent != null;
+
+  const displayedStdout = isSuccess ? success.stdout : error.stdout;
+  const showOutput = (isSuccess || isWrongAnswer) && displayedStdout != null;
+  const displayedExpected = result.testCase?.userOutput ?? null;
+  const showExpected =
+    (isSuccess || isWrongAnswer) && displayedExpected != null;
 
   return (
     <div className="rounded-xl border border-border/20 overflow-hidden bg-card animate-in fade-in slide-in-from-bottom-1 duration-200">
@@ -279,23 +190,25 @@ function RunResultCard({ result }: { result: RunCodeSuccess | RunCodeError }) {
           </div>
         )}
 
-        {/* Your output — success only */}
-        {isSuccess && success.stdout != null && (
+        {/* Your output — success or wrong-answer (code ran either way) */}
+        {showOutput && (
           <div>
             <SectionLabel>Your Output</SectionLabel>
-            <PlainCodeBlock>{success.stdout}</PlainCodeBlock>
+            <PlainCodeBlock variant={isWrongAnswer ? "wrong" : "default"}>
+              {displayedStdout}
+            </PlainCodeBlock>
           </div>
         )}
 
-        {/* Expected output — success only */}
-        {isSuccess && success.testCase?.userOutput != null && (
+        {/* Expected output — success or wrong-answer */}
+        {showExpected && (
           <div>
             <SectionLabel>Expected Output</SectionLabel>
-            <PlainCodeBlock>{success.testCase.userOutput}</PlainCodeBlock>
+            <PlainCodeBlock>{displayedExpected}</PlainCodeBlock>
           </div>
         )}
 
-        {/* Error block */}
+        {/* Error block — compile/runtime/TLE only, never wrong_answer */}
         {showError && (
           <div>
             <SectionLabel>{errorLabel}</SectionLabel>
