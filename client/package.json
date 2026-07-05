@@ -6,10 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "test:frontend": "vitest run --config tests/vitest.config.frontend.mts --reporter=verbose",
-    "test:frontend:watch": "vitest --config tests/vitest.config.frontend.mts",
-    "test:frontend:coverage": "vitest run --config tests/vitest.config.frontend.mts --coverage"
+    "lint": "next lint"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.22",
@@ -83,21 +80,17 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-calendar-heatmap": "^1.9.0",
     "@types/react-dom": "^19",
     "@types/uuid": "^11.0.0",
     "@vitejs/plugin-react": "^6.0.3",
-    "@vitest/coverage-v8": "^2.1.9",
     "eslint": "^9",
     "eslint-config-next": "15.1.7",
     "jsdom": "^29.1.1",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5",
-    "vitest": "^2.1.9"
+    "typescript": "^5"
   }
 }
