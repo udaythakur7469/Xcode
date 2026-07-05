@@ -8,7 +8,7 @@ import {
   FailedTestCase,
   TestCaseResult,
   RuntimeBucket,
-  NetworkError
+  NetworkError,
 } from "@/features/submissionStore";
 import QuestionResultsLoader from "./QuestionResultsLoader";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -26,6 +26,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts";
+import { getLanguageConfig } from "@/lib/share/languageConfig";
+import { getStatusCfg, StatusCfg } from "@/lib/share/getStatusConfig";
 
 SyntaxHighlighter.registerLanguage("cpp", cpp);
 SyntaxHighlighter.registerLanguage("java", java);
@@ -33,19 +35,6 @@ SyntaxHighlighter.registerLanguage("python", python);
 SyntaxHighlighter.registerLanguage("javascript", javascript);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const LANG_LABELS: Record<string, string> = {
-  cpp: "C++",
-  java: "Java",
-  python: "Python",
-  javascript: "JavaScript",
-};
-const LANG_HL: Record<string, string> = {
-  cpp: "cpp",
-  java: "java",
-  python: "python",
-  javascript: "javascript",
-};
 
 function formatMemoryMB(mb: number | null | undefined): string | null {
   if (mb == null) return null;
@@ -59,94 +48,6 @@ function formatTimestamp(iso: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-type StatusCfg = {
-  label: string;
-  accentColor: string;
-  textClass: string;
-  dotClass: string;
-  passSegClass: string;
-  failSegClass: string;
-  countClass: string;
-};
-const SYNTAX_ERROR_PATTERNS =
-  /SyntaxError|IndentationError|ParseError|unexpected token|invalid syntax/i;
-
-function getStatusCfg(
-  status: string,
-  statusDescription?: string | null,
-  language?: string,
-  stderr?: string | null,
-): StatusCfg {
-  if (status === "accepted")
-    return {
-      label: "Accepted",
-      accentColor: "#1D9E75",
-      textClass: "text-[#1D9E75]",
-      dotClass: "bg-[#1D9E75]",
-      passSegClass: "bg-[#1D9E75]",
-      failSegClass: "bg-[#E24B4A]",
-      countClass: "text-[#1D9E75]",
-    };
-  if (status === "time_limit_exceeded")
-    return {
-      label: "Time Limit Exceeded",
-      accentColor: "#BA7517",
-      textClass: "text-[#BA7517]",
-      dotClass: "bg-[#BA7517]",
-      passSegClass: "bg-[#1D9E75]",
-      failSegClass: "bg-[#BA7517]",
-      countClass: "text-[#BA7517]",
-    };
-  if (status === "wrong_answer")
-    return {
-      label: "Wrong Answer",
-      accentColor: "#E24B4A",
-      textClass: "text-[#E24B4A]",
-      dotClass: "bg-[#E24B4A]",
-      passSegClass: "bg-[#1D9E75]",
-      failSegClass: "bg-[#E24B4A]",
-      countClass: "text-[#E24B4A]",
-    };
-  if (status === "compilation_error")
-    return {
-      label: "Compilation Error",
-      accentColor: "#E24B4A",
-      textClass: "text-[#E24B4A]",
-      dotClass: "bg-[#E24B4A]",
-      passSegClass: "bg-[#1D9E75]",
-      failSegClass: "bg-[#E24B4A]",
-      countClass: "text-[#E24B4A]",
-    };
-
-  // For interpreted languages: remap NZEC runtime errors that contain syntax errors
-  if (
-    status === "runtime_error" &&
-    (language === "javascript" || language === "python") &&
-    stderr &&
-    SYNTAX_ERROR_PATTERNS.test(stderr)
-  ) {
-    return {
-      label: "Syntax Error",
-      accentColor: "#E24B4A",
-      textClass: "text-[#E24B4A]",
-      dotClass: "bg-[#E24B4A]",
-      passSegClass: "bg-[#1D9E75]",
-      failSegClass: "bg-[#E24B4A]",
-      countClass: "text-[#E24B4A]",
-    };
-  }
-
-  return {
-    label: "Runtime Error",
-    accentColor: "#E24B4A",
-    textClass: "text-[#E24B4A]",
-    dotClass: "bg-[#E24B4A]",
-    passSegClass: "bg-[#1D9E75]",
-    failSegClass: "bg-[#E24B4A]",
-    countClass: "text-[#E24B4A]",
-  };
 }
 
 // ─── Atoms ────────────────────────────────────────────────────────────────────
@@ -250,7 +151,10 @@ function StatsFooter({
     if (v) items.push({ label: "Memory", value: v });
   }
   if (language)
-    items.push({ label: "Language", value: LANG_LABELS[language] ?? language });
+    items.push({
+      label: "Language",
+      value: getLanguageConfig(language)?.label ?? language,
+    });
   if (passRate != null)
     items.push({ label: "Pass Rate", value: passRate + "%" });
   if (avgRuntime != null)
@@ -393,8 +297,8 @@ function RuntimeDistributionChart({
       <div className="flex items-start justify-between gap-2 flex-wrap">
         <SectionLabel>Runtime Distribution</SectionLabel>
         <span className="text-xs text-[#1D9E75] font-medium">
-          Faster than {percentile}% of {LANG_LABELS[language] ?? language}{" "}
-          submissions
+          Faster than {percentile}% of{" "}
+          {getLanguageConfig(language)?.label ?? language} submissions
         </span>
       </div>
       <div style={{ width: "100%", height: 160 }}>
@@ -508,9 +412,10 @@ function SubmitResultCard({
   const failure = result as SubmitCodeError;
   const ft: FailedTestCase | null = isSuccess ? null : failure.failedTestCase;
 
-  const ftStatus = ft?.status ?? "wrong_answer";
-  const ftDesc = ft?.statusDescription ?? null;
-  const ftStderr = ft?.stderr ?? null;
+  const ftStatus = ft?.status ?? (failure as any).status ?? "wrong_answer";
+  const ftDesc =
+    ft?.statusDescription ?? (failure as any).statusDescription ?? null;
+  const ftStderr = ft?.stderr ?? (failure as any).stderr ?? null;
   const cfg = getStatusCfg(
     isSuccess ? "accepted" : ftStatus,
     ftDesc,
@@ -520,14 +425,22 @@ function SubmitResultCard({
 
   const passed = result.testCasesPassed ?? 0;
   const total = result.totalTestCases ?? 0;
-  const failedIdx = passed + 1;
+  const firstFailingCase = result.testCaseResults?.find(
+    (tc) => tc.status !== "accepted",
+  );
+  const failedIdx = firstFailingCase ? firstFailingCase.index : passed + 1;
 
   const langLabel =
-    LANG_LABELS[result.language ?? ""] ?? result.language ?? "Unknown";
-  const hlLang = LANG_HL[result.language ?? ""] ?? "cpp";
+    getLanguageConfig(result.language)?.label ?? result.language;
+  const hlLang = getLanguageConfig(result.language)?.highlightKey ?? "cpp";
   const code = result.code ?? "";
 
-  const errorContent = ft?.compile_output ?? ft?.stderr ?? null;
+  const errorContent =
+    ft?.compile_output ??
+    ft?.stderr ??
+    (failure as any).compile_output ??
+    (failure as any).stderr ??
+    null;
   const errorLabel = ft?.compile_output ? "Compiler Output" : "Error (stderr)";
   const showError = !isSuccess && errorContent != null;
   const showIO = ft && (ft.input || ft.expectedOutput);
@@ -554,7 +467,11 @@ function SubmitResultCard({
             </span>
           </div>
           <span className="text-xs text-muted-foreground pl-4">
-            {isSuccess ? "All test cases passed" : (ftDesc !== cfg.label ? (ftDesc ?? "") : "")}
+            {isSuccess
+              ? "All test cases passed"
+              : ftDesc !== cfg.label
+                ? (ftDesc ?? "")
+                : ""}
           </span>
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
