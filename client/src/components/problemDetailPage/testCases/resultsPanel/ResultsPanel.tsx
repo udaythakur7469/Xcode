@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   useSubmissionStore,
   RunCodeSuccess,
@@ -297,7 +298,20 @@ function isNetworkError(r: any): r is NetworkError {
 }
 
 const ResultsPanel: React.FC = () => {
-  const { runCodeResult, isRunningCode } = useSubmissionStore();
+  const { runCodeResult, isRunningCode, hydrateRunCodeResult } =
+    useSubmissionStore();
+  const searchParams = useSearchParams();
+  const problemTitle = searchParams.get("title");
+
+  // Reload-proof: restore the last run result for this problem from
+  // sessionStorage whenever this panel mounts (page reload, or coming back
+  // from the "Test cases" tab which unmounts/remounts this component).
+  useEffect(() => {
+    if (problemTitle) {
+      hydrateRunCodeResult(problemTitle);
+    }
+  }, [problemTitle, hydrateRunCodeResult]);
+
   return (
     <div className="h-full w-full overflow-y-auto scrollbar-white">
       {isRunningCode && (
