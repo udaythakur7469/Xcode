@@ -268,8 +268,9 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   }, [showResultsTab, problemTitle]);
 
   const handleCodeRun = () => {
+    console.log("handleCodeRun clicked");
     setShowTestCasesResultsTab(true);
-    setVerticalSizes([60, 40]);
+    setVerticalSizes([50, 50]);
     setShouldResize(true);
   };
 
@@ -317,8 +318,8 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     if (shouldResize) {
       isAnimatingRef.current = true;
       Promise.all([
-        animateResize(codeEditorPanelRef, 60, 500),
-        animateResize(testCasesPanelRef, 40, 500),
+        animateResize(codeEditorPanelRef, 50, 500),
+        animateResize(testCasesPanelRef, 50, 500),
       ]).then(() => {
         setShouldResize(false);
         isAnimatingRef.current = false;
@@ -485,6 +486,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       </ResizablePanelGroup>
     </div>
   );
-};;
+};
 
 export default ResizablePanels;
