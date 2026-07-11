@@ -27,6 +27,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 type QuestionTabsProps = {
   showResultsTab?: boolean;
+  focusResultsTrigger?: number;
   onCloseResultsTab?: () => void;
   onMaximize?: () => void;
   isMaximized?: boolean;
@@ -52,6 +53,7 @@ const resolveTabFromParam = (param: string | null): string => {
 
 const QuestionTabs: React.FC<QuestionTabsProps> = ({
   showResultsTab = false,
+  focusResultsTrigger = 0,
   onCloseResultsTab,
   onMaximize,
   isMaximized = false,
@@ -117,15 +119,21 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   };
 
   // When showResultsTab becomes true, visually switch to results
-  // (no URL change — results is not a shareable state)
+  // (no URL change — results is not a shareable state).
+  // Also re-runs on every focusResultsTrigger increment: this handles the
+  // case where the results tab is already open (showResultsTab was already
+  // true) but the user is elsewhere and submits again — the tab must still
+  // snap into focus, not silently stay wherever the user currently is.
   useEffect(() => {
     if (showResultsTab) {
-      setPreviousTab(urlResolvedTab);
+      // Animate in from whichever tab the user is currently viewing.
+      setPreviousTab(activeTab === "results" ? urlResolvedTab : activeTab);
       setResultsVisible(true);
     } else {
       setResultsVisible(false);
     }
-  }, [showResultsTab]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showResultsTab, focusResultsTrigger]);
 
   // Once the URL catches up to the pending tab, clear the ref
   // so future urlResolvedTab changes drive activeTab normally
@@ -144,7 +152,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
       if (isAlt && isW && showResultsTab) {
         e.preventDefault();
         if (onCloseResultsTab) onCloseResultsTab();
-        clearSubmitCodeResult();
+        clearSubmitCodeResult(searchParams.get("title") ?? undefined);
         setResultsVisible(false);
         setPreviousTab("results");
       }
@@ -203,7 +211,7 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
   const onResultsClose = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onCloseResultsTab) onCloseResultsTab();
-    clearSubmitCodeResult();
+    clearSubmitCodeResult(searchParams.get("title") ?? undefined);
     setResultsVisible(false);
     setPreviousTab("results");
   };
@@ -400,6 +408,6 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
       </Tabs>
     </div>
   );
-};
+};;
 
 export default QuestionTabs;
