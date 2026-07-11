@@ -1,31 +1,45 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import ResizablePanels from "@/components/problemDetailPage/resizablePanels/ResizablePanels";
 import ProblemNavbar from "@/components/problemDetailPage/navbar/ProblemNavbar";
 import ProblemSidebar from "@/components/problemDetailPage/navbar/sidebar/ProblemSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useProblemContext } from "@/hooks/useProblemContext";
-import { clearPersistedProblemResults } from "@/features/submissionStore";
+import {
+  clearPersistedProblemResults,
+  getLastActiveProblemTitle,
+  setLastActiveProblemTitle,
+} from "@/features/submissionStore";
 
 const ProblemDetailsPage: React.FC = () => {
   useProblemContext();
 
   // Run/submit results are persisted in sessionStorage per problem so they
-  // survive a reload. But if the user navigates to a DIFFERENT problem in
-  // the same tab, the previous problem's persisted results should be
+  // survive a reload. But if the user navigates to a DIFFERENT problem —
+  // whether via the in-page ProblemSidebar (same route, no remount) or via
+  // the standalone /problems list page (a real route change that remounts
+  // this whole page) — the previous problem's persisted results should be
   // cleared rather than lingering around unused.
+  //
+  // A React ref can't track "the previous problem" reliably here: it only
+  // survives within one mounted instance of this component, and a route
+  // change via /problems remounts it fresh, silently skipping the cleanup.
+  // getLastActiveProblemTitle/setLastActiveProblemTitle read/write
+  // sessionStorage directly, which survives that remount (it's only ever
+  // cleared when the browser tab itself closes), so this works no matter
+  // how the user got here.
   const searchParams = useSearchParams();
   const problemTitle = searchParams.get("title");
-  const previousProblemTitleRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const previousTitle = previousProblemTitleRef.current;
-    if (previousTitle && problemTitle && previousTitle !== problemTitle) {
-      clearPersistedProblemResults(previousTitle);
+    if (!problemTitle) return;
+    const lastActiveTitle = getLastActiveProblemTitle();
+    if (lastActiveTitle && lastActiveTitle !== problemTitle) {
+      clearPersistedProblemResults(lastActiveTitle);
     }
-    previousProblemTitleRef.current = problemTitle;
+    setLastActiveProblemTitle(problemTitle);
   }, [problemTitle]);
 
   const [resetLayoutTrigger, setResetLayoutTrigger] = useState(0);
@@ -124,6 +138,6 @@ const ProblemDetailsPage: React.FC = () => {
       </div>
     </SidebarProvider>
   );
-};
+};;
 
 export default ProblemDetailsPage;
