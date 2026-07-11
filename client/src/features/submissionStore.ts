@@ -212,6 +212,31 @@ export function clearPersistedProblemResults(problemTitle: string) {
   removeFromSession(getSubmitTabOpenKey(problemTitle));
 }
 
+// Tracks which problem was last active, IN sessionStorage rather than a
+// React ref. A ref only survives within one mounted component instance —
+// navigating via a genuine route change (e.g. the standalone /problems
+// list page, as opposed to the in-page ProblemSidebar) unmounts and
+// remounts page.tsx entirely, wiping any ref. sessionStorage survives that
+// remount (it's only cleared when the tab itself closes), so the "did the
+// problem actually change?" check works no matter how the user navigated.
+const LAST_ACTIVE_PROBLEM_KEY = "xcode_last_active_problem_title";
+
+export function getLastActiveProblemTitle(): string | null {
+  try {
+    return sessionStorage.getItem(LAST_ACTIVE_PROBLEM_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setLastActiveProblemTitle(problemTitle: string) {
+  try {
+    sessionStorage.setItem(LAST_ACTIVE_PROBLEM_KEY, problemTitle);
+  } catch {
+    // ignore
+  }
+}
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 interface SubmissionStore {
