@@ -4,6 +4,7 @@ import { enqueueStatsUpdate } from "../queues/statsQueue.js";
 import { enqueueAndWait } from "../queues/waitForJob.js";
 import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
+import { getLanguageConfig, SUPPORTED_LANGUAGES } from "../configs/languageConfig.js";
 export const JUDGE0_URL = process.env.JUDGE0_BASE_URL;
 export const JUDGE0_HEADERS = {
     "X-Auth-Token": process.env.JUDGE0_AUTH_TOKEN,
@@ -112,6 +113,11 @@ export const runCode = async (req, res, next) => {
             .status(400)
             .json({ message: "Title is required as a query parameter" });
     }
+    if (!getLanguageConfig(language)) {
+        return res.status(400).json({
+            error: `Unsupported language: "${language}". Supported languages: ${SUPPORTED_LANGUAGES.join(", ")}`,
+        });
+    }
     let fullCode = "";
     try {
         const problemData = await prisma.problem.findFirst({
@@ -140,7 +146,19 @@ export const runCode = async (req, res, next) => {
             testCaseUserOutput: problemData.testCases[0].userExpectedOutput || null,
         });
         const errorInfo = parseErrorPosition(result.compile_output, language);
-        const processedResult = processSubmissionResult(result, errorInfo, language);
+        let effectiveResult = result;
+        if (result.status.id === 3) {
+            const actualOutput = (result.stdout ?? "").trim();
+            const expectedOutput = (problemData.testCases[0].apiExpectedOutput ?? "").trim();
+            const passed = actualOutput === expectedOutput;
+            effectiveResult = {
+                ...result,
+                status: passed
+                    ? { id: 3, description: "Accepted" }
+                    : { id: 4, description: "Wrong Answer" },
+            };
+        }
+        const processedResult = processSubmissionResult(effectiveResult, errorInfo, language);
         // Shared metadata added to ALL runCode responses
         const runCodeMeta = {
             language,
@@ -149,7 +167,7 @@ export const runCode = async (req, res, next) => {
             totalTestCasesInProblem: problemData.testCases.length,
         };
         if (result.status.id >= 13) {
-            return res.status(500).json({
+            return res.status(200).json({
                 success: false,
                 status: "runtime_error",
                 statusDescription: processedResult.statusDescription ?? result.status.description,
@@ -165,7 +183,7 @@ export const runCode = async (req, res, next) => {
             });
         }
         if (!processedResult.success) {
-            return res.status(400).json({
+            return res.status(200).json({
                 ...processedResult,
                 ...runCodeMeta,
                 testCase: {
@@ -192,6 +210,21 @@ export const runCode = async (req, res, next) => {
         res.status(500).json({ error: "Failed to run code" });
     }
 };
+function buildEarlyExitFailedTestCase(params) {
+    return {
+        input: null,
+        expectedOutput: null,
+        actualOutput: null,
+        status: params.status,
+        statusDescription: params.statusDescription,
+        message: params.message ?? null,
+        stderr: params.stderr ?? null,
+        compile_output: params.compile_output ?? null,
+        errorInfo: params.errorInfo ?? null,
+        runtime: params.runtime ?? 0,
+        memory: params.memory ?? 0,
+    };
+}
 // ─── submitCode ───────────────────────────────────────────────────────────────
 export const submitCode = async (req, res) => {
     if (!req.user) {
@@ -205,6 +238,11 @@ export const submitCode = async (req, res) => {
         return res
             .status(400)
             .json({ message: "Title is required as a query parameter" });
+    }
+    if (!getLanguageConfig(language)) {
+        return res.status(400).json({
+            error: `Unsupported language: "${language}". Supported languages: ${SUPPORTED_LANGUAGES.join(", ")}`,
+        });
     }
     let fullCode = "";
     try {
@@ -230,6 +268,13 @@ export const submitCode = async (req, res) => {
         const combinedStdin = totalTestCases +
             "\n" +
             problemData.testCases.map((tc) => tc.apiInput).join("\n");
+        console.log("full code being sent", fullCode);
+        console.log("test cases are", problemData.testCases.map((tc) => ({
+            apiInput: tc.apiInput,
+            apiExpectedOutput: tc.apiExpectedOutput,
+            userInput: tc.userInput,
+            userExpectedOutput: tc.userExpectedOutput,
+        })));
         const { judgeRawResult: judgeResult } = await enqueueAndWait("submit-code", {
             type: "submit",
             userId: req.user.id ?? req.user.userId,
@@ -252,7 +297,7 @@ export const submitCode = async (req, res) => {
         // ── Early-exit errors (before test case loop) ──────────────────────────
         if (judgeResult.status.id === 6) {
             const errorInfo = parseErrorPosition(judgeResult.compile_output, language);
-            return res.status(400).json({
+            return res.status(200).json({
                 success: false,
                 status: "compilation_error",
                 statusDescription: judgeResult.status.description,
@@ -269,45 +314,71 @@ export const submitCode = async (req, res) => {
                 avgRuntimeInMilliseconds: 0,
                 submittedAt,
                 testCaseResults: [],
+                failedTestCase: buildEarlyExitFailedTestCase({
+                    status: "compilation_error",
+                    statusDescription: judgeResult.status.description,
+                    stderr: judgeResult.stderr,
+                    compile_output: judgeResult.compile_output,
+                    errorInfo,
+                }),
             });
         }
         if ([7, 8, 9, 10, 11, 12].includes(judgeResult.status.id)) {
-            return res.status(400).json({
+            const runtimeInMilliseconds = Math.round((parseFloat(judgeResult.time) || 0) * 1000);
+            const memoryInMegabytes = (parseFloat(judgeResult.memory) || 0) / 1024;
+            return res.status(200).json({
                 success: false,
                 status: "runtime_error",
                 statusDescription: judgeResult.status.description,
                 stderr: judgeResult.stderr,
                 language,
                 code,
-                runtimeInMilliseconds: Math.round((parseFloat(judgeResult.time) || 0) * 1000),
-                memoryInMegabytes: (parseFloat(judgeResult.memory) || 0) / 1024,
+                runtimeInMilliseconds,
+                memoryInMegabytes,
                 testCasesPassed: 0,
                 totalTestCases,
                 passRate: "0.0",
                 avgRuntimeInMilliseconds: 0,
                 submittedAt,
                 testCaseResults: [],
+                failedTestCase: buildEarlyExitFailedTestCase({
+                    status: "runtime_error",
+                    statusDescription: judgeResult.status.description,
+                    stderr: judgeResult.stderr,
+                    runtime: runtimeInMilliseconds,
+                    memory: memoryInMegabytes,
+                }),
             });
         }
         if (judgeResult.status.id === 5) {
-            return res.status(400).json({
+            const runtimeInMilliseconds = Math.round((parseFloat(judgeResult.time) || 0) * 1000);
+            const memoryInMegabytes = (parseFloat(judgeResult.memory) || 0) / 1024;
+            return res.status(200).json({
                 success: false,
                 status: "time_limit_exceeded",
                 statusDescription: judgeResult.status.description,
                 language,
                 code,
-                runtimeInMilliseconds: Math.round((parseFloat(judgeResult.time) || 0) * 1000),
-                memoryInMegabytes: (parseFloat(judgeResult.memory) || 0) / 1024,
+                runtimeInMilliseconds,
+                memoryInMegabytes,
                 testCasesPassed: 0,
                 totalTestCases,
                 passRate: "0.0",
                 avgRuntimeInMilliseconds: 0,
                 submittedAt,
                 testCaseResults: [],
+                // ADDED
+                failedTestCase: buildEarlyExitFailedTestCase({
+                    status: "time_limit_exceeded",
+                    statusDescription: judgeResult.status.description,
+                    message: "Your program took too long to execute. Consider optimizing your algorithm.",
+                    runtime: runtimeInMilliseconds,
+                    memory: memoryInMegabytes,
+                }),
             });
         }
         if (judgeResult.status.id >= 13) {
-            return res.status(500).json({
+            return res.status(200).json({
                 success: false,
                 status: "runtime_error",
                 statusDescription: judgeResult.status.description,
@@ -394,7 +465,7 @@ export const submitCode = async (req, res) => {
             maxMemory = Math.max(maxMemory, memory);
             runtimeSum += runtime;
             if (result.status.id >= 13) {
-                return res.status(500).json({
+                return res.status(200).json({
                     success: false,
                     status: "runtime_error",
                     statusDescription: processedResult.statusDescription,
@@ -444,8 +515,7 @@ export const submitCode = async (req, res) => {
                 };
                 continue;
             }
-            // Pass counter uses processedResult.success — same trimmed comparison
-            // used to build processedResult in the map above
+            // Count ALL passing test cases — even if a failure was found earlier
             if (processedResult.success) {
                 testCasesPassed++;
             }
@@ -497,7 +567,7 @@ export const submitCode = async (req, res) => {
             }).catch((err) => {
                 logger.error("Failed to enqueue statistics update (background):", err);
             });
-            return res.status(400).json({
+            return res.status(200).json({
                 message: `Code failed: ${failedTestCase.statusDescription || "Wrong Answer"}`,
                 failedTestCase,
                 ...sharedFields,
