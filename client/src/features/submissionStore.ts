@@ -161,6 +161,57 @@ export interface NetworkError {
   message: string;
 }
 
+// ─── sessionStorage persistence (per problem) ─────────────────────────────────
+// Run results and submit results are persisted to sessionStorage so they
+// survive a page reload within the same browser tab, but are naturally
+// wiped when the tab/browser is closed. Each entry is keyed by problem
+// title so switching problems never shows another problem's stale result.
+
+const RUN_RESULT_PREFIX = "xcode_run_result:";
+const SUBMIT_RESULT_PREFIX = "xcode_submit_result:";
+const SUBMIT_TAB_OPEN_PREFIX = "xcode_submit_tab_open:";
+
+export const getRunResultKey = (problemTitle: string) =>
+  `${RUN_RESULT_PREFIX}${problemTitle}`;
+export const getSubmitResultKey = (problemTitle: string) =>
+  `${SUBMIT_RESULT_PREFIX}${problemTitle}`;
+export const getSubmitTabOpenKey = (problemTitle: string) =>
+  `${SUBMIT_TAB_OPEN_PREFIX}${problemTitle}`;
+
+function saveToSession(key: string, value: unknown) {
+  try {
+    sessionStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // sessionStorage unavailable (SSR / privacy mode) — ignore
+  }
+}
+
+function readFromSession<T>(key: string): T | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function removeFromSession(key: string) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // ignore
+  }
+}
+
+// Clears every persisted piece (run result, submit result, results-tab-open
+// flag) for a given problem. Called when the user navigates to a different
+// problem so old results never leak into the new problem's view.
+export function clearPersistedProblemResults(problemTitle: string) {
+  removeFromSession(getRunResultKey(problemTitle));
+  removeFromSession(getSubmitResultKey(problemTitle));
+  removeFromSession(getSubmitTabOpenKey(problemTitle));
+}
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 interface SubmissionStore {
@@ -190,8 +241,10 @@ interface SubmissionStore {
     code: string,
     problemTitle: string,
   ) => Promise<void>;
-  clearRunCodeResult: () => void;
-  clearSubmitCodeResult: () => void;
+  clearRunCodeResult: (problemTitle?: string) => void;
+  clearSubmitCodeResult: (problemTitle?: string) => void;
+  hydrateRunCodeResult: (problemTitle: string) => void;
+  hydrateSubmitCodeResult: (problemTitle: string) => void;
 }
 
 let runCodeAbortController: AbortController | null = null;
@@ -293,6 +346,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     previousRunController?.abort();
 
     set({ isRunningCode: true, error: null, runCodeResult: null });
+    removeFromSession(getRunResultKey(problemTitle));
     const controller = runCodeAbortController;
     return new Promise<void>((resolve) => {
       const abortPromise = new Promise<never>((_, reject) => {
@@ -309,10 +363,12 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
         abortPromise,
       ])
         .then((response) => {
+          const result = response.data as RunCodeSuccess;
           set({
-            runCodeResult: response.data as RunCodeSuccess,
+            runCodeResult: result,
             isRunningCode: false,
           });
+          saveToSession(getRunResultKey(problemTitle), result);
           resolve();
         })
         .catch((error: any) => {
@@ -338,6 +394,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
                 }
               : (responseData as RunCodeResponse);
             set({ runCodeResult: payload, isRunningCode: false });
+            saveToSession(getRunResultKey(problemTitle), payload);
           }
           resolve();
         });
@@ -350,6 +407,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     previousSubmitController?.abort();
 
     set({ isSubmittingCode: true, error: null, submitCodeResult: null });
+    removeFromSession(getSubmitResultKey(problemTitle));
     const controller = submitCodeAbortController;
     return new Promise<void>((resolve) => {
       const abortPromise = new Promise<never>((_, reject) => {
@@ -366,10 +424,12 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
         abortPromise,
       ])
         .then((response) => {
+          const result = response.data as SubmitCodeSuccess;
           set({
-            submitCodeResult: response.data as SubmitCodeSuccess,
+            submitCodeResult: result,
             isSubmittingCode: false,
           });
+          saveToSession(getSubmitResultKey(problemTitle), result);
           resolve();
         })
         .catch((error: any) => {
@@ -395,12 +455,31 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
                 }
               : (responseData as SubmitCodeResponse);
             set({ submitCodeResult: payload, isSubmittingCode: false });
+            saveToSession(getSubmitResultKey(problemTitle), payload);
           }
           resolve();
         });
     });
   },
 
-  clearRunCodeResult: () => set({ runCodeResult: null }),
-  clearSubmitCodeResult: () => set({ submitCodeResult: null }),
+  clearRunCodeResult: (problemTitle) => {
+    set({ runCodeResult: null });
+    if (problemTitle) removeFromSession(getRunResultKey(problemTitle));
+  },
+  clearSubmitCodeResult: (problemTitle) => {
+    set({ submitCodeResult: null });
+    if (problemTitle) removeFromSession(getSubmitResultKey(problemTitle));
+  },
+  hydrateRunCodeResult: (problemTitle) => {
+    const saved = readFromSession<RunCodeResponse>(
+      getRunResultKey(problemTitle),
+    );
+    if (saved) set({ runCodeResult: saved });
+  },
+  hydrateSubmitCodeResult: (problemTitle) => {
+    const saved = readFromSession<SubmitCodeResponse>(
+      getSubmitResultKey(problemTitle),
+    );
+    if (saved) set({ submitCodeResult: saved });
+  },
 }));
