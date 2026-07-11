@@ -56,7 +56,7 @@ const SolvedQuestionsDataTable: React.FC<
     const problemTitle = submission.problem?.title;
     if (problemTitle) {
       router.push(
-        `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}`,
+        `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}&tab=description`,
       );
     }
   };
