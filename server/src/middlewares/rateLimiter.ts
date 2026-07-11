@@ -122,7 +122,7 @@ export const generatePostLimiter = rateLimit({
 
 export const runCodeLimiter = rateLimit({
   redis,
-  limit: 20,
+  limit: 100,
   window: 60,
   keyPrefix: "judge0:run",
   identifier,
@@ -132,7 +132,7 @@ export const runCodeLimiter = rateLimit({
 
 export const submitCodeLimiter = rateLimit({
   redis,
-  limit: 10,
+  limit: 100,
   window: 60,
   keyPrefix: "judge0:submit",
   identifier,
