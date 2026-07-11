@@ -1,15 +1,32 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import ResizablePanels from "@/components/problemDetailPage/resizablePanels/ResizablePanels";
 import ProblemNavbar from "@/components/problemDetailPage/navbar/ProblemNavbar";
 import ProblemSidebar from "@/components/problemDetailPage/navbar/sidebar/ProblemSidebar";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useProblemContext } from "@/hooks/useProblemContext";
+import { clearPersistedProblemResults } from "@/features/submissionStore";
 
 const ProblemDetailsPage: React.FC = () => {
-
   useProblemContext();
+
+  // Run/submit results are persisted in sessionStorage per problem so they
+  // survive a reload. But if the user navigates to a DIFFERENT problem in
+  // the same tab, the previous problem's persisted results should be
+  // cleared rather than lingering around unused.
+  const searchParams = useSearchParams();
+  const problemTitle = searchParams.get("title");
+  const previousProblemTitleRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const previousTitle = previousProblemTitleRef.current;
+    if (previousTitle && problemTitle && previousTitle !== problemTitle) {
+      clearPersistedProblemResults(previousTitle);
+    }
+    previousProblemTitleRef.current = problemTitle;
+  }, [problemTitle]);
 
   const [resetLayoutTrigger, setResetLayoutTrigger] = useState(0);
 
