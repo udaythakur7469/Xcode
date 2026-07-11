@@ -314,6 +314,7 @@ export const submitCode = async (req, res) => {
                 avgRuntimeInMilliseconds: 0,
                 submittedAt,
                 testCaseResults: [],
+                totalTestCasesEvaluated: 0,
                 failedTestCase: buildEarlyExitFailedTestCase({
                     status: "compilation_error",
                     statusDescription: judgeResult.status.description,
@@ -341,6 +342,7 @@ export const submitCode = async (req, res) => {
                 avgRuntimeInMilliseconds: 0,
                 submittedAt,
                 testCaseResults: [],
+                totalTestCasesEvaluated: 0,
                 failedTestCase: buildEarlyExitFailedTestCase({
                     status: "runtime_error",
                     statusDescription: judgeResult.status.description,
@@ -367,7 +369,7 @@ export const submitCode = async (req, res) => {
                 avgRuntimeInMilliseconds: 0,
                 submittedAt,
                 testCaseResults: [],
-                // ADDED
+                totalTestCasesEvaluated: 0,
                 failedTestCase: buildEarlyExitFailedTestCase({
                     status: "time_limit_exceeded",
                     statusDescription: judgeResult.status.description,
@@ -393,6 +395,7 @@ export const submitCode = async (req, res) => {
                 avgRuntimeInMilliseconds: 0,
                 submittedAt: new Date().toISOString(),
                 testCaseResults: [],
+                totalTestCasesEvaluated: 0,
                 failedTestCase: {
                     input: null,
                     expectedOutput: null,
@@ -441,8 +444,21 @@ export const submitCode = async (req, res) => {
             };
         });
         submissionResults.sort((a, b) => a.index - b.index);
-        // ── Build testCaseResults — the full per-test-case array sent to frontend
-        const testCaseResults = submissionResults.map((s) => ({
+        // ── Fail-fast: locate the first failing test case ─────────────────────
+        // Judge0 already executed every test case in a single run (combined
+        // stdin/stdout), so there is no execution cost saved here — this only
+        // controls what we *report* and *store*, matching LeetCode-style
+        // behavior: evaluation is treated as having stopped at the first
+        // failure, and everything after it is not surfaced.
+        const firstFailureIdx = submissionResults.findIndex((s) => !s.processedResult.success);
+        const hasFailure = firstFailureIdx !== -1;
+        // Only the cases up to and including the first failure are "evaluated".
+        // Everything after that point is discarded, as if it never ran.
+        const evaluatedResults = hasFailure
+            ? submissionResults.slice(0, firstFailureIdx + 1)
+            : submissionResults;
+        // ── Build testCaseResults — truncated at the first failure ────────────
+        const testCaseResults = evaluatedResults.map((s) => ({
             index: s.index + 1,
             status: s.passed ? "accepted" : "wrong_answer",
             input: s.testCase.userInput,
@@ -451,15 +467,19 @@ export const submitCode = async (req, res) => {
             runtimeInMilliseconds: Math.round(s.runtime * 1000),
             memoryInMegabytes: parseFloat((s.memory / 1024).toFixed(2)),
         }));
-        // ── Aggregate loop ────────────────────────────────────────────────────
+        // ── Aggregate loop — only over evaluated cases ─────────────────────────
         let allTestCasesPassed = true;
         let failedTestCase = null;
-        let testCasesPassed = 0;
+        // Consecutive passes before the first failure — this equals
+        // firstFailureIdx exactly, since by definition every case before it passed.
+        let testCasesPassed = hasFailure
+            ? firstFailureIdx
+            : evaluatedResults.length;
         let failureReason = "wrong_answer";
         let maxRuntime = 0;
         let maxMemory = 0;
         let runtimeSum = 0;
-        for (const submission of submissionResults) {
+        for (const submission of evaluatedResults) {
             const { testCase, result, processedResult, runtime, memory } = submission;
             maxRuntime = Math.max(maxRuntime, runtime);
             maxMemory = Math.max(maxMemory, memory);
@@ -480,6 +500,7 @@ export const submitCode = async (req, res) => {
                     avgRuntimeInMilliseconds: 0,
                     submittedAt,
                     testCaseResults,
+                    totalTestCasesEvaluated: evaluatedResults.length,
                     failedTestCase: {
                         input: null,
                         expectedOutput: null,
@@ -495,7 +516,7 @@ export const submitCode = async (req, res) => {
                     },
                 });
             }
-            // Single failure block — no Block B
+            // First (and only, since evaluatedResults stops here) failure
             if (!processedResult.success && !failedTestCase) {
                 allTestCasesPassed = false;
                 const errorResult = processedResult;
@@ -513,16 +534,11 @@ export const submitCode = async (req, res) => {
                     runtime,
                     memory,
                 };
-                continue;
-            }
-            // Count ALL passing test cases — even if a failure was found earlier
-            if (processedResult.success) {
-                testCasesPassed++;
             }
         }
         const runtimeInMilliseconds = Math.round(maxRuntime * 1000);
         const memoryInMegabytes = maxMemory / 1024;
-        const avgRuntimeInMilliseconds = Math.round((runtimeSum / submissionResults.length) * 1000);
+        const avgRuntimeInMilliseconds = Math.round((runtimeSum / evaluatedResults.length) * 1000);
         const passRate = ((testCasesPassed / totalTestCases) * 100).toFixed(1);
         const userId = req.user.id || req.user.userId;
         if (!userId) {
@@ -546,6 +562,7 @@ export const submitCode = async (req, res) => {
             memoryInMegabytes,
             testCasesPassed,
             totalTestCases,
+            totalTestCasesEvaluated: evaluatedResults.length,
             passRate,
             avgRuntimeInMilliseconds,
             submittedAt,
