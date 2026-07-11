@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -7,6 +8,10 @@ import {
 import QuestionTabs from "../tabs/QuestionTabs";
 import CodeEditor from "../codePanel/editor/CodeEditor";
 import TestCasesTabs from "../tabs/TestCasesTabs";
+import {
+  useSubmissionStore,
+  getSubmitTabOpenKey,
+} from "@/features/submissionStore";
 
 type ResizablePanelsProps = {
   resetLayoutTrigger?: number;
@@ -27,7 +32,19 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   language,
   setLanguage,
 }) => {
+  const searchParams = useSearchParams();
+  const problemTitle = searchParams.get("title");
+  const {
+    hydrateRunCodeResult,
+    hydrateSubmitCodeResult,
+    clearRunCodeResult,
+    clearSubmitCodeResult,
+  } = useSubmissionStore();
+
   const [showResultsTab, setShowResultsTab] = useState(false);
+  // Increments on every submit — forces QuestionTabs to snap focus onto the
+  // "results" tab even if it was already open in the background.
+  const [resultsFocusTrigger, setResultsFocusTrigger] = useState(0);
   const [showTestCasesResultsTab, setShowTestCasesResultsTab] = useState(false);
   const [verticalSizes, setVerticalSizes] = useState([93, 7]);
   const [shouldResize, setShouldResize] = useState(false);
@@ -201,7 +218,54 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 
   const handleCodeSubmit = () => {
     setShowResultsTab(true);
+    // Always bump the trigger, even if showResultsTab was already true —
+    // this is what forces the tab back into focus on a resubmit.
+    setResultsFocusTrigger((prev) => prev + 1);
   };
+
+  // Reload-proof AND problem-switch-proof: whenever the current problem
+  // changes — whether from a full page load/reload, or a client-side
+  // navigation that doesn't remount anything (e.g. picking a different
+  // problem from the ProblemSidebar overlay, which just changes the `title`
+  // query param on the same page) — first clear whatever run/submit result
+  // and results-tab state is currently live, THEN hydrate from this
+  // problem's own sessionStorage entry if one exists.
+  //
+  // The clear step matters even though hydrate*Result already exists: hydrate
+  // only overwrites state when something IS saved for the new problem. If
+  // the new problem has no saved result (the common case), hydrate is a
+  // no-op and the previous problem's result would otherwise stay on screen.
+  useEffect(() => {
+    if (!problemTitle) return;
+
+    clearRunCodeResult();
+    clearSubmitCodeResult();
+    setShowResultsTab(false);
+    setShowTestCasesResultsTab(false);
+
+    hydrateRunCodeResult(problemTitle);
+    hydrateSubmitCodeResult(problemTitle);
+    const savedOpen = sessionStorage.getItem(getSubmitTabOpenKey(problemTitle));
+    if (savedOpen === "true") {
+      setShowResultsTab(true);
+    }
+  }, [
+    problemTitle,
+    hydrateRunCodeResult,
+    hydrateSubmitCodeResult,
+    clearRunCodeResult,
+    clearSubmitCodeResult,
+  ]);
+
+  // Keep the "results tab open?" flag persisted per problem, so a reload
+  // remembers whether it was open, but it never leaks into another problem.
+  useEffect(() => {
+    if (!problemTitle) return;
+    sessionStorage.setItem(
+      getSubmitTabOpenKey(problemTitle),
+      showResultsTab ? "true" : "false",
+    );
+  }, [showResultsTab, problemTitle]);
 
   const handleCodeRun = () => {
     setShowTestCasesResultsTab(true);
@@ -345,10 +409,11 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           <div className="flex h-full items-center justify-center">
             <QuestionTabs
               showResultsTab={showResultsTab}
+              focusResultsTrigger={resultsFocusTrigger}
               onCloseResultsTab={handleCloseSubmissionTab}
               onMaximize={handleLeftMaximize}
               isMaximized={isLeftMaximized}
-              code={code} 
+              code={code}
               language={language}
             />
           </div>
@@ -420,6 +485,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       </ResizablePanelGroup>
     </div>
   );
-};
+};;
 
 export default ResizablePanels;
