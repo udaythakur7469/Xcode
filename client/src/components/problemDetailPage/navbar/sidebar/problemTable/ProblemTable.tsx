@@ -33,10 +33,9 @@ const ProblemTable: React.FC<ProblemTableProps> = () => {
   const handleRowClick = (problemTitle: string) => {
     console.log("clicked");
     router.push(
-      `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}`
+      `/problems/problem-detail?title=${encodeURIComponent(problemTitle)}&tab=description`,
     ); // Navigate to the problem details page with query parameter
   };
-  
 
   const table = useReactTable({
     data,
