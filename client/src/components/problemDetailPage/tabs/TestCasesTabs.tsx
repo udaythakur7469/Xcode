@@ -8,7 +8,6 @@ import {
 import { CircleCheckBig, ScrollText, Maximize, Minimize } from "lucide-react";
 import TestCasesPanel from "../testCases/testCasesPanel/TestCasesPanel";
 import ResultsPanel from "../testCases/resultsPanel/ResultsPanel";
-import { useSubmissionStore } from "@/features/submissionStore";
 
 type TestCasesTabsProps = {
   onMaximize?: () => void;
@@ -28,7 +27,7 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
   const [activeTab, setActiveTab] = useState<"Test cases" | "Results">(
     "Test cases",
   );
-  const { clearRunCodeResult } = useSubmissionStore();
+
   const prevShowTestCasesResultsTab = useRef(showTestCasesResultsTab);
 
   const handleMaximizeMinimize = useCallback(() => {
@@ -39,7 +38,6 @@ const TestCasesTabs: React.FC<TestCasesTabsProps> = ({
     setActiveTab(tab);
     if (tab === "Test cases") {
       setShowTestCasesResultsTab(false);
-      clearRunCodeResult();
     }
   };
 
