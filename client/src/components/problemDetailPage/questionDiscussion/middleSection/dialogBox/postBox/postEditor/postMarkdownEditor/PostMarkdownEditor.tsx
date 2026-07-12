@@ -184,6 +184,7 @@ const PostMarkdownEditor: React.FC<PostMarkdownEditorProps> = ({
 
       {/* Textarea */}
       <textarea
+        id="post-markdown-editor"
         ref={textareaRef}
         value={content}
         onChange={(e) => setContent(e.target.value)}
