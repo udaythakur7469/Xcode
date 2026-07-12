@@ -97,12 +97,13 @@ export interface SubmitCodeSuccess {
   memoryInMegabytes: number;
   testCasesPassed: number;
   totalTestCases: number;
-  passRate: string; // e.g. "80.0"
+  totalTestCasesEvaluated: number;
+  passRate: string; 
   avgRuntimeInMilliseconds: number;
   submittedAt: string;
   testCaseResults: TestCaseResult[];
-  percentile: number; // only on success
-  runtimeDistribution: RuntimeBucket[]; // only on success
+  percentile: number; 
+  runtimeDistribution: RuntimeBucket[]; 
 }
 
 export interface FailedTestCase {
@@ -137,6 +138,7 @@ export interface SubmitCodeError {
   memoryInMegabytes: number;
   testCasesPassed: number;
   totalTestCases: number;
+  totalTestCasesEvaluated: number;
   passRate: string;
   avgRuntimeInMilliseconds: number;
   submittedAt: string;
