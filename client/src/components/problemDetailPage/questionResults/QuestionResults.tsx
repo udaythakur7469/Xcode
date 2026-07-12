@@ -1,363 +1,35 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import {
   useSubmissionStore,
   SubmitCodeSuccess,
   SubmitCodeError,
   FailedTestCase,
-  TestCaseResult,
-  RuntimeBucket,
   NetworkError,
 } from "@/features/submissionStore";
 import QuestionResultsLoader from "./QuestionResultsLoader";
 import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
-import { atomOneDark } from "react-syntax-highlighter/dist/esm/styles/hljs";
 import cpp from "react-syntax-highlighter/dist/esm/languages/hljs/cpp";
 import java from "react-syntax-highlighter/dist/esm/languages/hljs/java";
 import python from "react-syntax-highlighter/dist/esm/languages/hljs/python";
 import javascript from "react-syntax-highlighter/dist/esm/languages/hljs/javascript";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
 import { getLanguageConfig } from "@/lib/share/languageConfig";
-import { getStatusCfg, StatusCfg } from "@/lib/share/getStatusConfig";
+import { getStatusCfg } from "@/lib/share/getStatusConfig";
+import { SubmitStatusHero } from "./SubmitStatusHero";
+import { PerformanceCards } from "./PerformanceCards";
+import { RuntimeDistribution } from "./RuntimeDistribution";
+import { TestCaseAccordion } from "./TestCaseAccordion";
+import { ErrorPanel } from "./ErrorPanel";
+import { SubmissionMetadata } from "./SubmissionMetadata";
+import { SubmittedCode } from "./SubmittedCode";
+import { RiseIn } from "../helperComponents/StatusHeader";
+import { Divider } from "../helperComponents/ResultAtoms";
 
 SyntaxHighlighter.registerLanguage("cpp", cpp);
 SyntaxHighlighter.registerLanguage("java", java);
 SyntaxHighlighter.registerLanguage("python", python);
 SyntaxHighlighter.registerLanguage("javascript", javascript);
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatMemoryMB(mb: number | null | undefined): string | null {
-  if (mb == null) return null;
-  return mb.toFixed(1) + " MB";
-}
-function formatTimestamp(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-// ─── Atoms ────────────────────────────────────────────────────────────────────
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[10px] font-semibold tracking-widest uppercase text-muted-foreground mb-2">
-      {children}
-    </p>
-  );
-}
-function PlainCodeBlock({
-  children,
-  variant = "default",
-}: {
-  children: React.ReactNode;
-  variant?: "default" | "error" | "wrong";
-}) {
-  const isRed = variant === "error" || variant === "wrong";
-  return (
-    <pre
-      className={[
-        "rounded-lg px-3 py-2.5 text-xs font-mono leading-relaxed whitespace-pre-wrap break-words overflow-x-auto",
-        isRed
-          ? "bg-destructive/5 border border-destructive/20 text-destructive"
-          : "bg-secondary border border-border/10 text-foreground",
-      ].join(" ")}
-    >
-      {children}
-    </pre>
-  );
-}
-function InfoChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-1.5 text-xs bg-secondary border border-border/10 px-2.5 py-1 rounded-md">
-      <span className="text-muted-foreground">{label}</span>
-      <strong className="font-medium text-foreground">{value}</strong>
-    </div>
-  );
-}
-function Divider() {
-  return <div className="w-full h-px bg-border/10" />;
-}
-
-// ─── Progress bar ─────────────────────────────────────────────────────────────
-
-function ProgressBar({
-  passed,
-  total,
-  cfg,
-}: {
-  passed: number;
-  total: number;
-  cfg: StatusCfg;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between">
-        <span className="text-xs text-muted-foreground">Test cases passed</span>
-        <span
-          className={`text-[13px] font-semibold tabular-nums ${cfg.countClass}`}
-        >
-          {passed} / {total}
-        </span>
-      </div>
-      <div className="flex gap-1">
-        {Array.from({ length: total }).map((_, i) => {
-          const segClass =
-            i < passed
-              ? cfg.passSegClass
-              : i === passed && passed < total
-                ? cfg.failSegClass
-                : "bg-secondary";
-          return (
-            <div
-              key={i}
-              className={`h-[5px] flex-1 rounded-full transition-colors duration-300 ${segClass}`}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Stats footer ─────────────────────────────────────────────────────────────
-
-function StatsFooter({
-  runtime,
-  memory,
-  language,
-  passRate,
-  avgRuntime,
-  submittedAt,
-}) {
-  const items: { label: string; value: string }[] = [];
-  if (runtime != null && typeof runtime === "number" && !isNaN(runtime))
-    items.push({ label: "Runtime", value: runtime + "ms" });
-  if (memory != null && typeof memory === "number" && !isNaN(memory)) {
-    const v = formatMemoryMB(memory);
-    if (v) items.push({ label: "Memory", value: v });
-  }
-  if (language)
-    items.push({
-      label: "Language",
-      value: getLanguageConfig(language)?.label ?? language,
-    });
-  if (passRate != null)
-    items.push({ label: "Pass Rate", value: passRate + "%" });
-  if (avgRuntime != null)
-    items.push({ label: "Avg Runtime", value: avgRuntime + "ms" });
-  if (submittedAt)
-    items.push({ label: "Submitted", value: formatTimestamp(submittedAt) });
-  if (!items.length) return null;
-  return (
-    <div className="flex gap-x-6 gap-y-3 pt-3.5 border-t border-border/10 flex-wrap">
-      {items.map(({ label, value }) => (
-        <div key={label} className="flex flex-col gap-0.5">
-          <span className="text-[11px] text-muted-foreground">{label}</span>
-          <span className="text-[13px] font-medium text-foreground">
-            {value}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Per-test-case table ──────────────────────────────────────────────────────
-
-function TestCaseTable({
-  testCaseResults,
-}: {
-  testCaseResults: TestCaseResult[];
-}) {
-  const [expanded, setExpanded] = useState<number | null>(null);
-  if (!testCaseResults || testCaseResults.length === 0) return null;
-
-  return (
-    <div className="flex flex-col gap-0">
-      <SectionLabel>Test Cases</SectionLabel>
-      <div className="rounded-lg overflow-hidden border border-border/10">
-        {testCaseResults.map((tc, i) => {
-          const isPass = tc.status === "accepted";
-          const isOpen = expanded === i;
-          return (
-            <div key={i} className="border-b border-border/10 last:border-b-0">
-              <button
-                onClick={() => setExpanded(isOpen ? null : i)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-secondary/50 transition-colors text-left"
-              >
-                <span
-                  className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isPass ? "bg-[#1D9E75]/15 text-[#1D9E75]" : "bg-destructive/15 text-destructive"}`}
-                >
-                  {isPass ? "✓" : "✗"}
-                </span>
-                <span className="text-xs font-medium text-foreground w-20 flex-shrink-0">
-                  Case {tc.index}
-                </span>
-                <span
-                  className={`text-xs flex-1 ${isPass ? "text-[#1D9E75]" : "text-destructive"}`}
-                >
-                  {isPass ? "Accepted" : "Wrong Answer"}
-                </span>
-                <span className="text-xs text-muted-foreground flex-shrink-0 tabular-nums">
-                  {tc.runtimeInMilliseconds}ms
-                </span>
-                <span className="text-xs text-muted-foreground flex-shrink-0 tabular-nums w-16 text-right">
-                  {(tc.memoryInMegabytes ?? 0).toFixed(1)} MB
-                </span>
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="flex-shrink-0 text-muted-foreground transition-transform duration-200"
-                  style={{
-                    transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-                  }}
-                >
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-              {isOpen && (
-                <div className="px-3 pb-3 pt-1 flex flex-col gap-2.5 bg-secondary/20">
-                  {tc.input && (
-                    <div>
-                      <SectionLabel>Input</SectionLabel>
-                      <PlainCodeBlock>{tc.input}</PlainCodeBlock>
-                    </div>
-                  )}
-                  {tc.expectedOutput && (
-                    <div>
-                      <SectionLabel>Expected Output</SectionLabel>
-                      <PlainCodeBlock>{tc.expectedOutput}</PlainCodeBlock>
-                    </div>
-                  )}
-                  {tc.actualOutput != null && (
-                    <div>
-                      <SectionLabel>Your Output</SectionLabel>
-                      <PlainCodeBlock variant={isPass ? "default" : "wrong"}>
-                        {tc.actualOutput}
-                      </PlainCodeBlock>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-lg border border-border/20 bg-card px-3 py-2 text-xs shadow-lg">
-      <p className="font-medium text-foreground mb-0.5">{label}</p>
-      <p className="text-muted-foreground">
-        {payload[0].value} submission{payload[0].value !== 1 ? "s" : ""}
-      </p>
-    </div>
-  );
-};
-
-function RuntimeDistributionChart({
-  distribution,
-  percentile,
-  language,
-}: {
-  distribution: RuntimeBucket[];
-  percentile: number;
-  language: string;
-}) {
-  if (!distribution || distribution.length === 0) return null;
-  const chartData = distribution.map((b, i) => ({
-    ...b,
-    shortLabel: String(i + 1),
-  }));
-
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-2 flex-wrap">
-        <SectionLabel>Runtime Distribution</SectionLabel>
-        <span className="text-xs text-[#1D9E75] font-medium">
-          Faster than {percentile}% of{" "}
-          {getLanguageConfig(language)?.label ?? language} submissions
-        </span>
-      </div>
-      <div style={{ width: "100%", height: 160 }}>
-        <ResponsiveContainer width="99%" height="100%">
-          <BarChart
-            data={chartData}
-            margin={{ top: 4, right: 8, left: -20, bottom: 4 }}
-            barCategoryGap="30%"
-          >
-            <XAxis
-              dataKey="shortLabel"
-              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-              axisLine={false}
-              tickLine={false}
-            />
-            <YAxis
-              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-              axisLine={false}
-              tickLine={false}
-              width={28}
-            />
-            <Tooltip
-              content={<CustomTooltip />}
-              cursor={{ fill: "hsl(var(--secondary))" }}
-            />
-            <Bar dataKey="count" radius={[3, 3, 0, 0]} maxBarSize={48}>
-              {chartData.map((entry, index) => (
-                <Cell
-                  key={index}
-                  fill={
-                    entry.isUserBucket
-                      ? "#1D9E75"
-                      : "hsl(var(--muted-foreground) / 0.3)"
-                  }
-                />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Legend row showing bucket labels below the chart */}
-      <div className="flex justify-between px-1">
-        {distribution.map((b, i) => (
-          <span
-            key={i}
-            className={`text-[9px] text-center flex-1 ${b.isUserBucket ? "text-[#1D9E75] font-semibold" : "text-muted-foreground"}`}
-          >
-            {b.bucketLabel}
-          </span>
-        ))}
-      </div>
-
-      <p className="text-[11px] text-muted-foreground">
-        Green bar = your runtime · Numbers 1–8 correspond to the ranges above
-      </p>
-    </div>
-  );
-}
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
 
@@ -384,8 +56,6 @@ function EmptyState() {
   );
 }
 
-// ─── Result card ──────────────────────────────────────────────────────────────
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isNetworkError(r: any): r is NetworkError {
@@ -407,14 +77,14 @@ function SubmitResultCard({
   result: SubmitCodeSuccess | SubmitCodeError;
   isSuccess: boolean;
 }) {
-  // isSuccess is passed in directly — no derivation needed here
   const success = result as SubmitCodeSuccess;
   const failure = result as SubmitCodeError;
-  const ft: FailedTestCase | null = isSuccess ? null : failure.failedTestCase;
+  const ft: FailedTestCase | null = isSuccess
+    ? null
+    : (failure.failedTestCase ?? null);
 
   const ftStatus = ft?.status ?? (failure as any).status ?? "wrong_answer";
-  const ftDesc =
-    ft?.statusDescription ?? (failure as any).statusDescription ?? null;
+  const ftDesc = ft?.statusDescription ?? (failure as any).statusDescription ?? null;
   const ftStderr = ft?.stderr ?? (failure as any).stderr ?? null;
   const cfg = getStatusCfg(
     isSuccess ? "accepted" : ftStatus,
@@ -425,184 +95,89 @@ function SubmitResultCard({
 
   const passed = result.testCasesPassed ?? 0;
   const total = result.totalTestCases ?? 0;
+  const totalEvaluated = result.totalTestCasesEvaluated ?? total;
   const firstFailingCase = result.testCaseResults?.find(
     (tc) => tc.status !== "accepted",
   );
   const failedIdx = firstFailingCase ? firstFailingCase.index : passed + 1;
 
-  const langLabel =
-    getLanguageConfig(result.language)?.label ?? result.language;
+  const langLabel = getLanguageConfig(result.language)?.label ?? result.language;
   const hlLang = getLanguageConfig(result.language)?.highlightKey ?? "cpp";
   const code = result.code ?? "";
 
-  const errorContent =
-    ft?.compile_output ??
-    ft?.stderr ??
-    (failure as any).compile_output ??
-    (failure as any).stderr ??
-    null;
-  const errorLabel = ft?.compile_output ? "Compiler Output" : "Error (stderr)";
-  const showError = !isSuccess && errorContent != null;
-  const showIO = ft && (ft.input || ft.expectedOutput);
-  const showActualOutput = ft?.actualOutput != null;
-
   const hasDistribution = isSuccess && success.runtimeDistribution?.length > 0;
+  const failBadge = !isSuccess ? `Failed on test case ${failedIdx} of ${total}` : null;
 
   return (
-    <div className="rounded-xl border border-border/20 overflow-hidden bg-card animate-in fade-in slide-in-from-bottom-1 duration-200">
-      {/* Status header */}
-      <div
-        className="px-5 py-4 border-b border-border/10 flex items-start justify-between gap-3"
-        style={{ borderLeftWidth: 3, borderLeftColor: cfg.accentColor }}
-      >
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dotClass}`}
-            />
-            <span
-              className={`text-[18px] font-semibold tracking-tight ${cfg.textClass}`}
-            >
-              {cfg.label}
-            </span>
-          </div>
-          <span className="text-xs text-muted-foreground pl-4">
-            {isSuccess
-              ? "All test cases passed"
-              : ftDesc !== cfg.label
-                ? (ftDesc ?? "")
-                : ""}
-          </span>
-        </div>
-        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-          <span className="text-[11px] font-medium px-2.5 py-1 rounded-md border border-border/15 bg-secondary text-muted-foreground">
-            {langLabel}
-          </span>
-          {!isSuccess && (
-            <span className="text-[11px] px-2.5 py-1 rounded-md bg-destructive/10 text-destructive border border-destructive/20">
-              Failed on test case {failedIdx} of {total}
-            </span>
-          )}
-        </div>
-      </div>
+    <div className="rounded-xl overflow-hidden bg-card">
+      <RiseIn order={0}>
+        <SubmitStatusHero
+          result={result}
+          isSuccess={isSuccess}
+          langLabel={langLabel}
+          failBadge={failBadge}
+          passed={passed}
+          total={total}
+        />
+      </RiseIn>
 
-      {/* Body */}
       <div className="px-5 py-4 flex flex-col gap-4">
-        <ProgressBar passed={passed} total={total} cfg={cfg} />
-
-        {isSuccess && (
-          <div className="flex gap-2 flex-wrap">
-            <InfoChip
-              label="Runtime"
-              value={success.runtimeInMilliseconds + "ms"}
-            />
-            <InfoChip
-              label="Memory"
-              value={formatMemoryMB(success.memoryInMegabytes) ?? ""}
-            />
-          </div>
-        )}
+        <RiseIn order={1}>
+          <PerformanceCards
+            isSuccess={isSuccess}
+            runtimeMs={result.runtimeInMilliseconds ?? 0}
+            memoryMb={result.memoryInMegabytes ?? 0}
+            passed={passed}
+            total={total}
+            percentile={isSuccess ? success.percentile : null}
+          />
+        </RiseIn>
 
         {hasDistribution && (
           <>
             <Divider />
-            <RuntimeDistributionChart
-              distribution={success.runtimeDistribution}
-              percentile={success.percentile}
-              language={result.language}
-            />
+            <RiseIn order={1}>
+              <RuntimeDistribution
+                distribution={success.runtimeDistribution}
+                percentile={success.percentile}
+                language={result.language}
+              />
+            </RiseIn>
           </>
         )}
 
         {result.testCaseResults && result.testCaseResults.length > 0 && (
           <>
             <Divider />
-            <TestCaseTable testCaseResults={result.testCaseResults} />
+            <RiseIn order={1}>
+              <TestCaseAccordion
+                testCaseResults={result.testCaseResults}
+                totalTestCases={total}
+                totalTestCasesEvaluated={totalEvaluated}
+              />
+            </RiseIn>
           </>
         )}
 
-        {showIO && (
+        {!isSuccess && ft && (
           <>
             <Divider />
-            <div className="flex flex-col gap-2.5">
-              <SectionLabel>Failed Test Case Detail</SectionLabel>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {ft!.input && (
-                  <div>
-                    <SectionLabel>Input</SectionLabel>
-                    <PlainCodeBlock>{ft!.input}</PlainCodeBlock>
-                  </div>
-                )}
-                {ft!.expectedOutput && (
-                  <div>
-                    <SectionLabel>Expected Output</SectionLabel>
-                    <PlainCodeBlock>{ft!.expectedOutput}</PlainCodeBlock>
-                  </div>
-                )}
-                {showActualOutput && (
-                  <div className="sm:col-span-2">
-                    <SectionLabel>Your Output</SectionLabel>
-                    <PlainCodeBlock variant="wrong">
-                      {ft!.actualOutput}
-                    </PlainCodeBlock>
-                  </div>
-                )}
-              </div>
-            </div>
+            <RiseIn order={1}>
+              <ErrorPanel ft={ft} cfg={cfg} />
+            </RiseIn>
           </>
         )}
 
-        {showError && (
-          <div>
-            <SectionLabel>{errorLabel}</SectionLabel>
-            <PlainCodeBlock variant="error">{errorContent}</PlainCodeBlock>
-          </div>
-        )}
-
         <Divider />
-        <StatsFooter
-          runtime={result.runtimeInMilliseconds ?? null}
-          memory={result.memoryInMegabytes ?? null}
-          language={result.language}
-          passRate={result.passRate}
-          avgRuntime={result.avgRuntimeInMilliseconds}
-          submittedAt={result.submittedAt}
-        />
+        <RiseIn order={2}>
+          <SubmissionMetadata result={result} />
+        </RiseIn>
 
         <Divider />
 
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <SectionLabel>Submitted Code</SectionLabel>
-            <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-secondary border border-border/10 text-muted-foreground">
-              {langLabel}
-            </span>
-          </div>
-          <div className="rounded-lg overflow-hidden border border-border/10">
-            <SyntaxHighlighter
-              language={hlLang}
-              style={atomOneDark}
-              showLineNumbers
-              customStyle={{
-                margin: 0,
-                padding: "12px",
-                fontSize: "12px",
-                lineHeight: "1.65",
-                background: "transparent",
-                maxHeight: "420px",
-                overflowY: "auto",
-              }}
-              lineNumberStyle={{
-                minWidth: "2.5em",
-                paddingRight: "1em",
-                color: "#4b5563",
-                userSelect: "none",
-              }}
-            >
-              {code}
-            </SyntaxHighlighter>
-          </div>
-        </div>
+        <RiseIn order={2}>
+          <SubmittedCode code={code} hlLang={hlLang} langLabel={langLabel} />
+        </RiseIn>
       </div>
     </div>
   );
@@ -634,7 +209,7 @@ const QuestionResults: React.FC = () => {
       {!isSubmittingCode &&
         submitCodeResult &&
         !isNetworkError(submitCodeResult) && (
-          <div className="p-4 mb-16">
+          <div className="mb-16">
             <SubmitResultCard
               result={submitCodeResult}
               isSuccess={isSubmitSuccess(submitCodeResult)}
