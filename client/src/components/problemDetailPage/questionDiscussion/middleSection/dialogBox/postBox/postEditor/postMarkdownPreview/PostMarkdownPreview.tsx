@@ -51,12 +51,15 @@ const renderList = (token: any, parser: any): string => {
 
 // ─── Renderer ────────────────────────────────────────────────────────────────
 
+let _codeBlockCounter = 0;
+
 const configureMarked = () => {
   marked.use({
     renderer: {
       code(token: any) {
         const code = token.text || "";
         const lang = token.lang || "text";
+        const id = `editor-cb-${++_codeBlockCounter}`;
         let highlighted = "";
         try {
           highlighted =
@@ -66,15 +69,19 @@ const configureMarked = () => {
         } catch {
           highlighted = escapeHtml(code);
         }
+        // Store code in data-code (HTML-escaped) so onclick never has to
+        // pass arbitrary code text through a JS string literal — which
+        // breaks on backticks, backslashes, newlines, and quotes.
+        const dataCode = code.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
         return `<div class="code-block-container my-4 rounded-lg border" style="width: 700px; max-width: 100%; overflow: hidden;">
     <div class="bg-muted px-4 py-2 text-xs text-muted-foreground border-b flex justify-between items-center">
       <span>${lang}</span>
-      <button class="hover:text-foreground transition-colors copy-btn" onclick="copyCodeToClipboard(this, \`${String(code || "").replace(/`/g, "\\`")}\`)">
+      <button data-copy-id="${id}" data-code="${dataCode}" class="hover:text-foreground transition-colors copy-btn" onclick="copyCodeToClipboard('${id}')">
         <svg class="copy-icon w-4 h-4" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
           <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
         </svg>
-        <svg class="check-icon w-4 h-4 hidden" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="check-icon w-4 h-4 hidden text-green-500" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 6 9 17l-5-5"/>
         </svg>
       </button>
@@ -248,19 +255,28 @@ const PostMarkdownPreview: React.FC<PostMarkdownPreviewProps> = ({
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    (window as any).copyCodeToClipboard = async (
-      button: HTMLButtonElement,
-      text: string,
-    ) => {
+    (window as any).copyCodeToClipboard = async (id: string) => {
       try {
-        await navigator.clipboard.writeText(text);
-        const copyIcon = button.querySelector(".copy-icon");
-        const checkIcon = button.querySelector(".check-icon");
-        copyIcon?.classList.add("hidden");
-        checkIcon?.classList.remove("hidden");
+        // Read code from the data attribute — avoids all escaping issues with
+        // passing arbitrary code text through an inline onclick string.
+        const button = document.querySelector(
+          `[data-copy-id="${id}"]`,
+        ) as HTMLElement | null;
+        if (!button) return;
+
+
+        const code = button.getAttribute("data-code") ?? "";
+        await navigator.clipboard.writeText(code);
+        // Re-query after async write in case a re-render happened
+        const btn = document.querySelector(`[data-copy-id="${id}"]`);
+        if (!btn) return;
+        btn.querySelector(".copy-icon")?.classList.add("hidden");
+        btn.querySelector(".check-icon")?.classList.remove("hidden");
         setTimeout(() => {
-          copyIcon?.classList.remove("hidden");
-          checkIcon?.classList.add("hidden");
+          const b = document.querySelector(`[data-copy-id="${id}"]`);
+          if (!b) return;
+          b.querySelector(".copy-icon")?.classList.remove("hidden");
+          b.querySelector(".check-icon")?.classList.add("hidden");
         }, 2000);
       } catch (err) {
         console.error("Failed to copy text: ", err);
