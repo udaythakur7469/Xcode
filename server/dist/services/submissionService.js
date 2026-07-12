@@ -80,7 +80,7 @@ export const processSubmissionResult = (result, errorInfo, language) => {
     }
     // Handle runtime errors
     if (RUNTIME_ERRORS.includes(statusId)) {
-        return processRuntimeError(result, statusId);
+        return processRuntimeError(result, statusId, language);
     }
     // Handle internal server errors (status >= 13)
     if (statusId >= INTERNAL_ERROR_THRESHOLD) {
@@ -101,23 +101,49 @@ export const processSubmissionResult = (result, errorInfo, language) => {
         stderr: result.stderr,
     };
 };
+;
 /**
  * Process runtime error output and format it for client response
  * @param {Object} result - The Judge0 API result
  * @param {number} statusId - The status ID
- * @returns {Object} Formatted runtime error response
+ * @param {string} language - The programming language (used to check
+ *   against that language's confirmed OOM error patterns)
+ * @returns {Object} Formatted runtime error or memory-limit-exceeded response
  */
-export const processRuntimeError = (result, statusId) => {
+export const processRuntimeError = (result, statusId, language) => {
+    const stderr = result.stderr || "";
+    // Deterministic check — not a heuristic based on memory usage numbers.
+    // Only fires when the language runtime itself unambiguously identified
+    // out-of-memory and said so before terminating. See languageConfig.ts
+    // for why this can't catch every real MLE case (a "hard" cgroup OOM
+    // kill leaves no such trace), and why that residual case is left as an
+    // honestly-worded runtime error below rather than guessed at.
+    const oomPatterns = language
+        ? (getLanguageConfig(language)?.oomPatterns ?? [])
+        : [];
+    const isConfirmedMLE = oomPatterns.some((pattern) => pattern.test(stderr));
+    if (isConfirmedMLE) {
+        return {
+            success: false,
+            status: "memory_limit_exceeded",
+            statusDescription: result.status.description,
+            message: "Your program used more memory than the allowed limit. Consider reducing memory usage.",
+            time: result.time,
+            memory: result.memory,
+        };
+    }
     const errorMessages = {
         7: "Segmentation Fault: Your program tried to access invalid memory. Check array bounds and pointer usage.",
         8: "File Size Limit Exceeded: Your program tried to create or write to a file that exceeded the size limit.",
         9: "Floating Point Exception: Your program encountered a mathematical error (e.g., division by zero).",
         10: "Program Aborted: Your program called abort() or encountered a fatal error.",
         11: "Non-Zero Exit Code: Your program exited with an error code. Check for runtime exceptions.",
-        12: "Runtime Error: Your program encountered an error during execution.",
+        // Status 12 ("Other") is Judge0's catch-all for terminations it can't
+        // categorize further, including a silent cgroup OOM kill that leaves
+        // no stderr trace. Worded honestly rather than asserting a specific
+        // cause we can't actually confirm from this API.
+        12: "Your program was terminated unexpectedly. This can happen due to excessive memory usage, an unhandled system-level error, or a crash the sandbox couldn't attribute to your code directly.",
     };
-    let stderr = result.stderr || "";
-    // Try to extract meaningful error information
     let errorDetails = "";
     if (stderr) {
         // Extract last few lines which usually contain the actual error
