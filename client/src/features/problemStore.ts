@@ -10,7 +10,7 @@ export interface Problem {
   solved: boolean;
 }
 
-interface ProblemDetails {
+export interface ProblemDetails {
   id: number;
   title: string;
   description: string;
@@ -23,6 +23,7 @@ interface ProblemDetails {
   dislikes?: number;
   userReaction?: "like" | "dislike" | null;
   hints: string[];
+  solved?: boolean;
   problemStats?: {
     totalAttempts: number;
     totalSolved: number;
@@ -30,15 +31,41 @@ interface ProblemDetails {
   };
 }
 
-interface EditorialData {
+export interface EditorialData {
   id: number;
-  bruteForce: string;
-  bruteForceCode: string;
-  better: string;
-  betterCode: string;
-  optimal: string;
-  optimalCode: string;
+  problemId: number;
+  problemTitle?: string;
   videoUrl: string;
+
+  bruteForceTitle: string;
+  bruteForceIntuition: string;
+  bruteForceAlgorithm: string;
+  bruteForceCodeCpp: string;
+  bruteForceCodeJs: string;
+  bruteForceCodePython: string;
+  bruteForceCodeJava: string;
+  bruteForceTimeComplexity: string;
+  bruteForceSpaceComplexity: string;
+
+  betterTitle: string;
+  betterIntuition: string;
+  betterAlgorithm: string;
+  betterCodeCpp: string;
+  betterCodeJs: string;
+  betterCodePython: string;
+  betterCodeJava: string;
+  betterTimeComplexity: string;
+  betterSpaceComplexity: string;
+
+  optimalTitle: string;
+  optimalIntuition: string;
+  optimalAlgorithm: string;
+  optimalCodeCpp: string;
+  optimalCodeJs: string;
+  optimalCodePython: string;
+  optimalCodeJava: string;
+  optimalTimeComplexity: string;
+  optimalSpaceComplexity: string;
 }
 
 interface TestCaseData {

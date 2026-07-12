@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import ResizablePanels from "@/components/problemDetailPage/resizablePanels/ResizablePanels";
 import ProblemNavbar from "@/components/problemDetailPage/navbar/ProblemNavbar";
@@ -13,7 +13,7 @@ import {
   setLastActiveProblemTitle,
 } from "@/features/submissionStore";
 
-const ProblemDetailsPage: React.FC = () => {
+function ProblemDetailsContent() {
   useProblemContext();
 
   // Run/submit results are persisted in sessionStorage per problem so they
@@ -138,6 +138,12 @@ const ProblemDetailsPage: React.FC = () => {
       </div>
     </SidebarProvider>
   );
-};;
+}
+
+const ProblemDetailsPage: React.FC = () => (
+  <Suspense fallback={null}>
+    <ProblemDetailsContent />
+  </Suspense>
+);
 
 export default ProblemDetailsPage;

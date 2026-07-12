@@ -142,6 +142,13 @@ function StatsFooter({
   passRate,
   avgRuntime,
   submittedAt,
+}: {
+  runtime?: number | null;
+  memory?: number | null;
+  language?: string | null;
+  passRate: string | null;
+  avgRuntime?: number | null;
+  submittedAt?: string | null;
 }) {
   const items: { label: string; value: string }[] = [];
   if (runtime != null && typeof runtime === "number" && !isNaN(runtime))
@@ -410,7 +417,9 @@ function SubmitResultCard({
   // isSuccess is passed in directly — no derivation needed here
   const success = result as SubmitCodeSuccess;
   const failure = result as SubmitCodeError;
-  const ft: FailedTestCase | null = isSuccess ? null : failure.failedTestCase;
+  const ft: FailedTestCase | null = isSuccess
+    ? null
+    : (failure.failedTestCase ?? null);
 
   const ftStatus = ft?.status ?? (failure as any).status ?? "wrong_answer";
   const ftDesc =

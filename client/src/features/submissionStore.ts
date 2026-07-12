@@ -1,4 +1,5 @@
-import axios from "@/lib/axiosInstance";
+import axiosInstance from "@/lib/axiosInstance";
+import axios from "axios";
 import { create } from "zustand";
 import { User } from "./authStore";
 
@@ -301,9 +302,12 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
   fetchBaseClassCode: async (problemId, language) => {
     set({ isBaseCodeLoading: true, baseCodeError: null });
     try {
-      const response = await axios.get(`${API_URL}/submission/get-base-code`, {
-        params: { problemId, language },
-      });
+      const response = await axiosInstance.get(
+        `${API_URL}/submission/get-base-code`,
+        {
+          params: { problemId, language },
+        },
+      );
       set({ baseCode: response.data.baseClassCode, isBaseCodeLoading: false });
     } catch (error: any) {
       const errMsg =
@@ -318,7 +322,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     try {
       const params: any = { page };
       if (problemTitle) params.title = problemTitle;
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/submission/getUserSubmissions`,
         { params },
       );
@@ -342,7 +346,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
   getAllSubmissions: async (problemTitle, page) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${API_URL}/submission/getAllSubmissions`,
         {
           params: { title: problemTitle, page },
@@ -380,7 +384,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
         );
       });
       Promise.race([
-        axios.post(
+        axiosInstance.post(
           `${API_URL}/submission/runCode`,
           { language, code },
           { params: { title: problemTitle }, signal: controller.signal },
@@ -441,7 +445,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
         );
       });
       Promise.race([
-        axios.post(
+        axiosInstance.post(
           `${API_URL}/submission/submitCode`,
           { language, code },
           { params: { title: problemTitle }, signal: controller.signal },

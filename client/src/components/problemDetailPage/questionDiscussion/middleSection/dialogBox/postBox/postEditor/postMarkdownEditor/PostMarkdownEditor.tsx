@@ -25,12 +25,12 @@ const PostMarkdownEditor: React.FC<PostMarkdownEditorProps> = ({
       const { find, replace } = (
         e as CustomEvent<{ find: string; replace: string }>
       ).detail;
-      setContent((prev: string) => prev.replace(find, replace));
+      setContent(content.replace(find, replace));
     };
     window.addEventListener("replaceMarkdownText", handleReplace);
     return () =>
       window.removeEventListener("replaceMarkdownText", handleReplace);
-  }, [setContent]);
+  }, [content, setContent]);
 
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     const lineNumbersEl = e.currentTarget.parentElement?.querySelector(

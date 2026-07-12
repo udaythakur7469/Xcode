@@ -414,7 +414,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
         DraftPosts: response.data.data,
         isGettingDraftPosts: false,
       });
-    } catch (error) {
+    } catch (error: any) {
       const errMsg =
         error?.response?.data?.message || "Error fetching draft posts data";
       set({ DraftPostError: errMsg, isGettingDraftPosts: false });

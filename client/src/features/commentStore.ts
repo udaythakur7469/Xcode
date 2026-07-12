@@ -155,15 +155,15 @@ export const useCommentStore = create<CommentStoreState>()((set, get) => ({
         params: { limit: 10, ...(cursor && { cursor }) },
       });
 
-      const { comments, hasMore, nextCursor } = response.data;
+     const { comments, hasMore, nextCursor } = response.data;
 
-      const normalized: CommentData[] = comments.map((c) => ({
-        ...c,
-        replies: [],
-        hasMore: false,
-        nextCursor: null,
-        status: "posted" as const,
-      }));
+     const normalized: CommentData[] = comments.map((c: CommentData) => ({
+       ...c,
+       replies: [],
+       hasMore: false,
+       nextCursor: null,
+       status: "posted" as const,
+     }));
 
       set((state) => ({
         isLoadingComments: false,
@@ -188,7 +188,7 @@ export const useCommentStore = create<CommentStoreState>()((set, get) => ({
 
       const { replies, hasMore, nextCursor } = response.data;
 
-      const normalized: CommentData[] = replies.map((r) => ({
+      const normalized: CommentData[] = replies.map((r: CommentData) => ({
         ...r,
         replies: [],
         hasMore: false,
@@ -217,7 +217,7 @@ export const useCommentStore = create<CommentStoreState>()((set, get) => ({
     const optimistic: CommentData = {
       id: tempId,
       content,
-      postId,
+      postId: Number(postId),
       parentId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -327,7 +327,7 @@ export const useCommentStore = create<CommentStoreState>()((set, get) => ({
     set((state) => ({ comments: remove(state.comments) }));
 
     await get().createComment(
-      (failedComment as CommentData).postId,
+      String((failedComment as CommentData).postId),
       (failedComment as CommentData).content,
       (failedComment as CommentData).parentId,
     );

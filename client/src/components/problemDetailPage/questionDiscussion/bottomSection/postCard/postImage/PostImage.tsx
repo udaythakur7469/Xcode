@@ -14,7 +14,7 @@ const PostImage: React.FC<PostImageProps> = () => {
 
   const name = userData?.name;
 
-  const picture: string | unknown = userData?.picture;
+  const picture = userData?.picture ?? "";
   const firstLetter = name ? name[0] : null;
 
   const defaultPicture =

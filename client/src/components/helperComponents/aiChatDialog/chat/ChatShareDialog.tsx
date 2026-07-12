@@ -137,26 +137,30 @@ const ChatShareDialog: React.FC<ShareDialogProps> = ({
       return;
     }
 
-    if (!shareUrl) {
-      setEmailStatus("error");
-      setEmailMessage("Share link is not available yet.");
-      return;
-    }
+   if (!shareUrl) {
+     setEmailStatus("error");
+     setEmailMessage("Share link is not available yet.");
+     return;
+   }
 
-    setEmailStatus("sending");
-    setEmailMessage("");
+   if (!chatId) {
+     setEmailStatus("error");
+     setEmailMessage("Chat is not available yet.");
+     return;
+   }
 
-    try {
-      await sendChatEmail({ chatId, recipientEmail, shareUrl });
-      setEmailStatus("success");
-      setEmailMessage("Email sent successfully!");
-      setRecipientEmail("");
-    } catch (err: any) {
-      setEmailStatus("error");
-      setEmailMessage(
-        err?.message ?? "Failed to send email. Please try again.",
-      );
-    }
+   setEmailStatus("sending");
+   setEmailMessage("");
+
+   try {
+     await sendChatEmail({ chatId, recipientEmail, shareUrl });
+     setEmailStatus("success");
+     setEmailMessage("Email sent successfully!");
+     setRecipientEmail("");
+   } catch (err: any) {
+     setEmailStatus("error");
+     setEmailMessage(err?.message ?? "Failed to send email. Please try again.");
+   }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────

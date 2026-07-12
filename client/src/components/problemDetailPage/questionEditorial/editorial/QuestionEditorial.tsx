@@ -1,51 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useProblemStore } from "@/features/problemStore";
+import { EditorialData, useProblemStore } from "@/features/problemStore";
 import ReactPlayer from "react-player";
 import { Separator } from "@/components/ui/separator";
 import CodeTabs from "../tabs/CodeTabs";
 import { Circle } from "lucide-react";
 import { QuestionEditorialSkeleton } from "./QuestionEditorialSkeleton";
-
-interface EditorialData {
-  id: number;
-  problemId: number;
-  problemTitle?: string; // Optional field for when you include problem title
-  videoUrl: string;
-
-  // Brute Force approach
-  bruteForceTitle: string;
-  bruteForceIntuition: string;
-  bruteForceAlgorithm: string;
-  bruteForceCodeCpp: string;
-  bruteForceCodeJs: string;
-  bruteForceCodePython: string;
-  bruteForceCodeJava: string;
-  bruteForceTimeComplexity: string;
-  bruteForceSpaceComplexity: string;
-
-  // Better approach
-  betterTitle: string;
-  betterIntuition: string;
-  betterAlgorithm: string;
-  betterCodeCpp: string;
-  betterCodeJs: string;
-  betterCodePython: string;
-  betterCodeJava: string;
-  betterTimeComplexity: string;
-  betterSpaceComplexity: string;
-
-  // Optimal approach
-  optimalTitle: string;
-  optimalIntuition: string;
-  optimalAlgorithm: string;
-  optimalCodeCpp: string;
-  optimalCodeJs: string;
-  optimalCodePython: string;
-  optimalCodeJava: string;
-  optimalTimeComplexity: string;
-  optimalSpaceComplexity: string;
-}
 
 type QuestionEditorialProps = {};
 
@@ -69,7 +29,9 @@ const QuestionEditorial: React.FC<QuestionEditorialProps> = () => {
         const editorialDetails = await getEditorialsByTitle(problemTitle);
         setEditorial(editorialDetails);
       } catch (error) {
-        setError(error.message);
+        setError(
+          error instanceof Error ? error.message : "Failed to load editorial",
+        );
       } finally {
         setIsLoading(false);
       }

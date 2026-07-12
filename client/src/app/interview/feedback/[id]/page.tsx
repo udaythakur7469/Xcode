@@ -7,13 +7,11 @@ import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/landingPage/navbar/Navbar";
 import { FeedbackPageSkeleton } from "@/components/interviewPage/feedbackPage/FeedbackPageSkeleton";
 
-type pageProps = { params: { id: string } };
+type pageProps = { params: Promise<{ id: string }> };
 
-const page: React.FC<pageProps> = ({ params }) => {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+const Page = ({ params }: pageProps) => {
   const searchParams = useSearchParams();
   const source = searchParams.get("source") as "user" | "all" | null;
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const unwrappedParams = React.use(params);
   const { id } = unwrappedParams;
 
@@ -71,4 +69,4 @@ const page: React.FC<pageProps> = ({ params }) => {
   );
 };
 
-export default page;
+export default Page;

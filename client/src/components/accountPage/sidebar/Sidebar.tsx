@@ -13,7 +13,7 @@ import DescriptionDialogBox from "../helperComponents/dialogBoxes/DescriptionDia
 import LinksDialogBox from "../helperComponents/dialogBoxes/LinksDialogBox";
 import { Separator } from "@/components/ui/separator";
 import SkillsBar from "../skillsBar/SkillsBar";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 type SidebarProps = {};
 
@@ -25,7 +25,6 @@ const Sidebar: React.FC<SidebarProps> = () => {
   const [showLinksDialogBox, setShowLinksDialogBox] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
 
   const validateImageFile = (
     file: File,
@@ -55,10 +54,8 @@ const Sidebar: React.FC<SidebarProps> = () => {
 
     const validation = validateImageFile(file);
     if (!validation.valid) {
-      toast({
-        title: "Invalid File",
+      toast.error("Invalid File", {
         description: validation.error,
-        variant: "destructive",
       });
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
@@ -67,19 +64,15 @@ const Sidebar: React.FC<SidebarProps> = () => {
     setIsUploadingImage(true);
     try {
       await updateProfilePicture(file);
-      toast({
-        title: "Success",
+      toast.success("Success", {
         description: "Profile picture updated successfully!",
-        variant: "default",
       });
     } catch (error: any) {
       console.error("Error uploading image:", error);
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description:
           error.response?.data?.message ||
           "Failed to upload image. Please try again.",
-        variant: "destructive",
       });
     } finally {
       setIsUploadingImage(false);

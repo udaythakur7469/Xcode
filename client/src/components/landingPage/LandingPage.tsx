@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import Navbar from "./navbar/Navbar";
 import TitleSection from "./titleSection/TitleSection";
 import HeroSection from "./heroSection/HeroSection";
@@ -12,7 +12,9 @@ type LandingPageProps = {};
 const LandingPage: React.FC<LandingPageProps> = () => {
   return (
     <div className="bg-background h-screen">
-      <Navbar firstButton={"Explore Xcode"} secondButton={"Solve Problems"} />
+      <Suspense fallback={null}>
+        <Navbar firstButton={"Explore Xcode"} secondButton={"Solve Problems"} />
+      </Suspense>
       <TitleSection />
       <HeroSection />
       <FeaturesSection />

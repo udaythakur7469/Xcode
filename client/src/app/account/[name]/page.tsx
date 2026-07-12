@@ -7,12 +7,12 @@ import { useUserStore } from "@/features/userStore";
 import { UserProfileSkeleton } from "@/components/accountPage/UserProfileSkeleton";
 
 type pageProps = {
-  params: {
+  params: Promise<{
     name: string;
-  };
+  }>;
 };
 
-const Page: React.FC<pageProps> = ({ params }) => {
+const Page = ({ params }: pageProps) => {
   const unwrappedParams = React.use(params);
   const { name } = unwrappedParams;
 

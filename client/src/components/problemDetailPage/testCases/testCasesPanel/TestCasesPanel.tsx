@@ -45,7 +45,7 @@ const TestCasesPanel: React.FC<TestCasesPanelProps> = () => {
   }
 
   const testCasesData = testCases?.testCases || [];
-  const testCasesCount: number = testCases?.count;
+  const testCasesCount: number = testCases?.count ?? 0;
 
   return (
     <div className="h-full w-full p-2">

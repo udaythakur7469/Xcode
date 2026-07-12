@@ -89,6 +89,9 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
           setIsLoginOpen(false);
           setIsSignupOpen(true);
         }}
+        openForgotPassword={() => {
+          setIsLoginOpen(false);
+        }}
         onSuccessfulAuth={checkAuth}
       />
 

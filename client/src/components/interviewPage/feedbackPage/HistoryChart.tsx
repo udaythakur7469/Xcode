@@ -108,7 +108,7 @@ export const HistoryChart: React.FC<HistoryChartProps> = ({
             fontSize: 13,
             color: labelColor,
           }}
-          formatter={(value: number) => [`${value}/100`, "Score"]}
+          formatter={(value) => [`${value ?? 0}/100`, "Score"]}
         />
         <Line
           type="monotone"

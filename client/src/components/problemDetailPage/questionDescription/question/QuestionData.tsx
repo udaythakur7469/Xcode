@@ -11,34 +11,9 @@ import StatsDialog from "../dialogBoxes/StatsDialog";
 import { formatCount } from "@/services/countService";
 import { useSocket } from "@/context/socketContext";
 import { QuestionDataSkeleton } from "./QuestionDataSkeleton";
+import type { ProblemDetails } from "@/features/problemStore";
 
 type QuestionDataProps = { code: string; language: string };
-
-type ProblemDetails = {
-  id?: number;
-  title: string;
-  description: string;
-  difficulty: "easy" | "medium" | "hard";
-  tags: string[];
-  constraints: string[];
-  solved: boolean;
-  examples: {
-    id: number;
-    input: string;
-    output: string;
-    explanation: string;
-  }[];
-  hints: string[];
-  testCases: { input: string; expectedOutput: string }[];
-  problemStats: {
-    totalAttempts: number;
-    totalSolved: number;
-    acceptanceRate: number;
-  };
-  userReaction?: "like" | "dislike" | null;
-  likes?: number;
-  dislikes?: number;
-};
 
 const QuestionData: React.FC<QuestionDataProps> = ({ code, language }) => {
   const searchParams = useSearchParams();
@@ -268,10 +243,7 @@ const QuestionData: React.FC<QuestionDataProps> = ({ code, language }) => {
           <div className="ml-4 mr-4 mt-8">
             <h3 className="text-xl font-semibold mb-4">Examples:</h3>
             {problem.examples.map((example, index) => (
-              <div
-                key={example.id}
-                className="mb-4 bg-secondary rounded-md py-2"
-              >
+              <div key={index} className="mb-4 bg-secondary rounded-md py-2">
                 <p className="font-bold text-md ml-4">Example {index + 1}:</p>
                 <div className="p-4 rounded-lg mt-2">
                   <p className="text-md">

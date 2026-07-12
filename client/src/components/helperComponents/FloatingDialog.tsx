@@ -163,7 +163,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   // Calculate actual sidebar width in pixels from percentage
   const springSidebarWidthPx = useTransform(
     [springWidth, springSidebarWidthPercent],
-    ([w, p]) => (w * p) / 100,
+    (values: number[]) => (values[0] * values[1]) / 100,
   );
 
   // Update motion values when position or size changes

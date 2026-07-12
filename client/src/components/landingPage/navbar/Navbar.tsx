@@ -94,7 +94,7 @@ const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
   };
 
   const name = userData?.name;
-  const picture: string | unknown = userData?.picture;
+  const picture: string = (userData?.picture as string) || "";
   const firstLetter = name ? name[0] : null;
 
   const goToHomePage = () => router.push("/");
@@ -171,7 +171,7 @@ const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
                   <DropdownMenuTrigger asChild>
                     <div className="cursor-pointer">
                       <Avatar>
-                        <AvatarImage src={picture || ""} />
+                        <AvatarImage src={picture} />
                         <AvatarFallback>{firstLetter}</AvatarFallback>
                       </Avatar>
                     </div>

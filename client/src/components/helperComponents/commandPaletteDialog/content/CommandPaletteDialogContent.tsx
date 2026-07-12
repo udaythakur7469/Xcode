@@ -190,7 +190,9 @@ const CommandPaletteDialogContent: React.FC<
         filteredCommands.map((item, index) => (
           <CommandPaletteItem
             key={index}
-            ref={(el) => (itemRefs.current[index] = el)}
+            ref={(el) => {
+              itemRefs.current[index] = el;
+            }}
             title={item.title}
             showLink={item.showLink}
             icon={item.logo}

@@ -8,7 +8,8 @@ type SubmissionTabsProps = {};
 
 const SubmissionTabs: React.FC<SubmissionTabsProps> = () => {
   const searchParams = useSearchParams(); // Get search params
-  const problemTitle : string | null = searchParams.get("title"); // Get the title query parameter
+  const problemTitle: string | undefined =
+    searchParams.get("title") ?? undefined; // Get the title query parameter
   return (
     <div className="h-full w-full overflow-hidden">
       <Tabs

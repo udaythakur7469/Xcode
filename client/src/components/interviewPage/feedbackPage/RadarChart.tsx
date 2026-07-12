@@ -106,7 +106,7 @@ export const RadarChartComponent: React.FC<RadarChartProps> = ({
             fontSize: 13,
             color: labelColor,
           }}
-          formatter={(value: number, name: string) => [`${value}/100`, name]}
+          formatter={(value, name) => [`${value ?? 0}/100`, String(name)]}
         />
         <Legend
           iconType="square"

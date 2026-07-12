@@ -11,7 +11,7 @@ import { toTwoDecimals } from "@/services/acceptanceRateService";
 import { formatCount } from "@/services/countService";
 
 type StatsDialogProps = {
-  stats: {
+  stats?: {
     totalSolved: number;
     totalAttempts: number;
     acceptanceRate: number;
@@ -19,6 +19,7 @@ type StatsDialogProps = {
 };
 
 const StatsDialog: React.FC<StatsDialogProps> = ({ stats }) => {
+  if (!stats) return null;
   return (
     <HoverCard>
       <HoverCardTrigger>

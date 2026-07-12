@@ -6,7 +6,7 @@ type InterviewGenerationProps = { type: string };
 const InterviewGeneration: React.FC<InterviewGenerationProps> = ({ type }) => {
   return (
     <>
-      <Agent type={type} />
+      <Agent type={type} id={null} />
     </>
   );
 };

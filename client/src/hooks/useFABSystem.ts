@@ -255,14 +255,15 @@ export const useFABSystem = () => {
         [otherButton]: { x: otherSnapX, y: otherPos.y },
       };
 
-      const newSides = {
+      const newSides: Sides = {
+        ...sides,
         [isDragging]: newSide,
         [otherButton]: otherNewSide,
       };
 
-      setSides(newSides as Sides);
+      setSides(newSides);
       setPositions(newPositions);
-      savePositions(newPositions, newSides as Sides);
+      savePositions(newPositions, newSides);
     } else {
       const newSides = {
         ...sides,

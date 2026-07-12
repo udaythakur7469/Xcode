@@ -342,7 +342,7 @@ const AIWritePanel: React.FC<AIWritePanelProps> = ({
                 <select
                   value={tone}
                   disabled={isGenerating}
-                  onChange={(e) => onToneChange(e.target.value as AITone)}
+                  onChange={(e) => onToneChange?.(e.target.value as AITone)}
                   className="h-[30px] appearance-none rounded-lg border bg-background pl-2.5 pr-6 text-xs text-muted-foreground outline-none transition-colors hover:border-violet-500 focus:border-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {TONE_OPTIONS.map((t) => (

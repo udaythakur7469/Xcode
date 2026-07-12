@@ -30,7 +30,7 @@ const Agent: React.FC<agentProps> = ({ type, id }) => {
 
   useEffect(() => {
     checkAuth();
-    if (type === "practice") {
+    if (type === "practice" && id !== null) {
       getInterviewDetails(id);
     }
   }, [checkAuth, getInterviewDetails, type, id]);

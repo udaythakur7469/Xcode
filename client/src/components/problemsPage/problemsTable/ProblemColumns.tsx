@@ -47,7 +47,7 @@ export const columns: ColumnDef<Problem>[] = [
       const rate =
         typeof acceptanceRate === "number"
           ? acceptanceRate
-          : parseFloat(acceptanceRate);
+          : parseFloat(String(acceptanceRate));
 
       // Check if rate is a valid number
       if (isNaN(rate)) {

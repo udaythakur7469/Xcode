@@ -2,12 +2,12 @@
 
 import React from "react";
 import { MessageCirclePlus, Share2, Trash2 } from "lucide-react";
-import { getChatsResponse } from "@/features/chatStore";
+import { ChatListItem } from "@/features/chatStore";
 import { MoonLoader } from "react-spinners";
 import { ChatSidebarSkeleton } from "./ChatSidebarSkeleton";
 
 type ChatSidebarProps = {
-  chats?: getChatsResponse[];
+  chats?: ChatListItem[];
   activeChatId: string | null;
   onSelectChat: (chatId: string) => void;
   onNewChat: () => void;
@@ -27,7 +27,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   isLoading = false,
   onDeleteChat,
   onShareChat,
-  isSharingChat=false,
+  isSharingChat = false,
   gettingChatsError,
 }) => {
   return (
@@ -83,25 +83,27 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                   {isSharingChat ? (
                     <MoonLoader size={15} color="#ffffff" />
                   ) : (
-                    <Share2
+                    <span title="Share this chat">
+                      <Share2
+                        size={15}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onShareChat(chat.id);
+                        }}
+                        className="hover:text-blue-300 transition-colors cursor-pointer"
+                      />
+                    </span>
+                  )}
+                  <span title="Delete this chat">
+                    <Trash2
                       size={15}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onShareChat(chat.id);
+                        onDeleteChat(chat.id);
                       }}
-                      className="hover:text-blue-300 transition-colors cursor-pointer"
-                      title="Share this chat"
+                      className="hover:text-red-500 transition-colors cursor-pointer"
                     />
-                  )}
-                  <Trash2
-                    size={15}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onDeleteChat(chat.id);
-                    }}
-                    className="hover:text-red-500 transition-colors cursor-pointer"
-                    title="Delete this chat"
-                  />
+                  </span>
                 </div>
               ) : null}
             </div>

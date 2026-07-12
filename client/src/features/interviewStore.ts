@@ -155,7 +155,7 @@ interface InterviewData {
   getFeedback: (
     id: number | null,
     transcript: SavedMessage[] | null,
-  ) => Promise<void>;
+  ) => Promise<{ success: boolean; feedback: { interviewId: number } | null }>;
   getFeedbackByInterviewId: (
     id: number,
     source: "user" | "all" | null,

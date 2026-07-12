@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/landingPage/navbar/Navbar";
 import ProblemList from "@/components/problemsPage/problemsList/ProblemList";
@@ -38,7 +38,7 @@ const ProblemsPage: React.FC = () => {
   const isAnalyticsPanelOpen = useCalendarStore((s) => s.isAnalyticsPanelOpen);
 
   return (
-    <>
+    <Suspense fallback={null}>
       <Navbar firstButton={"Explore Xcode"} secondButton={"Mock Interviews"} />
 
       <div className="flex h-[calc(100vh-52px)] w-full flex-row gap-5 overflow-hidden px-[20px] mt-3 mb-5">
@@ -74,7 +74,7 @@ const ProblemsPage: React.FC = () => {
           <RevisionQueue />
         </div>
       </div>
-    </>
+    </Suspense>
   );
 };
 

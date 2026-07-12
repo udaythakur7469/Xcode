@@ -10,6 +10,7 @@ import { useUserStore } from "@/features/userStore";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
 import CommentSystem from "./commentSystem/CommentSystem";
+import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/ForgotPasswordDialog";
 
 type PostCommentsProps = {
   isMaximized: boolean;
@@ -25,6 +26,8 @@ const PostComments: React.FC<PostCommentsProps> = ({
 
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
   const [isSignupOpen, setIsSignupOpen] = useState<boolean>(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] =
+    useState<boolean>(false);
 
   const userId = userData?.id;
   return (
@@ -86,7 +89,20 @@ const PostComments: React.FC<PostCommentsProps> = ({
           setIsLoginOpen(false);
           setIsSignupOpen(true);
         }}
+        openForgotPassword={() => {
+          setIsLoginOpen(false);
+          setIsForgotPasswordOpen(true);
+        }}
         onSuccessfulAuth={checkAuth}
+      />
+
+      <ForgotPasswordDialog
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        openLogin={() => {
+          setIsForgotPasswordOpen(false);
+          setIsLoginOpen(true);
+        }}
       />
 
       <SignupDialog

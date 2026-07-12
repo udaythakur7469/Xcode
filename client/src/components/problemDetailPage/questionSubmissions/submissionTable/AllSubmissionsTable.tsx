@@ -19,7 +19,7 @@ import { useSubmissionStore } from "@/features/submissionStore";
 import CodeDialog from "../dialogBoxes/CodeDialog";
 import { AllSubmissionsTableSkeleton } from "./SubmissionTableSkeleton";
 
-const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
+const AllSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
   problemTitle,
 }) => {
   const {
@@ -127,7 +127,7 @@ const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
                 <Button
                   onClick={() =>
                     getAllSubmissions(
-                      problemTitle,
+                      problemTitle ?? "",
                       allSubmissionsPagination.currentPage - 1,
                     )
                   }
@@ -143,7 +143,7 @@ const AllSubmissionsTable: React.FC<{ problemTitle: string }> = ({
                 <Button
                   onClick={() =>
                     getAllSubmissions(
-                      problemTitle,
+                      problemTitle ?? "",
                       allSubmissionsPagination.currentPage + 1,
                     )
                   }

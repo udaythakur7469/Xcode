@@ -5,7 +5,10 @@ import Image from "next/image";
 import { Calendar, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DisplayTechIcons from "./DisplayTechIcons";
-import { getRandomInterviewCover, getTechLogos } from "@/services/interviewServices/interviewService";
+import {
+  getRandomInterviewCover,
+  getTechLogos,
+} from "@/services/interviewServices/interviewService";
 import moment from "moment";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -25,7 +28,7 @@ interface InterviewCardProps {
   feedbackFinalized: boolean;
   createdAt: string;
   updatedAt: string;
-  source? : "user" | "all";
+  source?: "user" | "all";
 }
 
 const InterviewCard = forwardRef<HTMLDivElement, InterviewCardProps>(
@@ -41,10 +44,10 @@ const InterviewCard = forwardRef<HTMLDivElement, InterviewCardProps>(
       updatedAt,
       source,
     },
-    ref
+    ref,
   ) => {
     const [techIcons, setTechIcons] = useState<{ tech: string; url: string }[]>(
-      []
+      [],
     );
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -72,7 +75,7 @@ const InterviewCard = forwardRef<HTMLDivElement, InterviewCardProps>(
 
     const router = useRouter();
 
-    const takeToFeedbackPage = (source: "user" | "all") => {
+    const takeToFeedbackPage = (source: "user" | "all" = "all") => {
       router.push(`interview/feedback/${id}?source=${source}`);
     };
     const takeToPracticeInterviewPage = () => {
@@ -163,7 +166,7 @@ const InterviewCard = forwardRef<HTMLDivElement, InterviewCardProps>(
         </div>
       </div>
     );
-  }
+  },
 );
 
 InterviewCard.displayName = "InterviewCard";

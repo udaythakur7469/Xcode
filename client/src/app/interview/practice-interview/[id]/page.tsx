@@ -1,9 +1,9 @@
 import React from "react";
 import InterviewPractice from "@/components/interviewPage/interviewPracticePage/InterviewPractice";
 
-type pageProps = { params: { id: number | null } };
+type pageProps = { params: Promise<{ id: string }> };
 
-const page: React.FC<pageProps> = ({ params }) => {
+const Page = ({ params }: pageProps) => {
   const unwrappedParams = React.use(params);
   const { id } = unwrappedParams;
   if (!id) {
@@ -11,8 +11,8 @@ const page: React.FC<pageProps> = ({ params }) => {
   }
   return (
     <>
-      <InterviewPractice type="practice" id={id} />
+      <InterviewPractice type="practice" id={Number(id)} />
     </>
   );
 };
-export default page;
+export default Page;

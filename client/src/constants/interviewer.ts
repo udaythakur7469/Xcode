@@ -1,6 +1,6 @@
-import { CreateWorkflowDTO } from "@vapi-ai/web/dist/api";
+import type { CreateWorkflowDTO } from "@vapi-ai/web/dist/api";
 
-export const generator: CreateWorkflowDTO = {
+export const generator = {
   name: "InterviewAI",
   nodes: [
     {
@@ -16,48 +16,52 @@ export const generator: CreateWorkflowDTO = {
       prompt:
         "Greet the user. Inform them that you will get some information from them, to create a perfect interview. Ask the caller for data required to extract. Ask the questions one by one, and await an answer.",
       variableExtractionPlan: {
-        output: [
-          {
-            enum: [],
-            type: "string",
-            title: "role",
-            description:
-              "What role are you interviewing for? (e.g., Frontend, Backend, UX)",
+        schema: {
+          type: "object",
+          required: [],
+          properties: {
+            role: {
+              type: "string",
+              enum: [],
+              title: "role",
+              description:
+                "What role are you interviewing for? (e.g., Frontend, Backend, UX)",
+            },
+            level: {
+              type: "string",
+              enum: [],
+              title: "level",
+              description: "The job experience level.",
+            },
+            amount: {
+              type: "number",
+              enum: [],
+              title: "amount",
+              description:
+                "How many questions would you like to generate? do not give the user an example number like 5 or 10",
+            },
+            type: {
+              type: "string",
+              enum: ["TECHNICAL", "BEHAVIORAL", "MIXED"],
+              title: "type",
+              description: "What type of the interview should it be?",
+            },
+            techstack: {
+              type: "string",
+              enum: [],
+              title: "techstack",
+              description:
+                "A list of technologies to cover during the job interview. For example, React, Next.js, Express.js, Node and so on…",
+            },
           },
-          {
-            enum: [],
-            type: "string",
-            title: "level",
-            description: "The job experience level.",
-          },
-          {
-            enum: [],
-            type: "number",
-            title: "amount",
-            description:
-              "How many questions would you like to generate? do not give the user an example number like 5 or 10",
-          },
-          {
-            enum: ["TECHNICAL", "BEHAVIORAL", "MIXED"],
-            type: "string",
-            title: "type",
-            description: "What type of the interview should it be?",
-          },
-          {
-            enum: [],
-            type: "string",
-            title: "techstack",
-            description:
-              "A list of technologies to cover during the job interview. For example, React, Next.js, Express.js, Node and so on…",
-          },
-        ],
+        },
       },
       messagePlan: {
         firstMessage:
           "Hello, {{username}}! Let's prepare your\ninterview. I'll ask you a few questions and\ngenerate a perfect interview. Are you ready?",
       },
       toolIds: [],
-    },
+    } as unknown as CreateWorkflowDTO,
     {
       name: "apiRequest_1754157808390",
       type: "tool",
@@ -138,7 +142,6 @@ export const generator: CreateWorkflowDTO = {
             required: [],
             properties: {},
           },
-          aliases: [],
         },
       },
     },

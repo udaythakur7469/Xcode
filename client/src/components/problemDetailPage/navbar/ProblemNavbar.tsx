@@ -103,7 +103,7 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
 
   const name = userData?.name;
 
-  const picture: string | unknown = userData?.picture;
+  const picture: string = (userData?.picture as string) || "";
   const firstLetter = name ? name[0] : null;
 
   const goToHomePage = () => {
@@ -300,7 +300,7 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                     <DropdownMenuTrigger asChild>
                       <div className="cursor-pointer">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={picture || ""} />
+                          <AvatarImage src={picture} />
                           <AvatarFallback>{firstLetter}</AvatarFallback>
                         </Avatar>
                       </div>

@@ -168,7 +168,7 @@ export const ConfidenceTimeline: React.FC<ConfidenceTimelineProps> = ({
               fontSize: 13,
               color: labelColor,
             }}
-            formatter={(value: number, name: string) => [
+            formatter={(value, name) => [
               `${value}/100`,
               name === "score" ? "Confidence" : "Answer Quality",
             ]}

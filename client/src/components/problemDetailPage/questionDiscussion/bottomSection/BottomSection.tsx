@@ -283,8 +283,8 @@ const BottomSection: React.FC<BottomSectionProps> = () => {
           >
             <DraftPostDropdown
               draftPosts={draftPosts}
-              isGettingDraftPosts={isGettingDraftPosts}
-              DraftPostError={DraftPostError}
+              isGettingDraftPostData={isGettingDraftPosts}
+              draftPostError={DraftPostError}
               onDraftClick={handleDraftClick}
             />
           </div>
