@@ -12,6 +12,11 @@ import {
   useSubmissionStore,
   getSubmitTabOpenKey,
 } from "@/features/submissionStore";
+import { useCommentPanel } from "@/context/commentPanelContext";
+import PostComments from "../questionDiscussion/bottomSection/postCard/fullPostPanel/PostComments";
+import { useAiAnalysisPanel } from "@/context/aiAnalysisPanelContext";
+import AIAnalysisPanel from "../questionResults/aiAnalysisPanel/AIAnalysisPanel";
+import { motion } from "framer-motion";
 
 type ResizablePanelsProps = {
   resetLayoutTrigger?: number;
@@ -41,6 +46,11 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     clearSubmitCodeResult,
   } = useSubmissionStore();
 
+  const { isOpen: isCommentPanelOpen, setIsOpen: setIsCommentPanelOpen } =
+    useCommentPanel();
+  const { isOpen: isAiPanelOpen, setIsOpen: setIsAiPanelOpen } =
+    useAiAnalysisPanel();
+
   const [showResultsTab, setShowResultsTab] = useState(false);
   // Increments on every submit — forces QuestionTabs to snap focus onto the
   // "results" tab even if it was already open in the background.
@@ -51,11 +61,200 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   const [isLeftMaximized, setIsLeftMaximized] = useState(false);
   const [isRightMaximized, setIsRightMaximized] = useState(false);
   const [isTestCasesMaximized, setIsTestCasesMaximized] = useState(false);
+  const [isAiPanelFullscreen, setIsAiPanelFullscreen] = useState(false);
+  // Transient: remembers whether the AI panel was in Fullscreen mode at
+  // the exact moment it was closed (from ANY call site — its own "Back to
+  // editor" button, the Comments mutual-exclusion effect, or the Part 4
+  // navbar Run/Submit auto-close). This is the only thing that decides
+  // which of the two possible zero-width "closed" resting positions the
+  // overlay collapses toward — see the effect in 7f and the `animate`
+  // values in 7i below. It's reset back to `false` as soon as the panel
+  // opens again.
+  const [aiPanelClosedFromFullscreen, setAiPanelClosedFromFullscreen] =
+    useState(false);
+  // Same shape as the two flags above, for PostComments' own Fullscreen
+  // feature — deliberately a SEPARATE pair of flags, not shared with the
+  // AI panel's. The two overlays are mutually exclusive (never open at the
+  // same time — Part 2 §7b), but each remembers its own fullscreen history
+  // independently: e.g. if Comments was closed while fullscreen, then AI
+  // Analysis is opened and closed normally, then Comments is reopened, it
+  // must NOT still think it's "closed from fullscreen" from two panels ago.
+  const [isCommentPanelFullscreen, setIsCommentPanelFullscreen] =
+    useState(false);
+  const [
+    commentPanelClosedFromFullscreen,
+    setCommentPanelClosedFromFullscreen,
+  ] = useState(false);
   const [shouldMaximizeHorizontal, setShouldMaximizeHorizontal] =
     useState(false);
   const [shouldMaximizeVertical, setShouldMaximizeVertical] = useState(false);
   const [horizontalSizes, setHorizontalSizes] = useState([50, 50]);
   const [shouldResetLayout, setShouldResetLayout] = useState(false);
+
+  // Outer relative wrapper (contains ResizablePanelGroup + both overlays) —
+  // the containing block both overlays are positioned against.
+  const panelGroupContainerRef = useRef<HTMLDivElement>(null);
+  // Plain, unstyled measurement div rendered directly inside the right
+  // ResizablePanel. `rightPanelRef` itself (from react-resizable-panels)
+  // is an imperative handle (resize()/getSize()), NOT a DOM node, so it
+  // can't be measured with getBoundingClientRect — this ref exists purely
+  // so we have a real DOM element that always exactly matches the right
+  // panel's rendered box.
+  const rightPanelDomRef = useRef<HTMLDivElement>(null);
+
+  // The right panel's real, measured left edge and the panel group's real
+  // width, in pixels — kept in sync with the actual DOM via ResizeObserver
+  // below. Both AI Analysis and Post Comments overlays position themselves
+  // from these numbers instead of a percentage + guessed margin.
+  const [rightPanelLeftPx, setRightPanelLeftPx] = useState(0);
+  const [panelGroupWidthPx, setPanelGroupWidthPx] = useState(0);
+
+  // Whether the NEXT left/right change on the overlays should be CSS-
+  // animated (true) or applied instantly (false). Set true only when
+  // isOpen/isFullscreen actually change (see the effect below); set false
+  // every time the ResizeObserver fires, since a resize-driven position
+  // update should track the real panel with zero extra lag — the real
+  // panel's own motion (drag, or the 500ms animateResize rAF loop) is
+  // already the only animation that should be visible.
+  const [overlayPositionAnimated, setOverlayPositionAnimated] = useState(false);
+
+  // Measures the right panel's real position/size and keeps the two state
+  // values above in sync. Fires for ALL THREE causes of a real resize —
+  // manual drag, the imperative animateResize() rAF loop used by
+  // Maximize/Minimize and Reset Layout, and window resize — automatically,
+  // because ResizeObserver reacts to the actual rendered box changing
+  // size, regardless of what caused that change.
+  useEffect(() => {
+    const measure = () => {
+      if (!panelGroupContainerRef.current || !rightPanelDomRef.current) return;
+      const groupRect = panelGroupContainerRef.current.getBoundingClientRect();
+      const rightRect = rightPanelDomRef.current.getBoundingClientRect();
+      setOverlayPositionAnimated(false);
+      setRightPanelLeftPx(rightRect.left - groupRect.left);
+      setPanelGroupWidthPx(groupRect.width);
+    };
+
+    measure();
+
+    const resizeObserver = new ResizeObserver(measure);
+    if (rightPanelDomRef.current)
+      resizeObserver.observe(rightPanelDomRef.current);
+    if (panelGroupContainerRef.current)
+      resizeObserver.observe(panelGroupContainerRef.current);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
+  // Detects isOpen/isFullscreen changes for EITHER overlay (as opposed to
+  // resize-driven changes) and turns the CSS transition back on for
+  // exactly that state flip. This is the only case that should ever be
+  // animated — see overlayPositionAnimated's comment above.
+  const prevOverlayFlagsRef = useRef({
+    isAiPanelOpen,
+    isCommentPanelOpen,
+    isAiPanelFullscreen,
+    isCommentPanelFullscreen,
+  });
+  useEffect(() => {
+    const prev = prevOverlayFlagsRef.current;
+    const changed =
+      prev.isAiPanelOpen !== isAiPanelOpen ||
+      prev.isCommentPanelOpen !== isCommentPanelOpen ||
+      prev.isAiPanelFullscreen !== isAiPanelFullscreen ||
+      prev.isCommentPanelFullscreen !== isCommentPanelFullscreen;
+    if (changed) setOverlayPositionAnimated(true);
+    prevOverlayFlagsRef.current = {
+      isAiPanelOpen,
+      isCommentPanelOpen,
+      isAiPanelFullscreen,
+      isCommentPanelFullscreen,
+    };
+  }, [
+    isAiPanelOpen,
+    isCommentPanelOpen,
+    isAiPanelFullscreen,
+    isCommentPanelFullscreen,
+  ]);
+
+  // Mutual exclusion: opening one of these two right-panel overlays must
+  // close the other. Handled centrally here (rather than at each panel's
+  // own open-trigger call site) since this is the one place that already
+  // consumes both contexts — avoids having to duplicate this rule in
+  // BottomSection.tsx (comments) and SubmittedCode.tsx (AI) separately.
+  useEffect(() => {
+    if (isCommentPanelOpen) {
+      setIsAiPanelOpen(false);
+    }
+  }, [isCommentPanelOpen, setIsAiPanelOpen]);
+
+  useEffect(() => {
+    if (isAiPanelOpen) {
+      setIsCommentPanelOpen(false);
+    }
+  }, [isAiPanelOpen, setIsCommentPanelOpen]);
+
+  // Detects the exact moment isAiPanelOpen flips true → false, regardless
+  // of which of the several call sites triggered it (this panel's own
+  // Back button, the Comments-opened mutual-exclusion effect from §7b, or
+  // the Part 4 navbar Run/Submit auto-close). At that moment, capture
+  // whatever isAiPanelFullscreen currently is — BEFORE resetting it — so
+  // updateAiPanelPosition (via the `animate` values in 7i) knows which
+  // edge to collapse the now-closing overlay toward. Also handles the
+  // reverse transition (false → true): a fresh open always starts from the
+  // normal, non-fullscreen resting position.
+  const wasAiPanelOpenRef = useRef(isAiPanelOpen);
+  useEffect(() => {
+    const wasOpen = wasAiPanelOpenRef.current;
+    if (wasOpen && !isAiPanelOpen) {
+      setAiPanelClosedFromFullscreen(isAiPanelFullscreen);
+      setIsAiPanelFullscreen(false);
+    } else if (!wasOpen && isAiPanelOpen) {
+      setAiPanelClosedFromFullscreen(false);
+    }
+    wasAiPanelOpenRef.current = isAiPanelOpen;
+  }, [isAiPanelOpen, isAiPanelFullscreen]);
+
+  // Identical logic to the effect above, for PostComments. Covers every
+  // call site that can close Comments: its own "Back to editor" button
+  // (via context, same as AI panel's), the AI-panel-opened mutual-exclusion
+  // effect from §7b, and the Part 4 navbar Run/Submit auto-close.
+  const wasCommentPanelOpenRef = useRef(isCommentPanelOpen);
+  useEffect(() => {
+    const wasOpen = wasCommentPanelOpenRef.current;
+    if (wasOpen && !isCommentPanelOpen) {
+      setCommentPanelClosedFromFullscreen(isCommentPanelFullscreen);
+      setIsCommentPanelFullscreen(false);
+    } else if (!wasOpen && isCommentPanelOpen) {
+      setCommentPanelClosedFromFullscreen(false);
+    }
+    wasCommentPanelOpenRef.current = isCommentPanelOpen;
+  }, [isCommentPanelOpen, isCommentPanelFullscreen]);
+
+  // AI Analysis panel fullscreen toggle. Distinct from the regular
+  // Maximize/Minimize button (handleRightMaximize/isRightMaximized), which
+  // resizes the real ResizablePanels to a 5/95 split. This toggles a
+  // purely visual overlay state instead — see the `animate` values in 7i
+  // — and never calls setHorizontalSizes, never touches isLeftMaximized/
+  // isRightMaximized, and never resizes any ResizablePanel. Completely
+  // independent of Maximize: if the user maximizes the right panel first
+  // and then goes Fullscreen, the AI panel's left edge still travels all
+  // the way to the group's true 0% regardless of the current
+  // horizontalSizes — and if they exit Fullscreen afterward, the real
+  // panels (and the AI panel's normal-state left edge) are exactly where
+  // Maximize left them, with no drift.
+  const handleAiPanelFullscreen = () => {
+    if (!isAiPanelOpen) return; // fullscreen only makes sense while open
+    setIsAiPanelFullscreen((prev) => !prev);
+  };
+
+  // Identical to handleAiPanelFullscreen above, for PostComments. Same
+  // independence from Maximize/Minimize and from real ResizablePanel
+  // sizing — see the comment on handleAiPanelFullscreen in Part 5 §7f,
+  // which applies here unchanged.
+  const handleCommentPanelFullscreen = () => {
+    if (!isCommentPanelOpen) return;
+    setIsCommentPanelFullscreen((prev) => !prev);
+  };
 
   // Default sizes for reset
   const DEFAULT_HORIZONTAL_SIZES = [50, 50];
@@ -139,15 +338,23 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   useEffect(() => {
     if (runCodeTrigger && runCodeTrigger > 0) {
       handleCodeRun();
+      // Running code from the top navbar should back out of whichever
+      // right-panel overlay (Comments / AI Analysis) is currently open, so
+      // the user lands back on the editor + results they just triggered.
+      setIsCommentPanelOpen(false);
+      setIsAiPanelOpen(false);
     }
-  }, [runCodeTrigger]);
+  }, [runCodeTrigger, setIsCommentPanelOpen, setIsAiPanelOpen]);
 
   // Add useEffect to handle submit code trigger from navbar
   useEffect(() => {
     if (submitCodeTrigger && submitCodeTrigger > 0) {
       handleCodeSubmit();
+      // Same reasoning as the run-code effect above.
+      setIsCommentPanelOpen(false);
+      setIsAiPanelOpen(false);
     }
-  }, [submitCodeTrigger]);
+  }, [submitCodeTrigger, setIsCommentPanelOpen, setIsAiPanelOpen]);
 
   // Reset layout when trigger changes
   useEffect(() => {
@@ -157,6 +364,8 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       setIsLeftMaximized(false);
       setIsRightMaximized(false);
       setIsTestCasesMaximized(false);
+      setIsAiPanelFullscreen(false);
+      setIsCommentPanelFullscreen(false);
       setShouldResetLayout(true);
     }
   }, [resetLayoutTrigger]);
@@ -198,13 +407,17 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       const isControl = e.ctrlKey || e.metaKey;
       const isSpace = e.key === " ";
 
-      if (isControl && isSpace) {
+      // Exclude Shift so this doesn't also fire on Ctrl/Cmd+Shift+Space,
+      // which is the AI Analysis / Post Comments full-close shortcut.
+      if (isControl && isSpace && !e.shiftKey) {
         e.preventDefault();
         setHorizontalSizes(DEFAULT_HORIZONTAL_SIZES);
         setVerticalSizes(DEFAULT_VERTICAL_SIZES);
         setIsLeftMaximized(false);
         setIsRightMaximized(false);
         setIsTestCasesMaximized(false);
+        setIsAiPanelFullscreen(false);
+        setIsCommentPanelFullscreen(false);
         setShouldResetLayout(true);
       }
     };
@@ -215,6 +428,46 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       window.removeEventListener("keydown", keyboardShortcut);
     };
   }, []);
+
+  // Ctrl/Cmd+Shift+← : whichever overlay (AI Analysis or Post Comments) is
+  // currently open goes fullscreen. Ctrl/Cmd+Shift+→ : that overlay exits
+  // fullscreen but stays open. Ctrl/Cmd+Shift+Space : that overlay closes
+  // fully, from either state. No-op if neither overlay is open.
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isControl = e.ctrlKey || e.metaKey;
+      if (!isControl || !e.shiftKey) return;
+
+      const activePanel = isAiPanelOpen
+        ? "ai"
+        : isCommentPanelOpen
+          ? "comments"
+          : null;
+      if (!activePanel) return;
+
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (activePanel === "ai") setIsAiPanelFullscreen(true);
+        else setIsCommentPanelFullscreen(true);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        if (activePanel === "ai") setIsAiPanelFullscreen(false);
+        else setIsCommentPanelFullscreen(false);
+      } else if (e.key === " ") {
+        e.preventDefault();
+        setIsAiPanelOpen(false);
+        setIsCommentPanelOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+    return () => window.removeEventListener("keydown", keyboardShortcut);
+  }, [
+    isAiPanelOpen,
+    isCommentPanelOpen,
+    setIsAiPanelOpen,
+    setIsCommentPanelOpen,
+  ]);
 
   const handleCodeSubmit = () => {
     setShowResultsTab(true);
@@ -355,6 +608,10 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 
   const handleCloseSubmissionTab = () => {
     setShowResultsTab(false);
+    // The AI panel analyzes the submitted code shown in the Results tab —
+    // if that tab is closed, there's nothing left for it to be floating
+    // over, so close it too.
+    setIsAiPanelOpen(false);
   };
 
   const handleVerticalLayoutChange = (sizes: number[]) => {
@@ -394,7 +651,10 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   };
 
   return (
-    <div className="flex-1 h-[calc(100vh-3rem)] overflow-auto flex justify-center items-center m-4 rounded-lg">
+    <div
+      ref={panelGroupContainerRef}
+      className="relative flex-1 h-[calc(100vh-3rem)] overflow-auto flex justify-center items-center m-4 rounded-lg"
+    >
       <ResizablePanelGroup
         direction="horizontal"
         onLayout={handleHorizontalLayoutChange}
@@ -432,60 +692,136 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           minSize={5}
           maxSize={95}
         >
-          <ResizablePanelGroup
-            direction="vertical"
-            onLayout={handleVerticalLayoutChange}
-          >
-            {/* Top Panel (CodeEditor) */}
-            <ResizablePanel
-              ref={codeEditorPanelRef}
-              defaultSize={93}
-              minSize={7}
-              maxSize={93}
-              className="ml-1 mb-1 rounded-lg border"
+          {/* Plain measurement wrapper — no styling of its own, exists only
+              so rightPanelDomRef can be measured with getBoundingClientRect.
+              Always exactly matches the right panel's real rendered box. */}
+          <div ref={rightPanelDomRef} className="h-full w-full">
+            <ResizablePanelGroup
+              direction="vertical"
+              onLayout={handleVerticalLayoutChange}
             >
-              <div className="flex h-full items-center justify-center relative">
-                <CodeEditor
-                  onCodeSubmit={handleCodeSubmit}
-                  onCodeRun={handleCodeRun}
-                  onMaximize={handleRightMaximize}
-                  isMaximized={isRightMaximized}
-                  code={code}
-                  setCode={setCode}
-                  language={language}
-                  setLanguage={setLanguage}
-                />
-              </div>
-            </ResizablePanel>
+              {/* Top Panel (CodeEditor) */}
+              <ResizablePanel
+                ref={codeEditorPanelRef}
+                defaultSize={93}
+                minSize={7}
+                maxSize={93}
+                className="ml-1 mb-1 rounded-lg border"
+              >
+                <div className="flex h-full items-center justify-center">
+                  <CodeEditor
+                    onCodeSubmit={handleCodeSubmit}
+                    onCodeRun={handleCodeRun}
+                    onMaximize={handleRightMaximize}
+                    isMaximized={isRightMaximized}
+                    code={code}
+                    setCode={setCode}
+                    language={language}
+                    setLanguage={setLanguage}
+                  />
+                </div>
+              </ResizablePanel>
 
-            {/* Resizable Handle */}
-            <div className="h-1 hover:bg-green-600 rounded-md ml-1">
-              <ResizableHandle withHandle />
-            </div>
-
-            {/* Bottom Panel (TestCases) */}
-            <ResizablePanel
-              ref={testCasesPanelRef}
-              defaultSize={7}
-              maxSize={93}
-              minSize={7}
-              className="ml-1 mt-1 rounded-lg border"
-            >
-              <div className="flex h-full items-center justify-center">
-                <TestCasesTabs
-                  onMaximize={handleTestCasesMaximize}
-                  isMaximized={isTestCasesMaximized}
-                  showTestCasesResultsTab={showTestCasesResultsTab}
-                  setShowTestCasesResultsTab={setShowTestCasesResultsTab}
-                  verticalSizes={verticalSizes}
-                />
+              {/* Resizable Handle */}
+              <div className="h-1 hover:bg-green-600 rounded-md ml-1">
+                <ResizableHandle withHandle />
               </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
+
+              {/* Bottom Panel (TestCases) */}
+              <ResizablePanel
+                ref={testCasesPanelRef}
+                defaultSize={7}
+                maxSize={93}
+                minSize={7}
+                className="ml-1 mt-1 rounded-lg border"
+              >
+                <div className="flex h-full items-center justify-center">
+                  <TestCasesTabs
+                    onMaximize={handleTestCasesMaximize}
+                    isMaximized={isTestCasesMaximized}
+                    showTestCasesResultsTab={showTestCasesResultsTab}
+                    setShowTestCasesResultsTab={setShowTestCasesResultsTab}
+                    verticalSizes={verticalSizes}
+                  />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+
+      {/* Post Comments — a SINGLE node, sibling of the horizontal
+          ResizablePanelGroup, positioned identically to AIAnalysisPanel
+          below (same left/right percentage scheme, same four-state
+          collapse logic, same always-mounted/never-unmounted node). The
+          only difference from the AIAnalysisPanel block is which state
+          variables it reads: isCommentPanelOpen/isCommentPanelFullscreen/
+          commentPanelClosedFromFullscreen instead of the AI panel's. */}
+      <motion.div
+        initial={false}
+        animate={{
+          left: isCommentPanelOpen
+            ? isCommentPanelFullscreen
+              ? 0
+              : rightPanelLeftPx
+            : commentPanelClosedFromFullscreen
+              ? panelGroupWidthPx
+              : rightPanelLeftPx,
+          right: isCommentPanelOpen
+            ? 0
+            : commentPanelClosedFromFullscreen
+              ? 0
+              : panelGroupWidthPx - rightPanelLeftPx,
+        }}
+        transition={
+          overlayPositionAnimated
+            ? { type: "tween", duration: 0.3, ease: "easeInOut" }
+            : { duration: 0 }
+        }
+        className="absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg border"
+        style={{ pointerEvents: isCommentPanelOpen ? "auto" : "none" }}
+      >
+        <PostComments
+          isMaximized={isRightMaximized}
+          handleMaximizeMinimize={handleRightMaximize}
+          isFullscreen={isCommentPanelFullscreen}
+          onToggleFullscreen={handleCommentPanelFullscreen}
+        />
+      </motion.div>
+
+      <motion.div
+        initial={false}
+        animate={{
+          left: isAiPanelOpen
+            ? isAiPanelFullscreen
+              ? 0
+              : rightPanelLeftPx
+            : aiPanelClosedFromFullscreen
+              ? panelGroupWidthPx
+              : rightPanelLeftPx,
+          right: isAiPanelOpen
+            ? 0
+            : aiPanelClosedFromFullscreen
+              ? 0
+              : panelGroupWidthPx - rightPanelLeftPx,
+        }}
+        transition={
+          overlayPositionAnimated
+            ? { type: "tween", duration: 0.3, ease: "easeInOut" }
+            : { duration: 0 }
+        }
+        className="absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg border"
+        style={{ pointerEvents: isAiPanelOpen ? "auto" : "none" }}
+      >
+        <AIAnalysisPanel
+          isMaximized={isRightMaximized}
+          handleMaximizeMinimize={handleRightMaximize}
+          isFullscreen={isAiPanelFullscreen}
+          onToggleFullscreen={handleAiPanelFullscreen}
+        />
+      </motion.div>
     </div>
   );
-};
+};;
 
 export default ResizablePanels;
