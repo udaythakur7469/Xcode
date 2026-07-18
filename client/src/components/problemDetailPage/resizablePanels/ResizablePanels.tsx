@@ -795,11 +795,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             : { duration: 0 }
         }
         className={`absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg ${
-          isCommentPanelOpen
-            ? isCommentPanelFullscreen
-              ? "border"
-              : "border-y border-r"
-            : ""
+          isCommentPanelOpen ? "border" : ""
         }`}
         style={{
           pointerEvents: isCommentPanelOpen ? "auto" : "none",
@@ -836,11 +832,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             : { duration: 0 }
         }
         className={`absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg ${
-          isAiPanelOpen
-            ? isAiPanelFullscreen
-              ? "border"
-              : "border-y border-r"
-            : ""
+          isAiPanelOpen ? "border" : ""
         }`}
         style={{
           pointerEvents: isAiPanelOpen ? "auto" : "none",
@@ -856,6 +848,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       </motion.div>
     </div>
   );
-};;
+};
 
 export default ResizablePanels;
