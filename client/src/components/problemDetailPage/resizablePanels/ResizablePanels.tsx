@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import {
   ResizableHandle,
@@ -129,9 +130,17 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       if (!panelGroupContainerRef.current || !rightPanelDomRef.current) return;
       const groupRect = panelGroupContainerRef.current.getBoundingClientRect();
       const rightRect = rightPanelDomRef.current.getBoundingClientRect();
-      setOverlayPositionAnimated(false);
-      setRightPanelLeftPx(rightRect.left - groupRect.left);
-      setPanelGroupWidthPx(groupRect.width);
+      // flushSync forces this re-render (and browser paint) to happen
+      // in the SAME frame the real panel's size just changed in.
+      // Without it, React defers to its normal batched schedule and the
+      // overlay's left/right land one frame behind the real edge on
+      // every tick of a drag or the animateResize rAF loop — that's the
+      // visible "lag/trailing" during motion.
+      flushSync(() => {
+        setOverlayPositionAnimated(false);
+        setRightPanelLeftPx(rightRect.left - groupRect.left);
+        setPanelGroupWidthPx(groupRect.width);
+      });
     };
 
     measure();
@@ -778,8 +787,13 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             ? { type: "tween", duration: 0.3, ease: "easeInOut" }
             : { duration: 0 }
         }
-        className="absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg border"
-        style={{ pointerEvents: isCommentPanelOpen ? "auto" : "none" }}
+        className={`absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg ${
+          isCommentPanelOpen ? "border" : ""
+        }`}
+        style={{
+          pointerEvents: isCommentPanelOpen ? "auto" : "none",
+          visibility: isCommentPanelOpen ? "visible" : "hidden",
+        }}
       >
         <PostComments
           isMaximized={isRightMaximized}
@@ -822,6 +836,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       </motion.div>
     </div>
   );
-};;
+};
 
 export default ResizablePanels;
