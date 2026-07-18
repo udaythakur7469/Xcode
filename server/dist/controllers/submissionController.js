@@ -5,6 +5,9 @@ import { enqueueAndWait } from "../queues/waitForJob.js";
 import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
 import { getLanguageConfig, SUPPORTED_LANGUAGES } from "../configs/languageConfig.js";
+import { CacheService } from "@periodic/osmium";
+import redis from "../configs/redisConfig.js";
+const cache = new CacheService(redis);
 export const JUDGE0_URL = process.env.JUDGE0_BASE_URL;
 export const JUDGE0_HEADERS = {
     "X-Auth-Token": process.env.JUDGE0_AUTH_TOKEN,
@@ -709,6 +712,9 @@ export const updateStatistics = async (userId, problemId, difficulty, submission
             ],
             skipDuplicates: true,
         });
+        cache
+            .invalidateByTags([`calendar:revision:user:${userId}`])
+            .catch((err) => logger.error("Failed to invalidate revision queue cache:", err));
     }
     await prisma.submission.create({
         data: {

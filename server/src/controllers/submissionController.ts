@@ -10,6 +10,10 @@ import { Difficulty, SubmissionStatus } from "@prisma/client";
 import logger from "../configs/loggerConfig.js";
 import createHttpError from "http-errors";
 import { getLanguageConfig, SUPPORTED_LANGUAGES } from "../configs/languageConfig.js";
+import { CacheService } from "@periodic/osmium";
+import redis from "../configs/redisConfig.js";
+
+const cache = new CacheService(redis);
 
 export const JUDGE0_URL = process.env.JUDGE0_BASE_URL;
 export const JUDGE0_HEADERS = {
@@ -882,6 +886,12 @@ export const updateStatistics = async (
       ],
       skipDuplicates: true,
     });
+
+    cache
+      .invalidateByTags([`calendar:revision:user:${userId}`])
+      .catch((err) =>
+        logger.error("Failed to invalidate revision queue cache:", err),
+      );
   }
 
   await prisma.submission.create({
