@@ -127,31 +127,43 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   const [overlayPositionAnimated, setOverlayPositionAnimated] = useState(false);
 
   // Measures the right panel's real position/size and keeps the two state
-  // values above in sync. Fires for ALL THREE causes of a real resize —
-  // manual drag, the imperative animateResize() rAF loop used by
-  // Maximize/Minimize and Reset Layout, and window resize — automatically,
-  // because ResizeObserver reacts to the actual rendered box changing
-  // size, regardless of what caused that change.
-  useEffect(() => {
-    const measure = () => {
-      if (!panelGroupContainerRef.current || !rightPanelDomRef.current) return;
-      const groupRect = panelGroupContainerRef.current.getBoundingClientRect();
-      const rightRect = rightPanelDomRef.current.getBoundingClientRect();
-      // flushSync forces this re-render (and browser paint) to happen
-      // in the SAME frame the real panel's size just changed in.
-      // Without it, React defers to its normal batched schedule and the
-      // overlay's left/right land one frame behind the real edge on
-      // every tick of a drag or the animateResize rAF loop — that's the
-      // visible "lag/trailing" during motion.
-      flushSync(() => {
-        setOverlayPositionAnimated(false);
-        setRightPanelLeftPx(rightRect.left - groupRect.left);
-        setPanelGroupWidthPx(groupRect.width);
-      });
-    };
+  // values above in sync.
+  //
+  // Called from TWO places, deliberately:
+  //  1. Synchronously from handleHorizontalLayoutChange below — the path
+  //     that actually matters. react-resizable-panels invokes onLayout in
+  //     the SAME synchronous call stack as the DOM style change, for both
+  //     a manual drag AND every rAF tick of animateResize (Maximize/
+  //     Minimize/Reset). Measuring here means the overlay updates in the
+  //     exact same frame the real panel moved.
+  //  2. As a ResizeObserver fallback below — for size changes that do NOT
+  //     go through onLayout, e.g. the browser window itself resizing.
+  //
+  // Why the fallback alone caused visible trailing: ResizeObserver is
+  // specced to fire one animation frame AFTER the DOM change it reports,
+  // never in the same frame. Relying on it for drag/animateResize meant
+  // the overlay was always exactly one frame behind the real panel edge.
+  // Calling measure() directly from onLayout removes that delay entirely.
+  const measure = () => {
+    if (!panelGroupContainerRef.current || !rightPanelDomRef.current) return;
+    const groupRect = panelGroupContainerRef.current.getBoundingClientRect();
+    const rightRect = rightPanelDomRef.current.getBoundingClientRect();
+    // flushSync forces this re-render (and browser paint) to happen in the
+    // SAME frame the real panel's size just changed in.
+    flushSync(() => {
+      setOverlayPositionAnimated(false);
+      setRightPanelLeftPx(rightRect.left - groupRect.left);
+      setPanelGroupWidthPx(groupRect.width);
+    });
+  };
 
+  useEffect(() => {
     measure();
 
+    // Fallback only — covers size changes NOT caused by our own drag or
+    // animateResize handlers, e.g. the browser window resizing. Every
+    // resize WE cause is already covered synchronously via
+    // handleHorizontalLayoutChange calling measure() directly.
     const resizeObserver = new ResizeObserver(measure);
     if (rightPanelDomRef.current)
       resizeObserver.observe(rightPanelDomRef.current);
@@ -159,6 +171,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       resizeObserver.observe(panelGroupContainerRef.current);
 
     return () => resizeObserver.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Detects isOpen/isFullscreen changes for EITHER overlay (as opposed to
@@ -647,7 +660,16 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   };
 
   const handleHorizontalLayoutChange = (sizes: number[]) => {
-    // Ignore layout changes during programmatic animations
+    // Track the overlay's position in the SAME synchronous call stack as
+    // this real size change — covers both manual drag and every rAF tick
+    // of the animateResize loop (Maximize/Minimize/Reset). Must run
+    // unconditionally, even while isAnimatingRef.current is true — that's
+    // exactly the case where the one-frame ResizeObserver delay was most
+    // visible as trailing.
+    measure();
+
+    // Ignore maximize-state bookkeeping during programmatic animations —
+    // unrelated to overlay tracking, kept as before.
     if (isAnimatingRef.current) return;
 
     setHorizontalSizes(sizes);
@@ -791,7 +813,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         }}
         transition={
           overlayPositionAnimated
-            ? { type: "tween", duration: 0.3, ease: "easeInOut" }
+            ? { type: "tween", duration: 0.5, ease: "easeInOut" }
             : { duration: 0 }
         }
         className={`absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg ${
@@ -828,7 +850,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         }}
         transition={
           overlayPositionAnimated
-            ? { type: "tween", duration: 0.3, ease: "easeInOut" }
+            ? { type: "tween", duration: 0.5, ease: "easeInOut" }
             : { duration: 0 }
         }
         className={`absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg ${
