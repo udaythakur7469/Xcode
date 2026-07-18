@@ -110,6 +110,17 @@ interface CalendarState {
   revisionQueue: RevisionQueueItem[];
   isLoadingRevision: boolean;
 
+  // ── NEW: Revision completion state (used on the problem detail page) ─────────
+  /** Is the CURRENTLY OPEN problem present in the user's revision queue? */
+  isInRevisionQueue: boolean;
+  isCheckingRevisionQueue: boolean;
+  /** Did the user get an accepted submission for this problem THIS session? */
+  hasCorrectSubmissionThisSession: boolean;
+  /** Has "Mark Revision as Done" already been clicked (and succeeded) this session? */
+  isRevisionDone: boolean;
+  isMarkingRevisionDone: boolean;
+  markRevisionDoneError: string | null;
+
   // ── Actions ──────────────────────────────────────────────────────────────────
   setCalendarMode: (mode: CalendarMode) => void;
   selectDate: (date: string | null) => void;
@@ -122,6 +133,16 @@ interface CalendarState {
   fetchRangeStats: (from: string, to: string) => Promise<void>;
   fetchPotd: () => Promise<void>;
   fetchRevisionQueue: () => Promise<void>;
+
+  // ── NEW actions ────────────────────────────────────────────────────────────
+  /** Checks whether `problemTitle` is currently in the revision queue */
+  checkIfProblemInRevisionQueue: (problemTitle: string) => Promise<void>;
+  /** Called by CodeEditor when a submission comes back with success: true */
+  recordCorrectSubmission: () => void;
+  /** Calls POST /calendar/markRevisionDone for the given problem */
+  markRevisionDone: (problemTitle: string) => Promise<void>;
+  /** Resets all revision-completion state — call on unmount / problem change */
+  resetRevisionCompletionState: () => void;
 }
 
 export const useCalendarStore = create<CalendarState>()((set, get) => ({
@@ -145,6 +166,13 @@ export const useCalendarStore = create<CalendarState>()((set, get) => ({
 
   revisionQueue: [],
   isLoadingRevision: false,
+
+  isInRevisionQueue: false,
+  isCheckingRevisionQueue: false,
+  hasCorrectSubmissionThisSession: false,
+  isRevisionDone: false,
+  isMarkingRevisionDone: false,
+  markRevisionDoneError: null,
 
   // ── UI Actions ─────────────────────────────────────────────────────────────
 
@@ -280,6 +308,55 @@ export const useCalendarStore = create<CalendarState>()((set, get) => ({
     } catch {
       set({ isLoadingRevision: false });
     }
+  },
+
+  checkIfProblemInRevisionQueue: async (problemTitle) => {
+    set({ isCheckingRevisionQueue: true });
+    try {
+      const res = await axios.get(`${API_URL}/calendar/revisionQueue`);
+      const queue = res.data as RevisionQueueItem[];
+      const isIn = queue.some(
+        (item) => item.title.toLowerCase() === problemTitle.toLowerCase(),
+      );
+      set({ isInRevisionQueue: isIn, isCheckingRevisionQueue: false });
+    } catch {
+      // Fail silently — don't block the problem page over this check
+      set({ isCheckingRevisionQueue: false });
+    }
+  },
+
+  recordCorrectSubmission: () => {
+    set({ hasCorrectSubmissionThisSession: true });
+  },
+
+  markRevisionDone: async (problemTitle) => {
+    set({ isMarkingRevisionDone: true, markRevisionDoneError: null });
+    try {
+      await axios.post(`${API_URL}/calendar/markRevisionDone`, null, {
+        params: { title: problemTitle },
+      });
+      set({ isRevisionDone: true, isMarkingRevisionDone: false });
+      // Refresh the queue so the sidebar RevisionQueue widget drops this problem
+      get().fetchRevisionQueue();
+    } catch (err: any) {
+      set({
+        markRevisionDoneError:
+          err.response?.data?.message || "Failed to mark revision as done",
+        isMarkingRevisionDone: false,
+      });
+      throw err;
+    }
+  },
+
+  resetRevisionCompletionState: () => {
+    set({
+      isInRevisionQueue: false,
+      isCheckingRevisionQueue: false,
+      hasCorrectSubmissionThisSession: false,
+      isRevisionDone: false,
+      isMarkingRevisionDone: false,
+      markRevisionDoneError: null,
+    });
   },
 }));
 
