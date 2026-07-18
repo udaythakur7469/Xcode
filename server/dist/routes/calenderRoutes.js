@@ -4,7 +4,7 @@ import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { optionalAuthMiddleware } from "../middlewares/optionalAuthMiddleware.js";
 import { readLimiter } from "../middlewares/rateLimiter.js";
 import redis from "../configs/redisConfig.js";
-import { getActivityData, getDayStats, getPotd, getRangeStats, getRevisionQueue } from "../controllers/calenderController.js";
+import { getActivityData, getDayStats, getPotd, getRangeStats, getRevisionQueue, markRevisionDone, } from "../controllers/calenderController.js";
 const router = express.Router();
 router.get("/activity", authMiddleware, readLimiter, cacheMiddleware(redis, {
     ttl: 300,
@@ -48,4 +48,5 @@ router.get("/revisionQueue", authMiddleware, readLimiter, cacheMiddleware(redis,
         keyGenerator: (req) => `calendar:revision:user:${req.user?.userId ?? req.user?.id}`,
     },
 }), getRevisionQueue);
+router.post("/markRevisionDone", authMiddleware, readLimiter, cacheMiddleware(redis, { strategy: "none" }), markRevisionDone);
 export default router;
