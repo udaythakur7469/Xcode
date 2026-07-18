@@ -110,6 +110,13 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   const [rightPanelLeftPx, setRightPanelLeftPx] = useState(0);
   const [panelGroupWidthPx, setPanelGroupWidthPx] = useState(0);
 
+  // CodeEditor/TestCasesTabs are rendered with "ml-1" (4px) inside the raw
+  // right ResizablePanel, so their real bordered box starts 4px to the
+  // right of rightPanelLeftPx (which measures the raw, unmargined panel
+  // edge). The overlays must match that same 4px inset on their left side
+  // or they sit 4px further left than the panel they're supposed to cover.
+  const RIGHT_PANEL_LEFT_INSET = 4;
+
   // Whether the NEXT left/right change on the overlays should be CSS-
   // animated (true) or applied instantly (false). Set true only when
   // isOpen/isFullscreen actually change (see the effect below); set false
@@ -772,10 +779,10 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           left: isCommentPanelOpen
             ? isCommentPanelFullscreen
               ? 0
-              : rightPanelLeftPx
+              : rightPanelLeftPx + RIGHT_PANEL_LEFT_INSET
             : commentPanelClosedFromFullscreen
               ? panelGroupWidthPx
-              : rightPanelLeftPx,
+              : rightPanelLeftPx + RIGHT_PANEL_LEFT_INSET,
           right: isCommentPanelOpen
             ? 0
             : commentPanelClosedFromFullscreen
@@ -788,7 +795,11 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             : { duration: 0 }
         }
         className={`absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg ${
-          isCommentPanelOpen ? "border" : ""
+          isCommentPanelOpen
+            ? isCommentPanelFullscreen
+              ? "border"
+              : "border-y border-r"
+            : ""
         }`}
         style={{
           pointerEvents: isCommentPanelOpen ? "auto" : "none",
@@ -809,10 +820,10 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           left: isAiPanelOpen
             ? isAiPanelFullscreen
               ? 0
-              : rightPanelLeftPx
+              : rightPanelLeftPx + RIGHT_PANEL_LEFT_INSET
             : aiPanelClosedFromFullscreen
               ? panelGroupWidthPx
-              : rightPanelLeftPx,
+              : rightPanelLeftPx + RIGHT_PANEL_LEFT_INSET,
           right: isAiPanelOpen
             ? 0
             : aiPanelClosedFromFullscreen
@@ -825,11 +836,15 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             : { duration: 0 }
         }
         className={`absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg ${
-          isCommentPanelOpen ? "border" : ""
+          isAiPanelOpen
+            ? isAiPanelFullscreen
+              ? "border"
+              : "border-y border-r"
+            : ""
         }`}
         style={{
-          pointerEvents: isCommentPanelOpen ? "auto" : "none",
-          visibility: isCommentPanelOpen ? "visible" : "hidden",
+          pointerEvents: isAiPanelOpen ? "auto" : "none",
+          visibility: isAiPanelOpen ? "visible" : "hidden",
         }}
       >
         <AIAnalysisPanel
@@ -841,6 +856,6 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       </motion.div>
     </div>
   );
-};
+};;
 
 export default ResizablePanels;
