@@ -15,11 +15,12 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { History, Maximize, Minimize } from "lucide-react";
+import { CheckCheck, History, Maximize, Minimize } from "lucide-react";
 import { CodeEditorSkeleton } from "./CodeEditorSkeleton";
 import { useProblemStore } from "@/features/problemStore";
 import { useSearchParams } from "next/navigation";
 import { useSubmissionStore } from "@/features/submissionStore";
+import { useCalendarStore } from "@/features/calenderStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
@@ -83,10 +84,21 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     submitCode,
     isRunningCode,
     isSubmittingCode,
+    submitCodeResult,
   } = useSubmissionStore();
   const { getProblemByTitle } = useProblemStore();
   const searchParams = useSearchParams();
   const problemTitle = searchParams.get("title");
+  const {
+    isInRevisionQueue,
+    hasCorrectSubmissionThisSession,
+    isRevisionDone,
+    isMarkingRevisionDone,
+    checkIfProblemInRevisionQueue,
+    recordCorrectSubmission,
+    markRevisionDone,
+    resetRevisionCompletionState,
+  } = useCalendarStore();
 
   useEffect(() => {
     const fetchProblemDetails = async () => {
@@ -102,6 +114,22 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 
     fetchProblemDetails();
   }, [problemTitle, getProblemByTitle]);
+
+  useEffect(() => {
+    if (problemTitle) {
+      checkIfProblemInRevisionQueue(problemTitle);
+    }
+    return () => {
+      resetRevisionCompletionState();
+    };
+  }, [problemTitle]);
+
+  useEffect(() => {
+    if (submitCodeResult && (submitCodeResult as any).success === true) {
+      recordCorrectSubmission();
+    }
+  }, [submitCodeResult]);
+  // ────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (problemId) {
@@ -186,6 +214,16 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     submitCode,
     language,
   ]);
+
+  const handleMarkRevisionDone = useCallback(async () => {
+    if (!problemTitle || isRevisionDone || isMarkingRevisionDone) return;
+    try {
+      await markRevisionDone(problemTitle);
+      toast.success("Revision marked as done!");
+    } catch {
+      toast.error("Failed to mark revision as done");
+    }
+  }, [problemTitle, isRevisionDone, isMarkingRevisionDone, markRevisionDone]);
 
   const handleResetCode = useCallback(async () => {
     if (problemTitle) {
@@ -350,6 +388,15 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   };
 
+  const revisionButtonLabel = isRevisionDone
+    ? "Revision Marked"
+    : isMarkingRevisionDone
+      ? "Marking..."
+      : "Mark Revision as Done";
+
+  const revisionButtonDisabled =
+    isRevisionDone || isMarkingRevisionDone || !hasCorrectSubmissionThisSession;
+
   return (
     <div className="h-full w-full flex flex-col">
       <>
@@ -444,9 +491,9 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           )}
         </div>
 
-        {/* Footer with Run Code Button */}
+        {/* Footer with Run Code / Submit Code / Mark Revision as Done */}
         <div className="h-[50px] bg-secondary rounded-md flex items-center justify-start px-4 gap-x-5">
-          <div className="ml-5 space-x-5">
+          <div className="ml-5 flex items-center gap-x-3">
             <Button
               className="bg-blue-600 text-white disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleRunCode}
@@ -461,6 +508,28 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             >
               {isSubmittingCode ? "Submitting..." : "Submit Code"}
             </Button>
+
+            {isInRevisionQueue && (
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <Button
+                    className="bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                    onClick={handleMarkRevisionDone}
+                    disabled={revisionButtonDisabled}
+                  >
+                    {isRevisionDone && (
+                      <CheckCheck size={15} strokeWidth={2.5} />
+                    )}
+                    {revisionButtonLabel}
+                  </Button>
+                </HoverCardTrigger>
+                {!hasCorrectSubmissionThisSession && !isRevisionDone && (
+                  <HoverCardContent className="p-2 text-xs max-w-[220px] text-center">
+                    Solve the problem correctly first to mark revision as done
+                  </HoverCardContent>
+                )}
+              </HoverCard>
+            )}
           </div>
         </div>
       </>
