@@ -23,6 +23,7 @@ import DiscussionSection from "../questionDiscussion/DiscussionSection";
 import QuestionCodeResults from "../questionResults/QuestionResults";
 import { useSubmissionStore } from "@/features/submissionStore";
 import { useCommentPanel } from "@/context/commentPanelContext";
+import { useAiAnalysisPanel } from "@/context/aiAnalysisPanelContext";
 import { useRouter, useSearchParams } from "next/navigation";
 
 type QuestionTabsProps = {
@@ -78,6 +79,8 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
 
   const { clearSubmitCodeResult } = useSubmissionStore();
   const { setIsOpen } = useCommentPanel();
+  const { isOpen: isAiPanelOpen, setIsOpen: setIsAiPanelOpen } =
+    useAiAnalysisPanel();
 
   const handleMaximizeMinimize = useCallback(() => {
     if (onMaximize) onMaximize();
@@ -161,6 +164,29 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     window.addEventListener("keydown", keyboardShortcut);
     return () => window.removeEventListener("keydown", keyboardShortcut);
   }, [showResultsTab, onCloseResultsTab, clearSubmitCodeResult, searchParams]);
+
+  // Keyboard shortcut: Shift+A toggles the AI Analysis panel — only does
+  // anything while the results tab is open, since that's the code the
+  // panel analyzes. Toggles (rather than only opening) so the shortcut
+  // stays consistent with the "Analyze with AI" button, which also
+  // closes the panel if it's already open. Uses e.code (the physical
+  // key) instead of e.key, since e.key for a letter can get remapped by
+  // some keyboard layouts when a modifier is held, which would silently
+  // break the "a"/"A" string comparison.
+  useEffect(() => {
+    const keyboardShortcut = (e: KeyboardEvent) => {
+      const isShift = e.shiftKey;
+      const isA = e.code === "KeyA";
+
+      if (isShift && isA && showResultsTab) {
+        e.preventDefault();
+        setIsAiPanelOpen(!isAiPanelOpen);
+      }
+    };
+
+    window.addEventListener("keydown", keyboardShortcut);
+    return () => window.removeEventListener("keydown", keyboardShortcut);
+  }, [showResultsTab, isAiPanelOpen, setIsAiPanelOpen]);
 
   // Keyboard shortcut: Ctrl+Right to maximize
   useEffect(() => {
@@ -410,6 +436,6 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
       </Tabs>
     </div>
   );
-};;
+};
 
 export default QuestionTabs;
