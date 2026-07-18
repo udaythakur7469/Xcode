@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import ClientFABWrapper from "@/components/helperComponents/ClientFABWrapper";
 import { CommentPanelProvider } from "@/context/commentPanelContext";
 import { SocketProvider } from "@/context/socketContext";
+import { AiAnalysisPanelProvider } from "@/context/aiAnalysisPanelContext";
 
 export const metadata: Metadata = {
   title: "Xcode",
@@ -32,9 +33,11 @@ export default function RootLayout({
         >
           <SocketProvider>
             <CommentPanelProvider>
-              {children}
-              <Toaster />
-              <ClientFABWrapper />
+              <AiAnalysisPanelProvider>
+                {children}
+                <Toaster />
+                <ClientFABWrapper />
+              </AiAnalysisPanelProvider>
             </CommentPanelProvider>
           </SocketProvider>
         </ThemeProvider>
