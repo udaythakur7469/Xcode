@@ -11,10 +11,11 @@ export function SubmittedCode({
   hlLang: string;
   langLabel: string;
 }) {
-  const { setIsOpen: setIsAiPanelOpen } = useAiAnalysisPanel();
+  const { isOpen: isAiPanelOpen, setIsOpen: setIsAiPanelOpen } =
+    useAiAnalysisPanel();
 
   const handleAnalyzeWithAI = () => {
-    setIsAiPanelOpen(true);
+    setIsAiPanelOpen(!isAiPanelOpen);
   };
 
   return (
