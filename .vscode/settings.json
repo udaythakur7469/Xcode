@@ -5,6 +5,7 @@
         "autoincrement",
         "backbonejs",
         "cuid",
+        "dedup",
         "emberjs",
         "expressjs",
         "getfeedback",
