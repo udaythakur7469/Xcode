@@ -47,7 +47,7 @@ router.get("/revisionQueue", authMiddleware, readLimiter, cacheMiddleware(redis,
             `calendar:revision:user:${req.user?.userId ?? req.user?.id}`,
         ],
         includeAuth: true,
-        keyGenerator: (req) => `calendar:revision:user:${req.user?.userId ?? req.user?.id}`,
+        keyGenerator: (req) => `calendar:revision:user:${req.user?.userId ?? req.user?.id}:tz:${req.query.timezone ?? "UTC"}`,
     },
 }), getRevisionQueue);
 router.post("/markRevisionDone", authMiddleware, readLimiter, cacheMiddleware(redis, {

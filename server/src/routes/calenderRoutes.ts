@@ -92,7 +92,7 @@ router.get(
       ],
       includeAuth: true,
       keyGenerator: (req: any) =>
-        `calendar:revision:user:${req.user?.userId ?? req.user?.id}`,
+        `calendar:revision:user:${req.user?.userId ?? req.user?.id}:tz:${req.query.timezone ?? "UTC"}`,
     },
   }),
   getRevisionQueue,
