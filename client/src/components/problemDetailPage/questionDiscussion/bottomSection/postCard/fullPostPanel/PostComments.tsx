@@ -4,7 +4,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { ArrowLeft, Maximize, Minimize } from "lucide-react";
+import { ArrowLeft, Expand, Maximize, Minimize, Shrink } from "lucide-react";
 import { useCommentPanel } from "@/context/commentPanelContext";
 import { useUserStore } from "@/features/userStore";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
@@ -14,11 +14,15 @@ import CommentSystem from "./commentSystem/CommentSystem";
 type PostCommentsProps = {
   isMaximized: boolean;
   handleMaximizeMinimize: () => void;
+  isFullscreen: boolean;
+  onToggleFullscreen: () => void;
 };
 
 const PostComments: React.FC<PostCommentsProps> = ({
   isMaximized,
   handleMaximizeMinimize,
+  isFullscreen,
+  onToggleFullscreen,
 }) => {
   const { userData, checkAuth } = useUserStore();
   const { setIsOpen, postId } = useCommentPanel();
@@ -32,6 +36,39 @@ const PostComments: React.FC<PostCommentsProps> = ({
       {/* Toolbar */}
       <div className="h-[40px] bg-secondary rounded-t-md flex flex-row justify-end px-1 items-center shrink-0">
         <div className="flex justify-end mr-2 items-center">
+          {/* Toggle between Fullscreen (Expand) and Exit Fullscreen (Shrink)
+              icons — spans BOTH the left and right resizable panels, unlike
+              Maximize/Minimize below which only resizes the right panel.
+              Copied verbatim from AIAnalysisPanel.tsx (Part 5, File 4) —
+              same icons, same colors, same tooltip text. */}
+          {isFullscreen ? (
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Shrink
+                  className="ml-2 mr-2 cursor-pointer text-blue-500 hover:text-blue-600"
+                  size={20}
+                  onClick={onToggleFullscreen}
+                />
+              </HoverCardTrigger>
+              <HoverCardContent className="mr-5 p-1">
+                Exit Fullscreen
+              </HoverCardContent>
+            </HoverCard>
+          ) : (
+            <HoverCard>
+              <HoverCardTrigger asChild>
+                <Expand
+                  className="ml-2 mr-2 cursor-pointer text-blue-500 hover:text-blue-600"
+                  size={20}
+                  onClick={onToggleFullscreen}
+                />
+              </HoverCardTrigger>
+              <HoverCardContent className="mr-5 p-1">
+                Fullscreen
+              </HoverCardContent>
+            </HoverCard>
+          )}
+
           {/* Toggle between Maximize and Minimize icons */}
           {isMaximized ? (
             <HoverCard>
@@ -85,6 +122,10 @@ const PostComments: React.FC<PostCommentsProps> = ({
         openSignup={() => {
           setIsLoginOpen(false);
           setIsSignupOpen(true);
+        }}
+        openForgotPassword={() => {
+          /* Close login dialog; no separate forgot-password dialog implemented here. */
+          setIsLoginOpen(false);
         }}
         onSuccessfulAuth={checkAuth}
       />
