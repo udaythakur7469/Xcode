@@ -43,10 +43,18 @@ router.get("/potd", optionalAuthMiddleware, readLimiter, cacheMiddleware(redis, 
 router.get("/revisionQueue", authMiddleware, readLimiter, cacheMiddleware(redis, {
     ttl: 300,
     autoCache: {
-        tags: ["calendar:revision"],
+        tags: (req) => [
+            `calendar:revision:user:${req.user?.userId ?? req.user?.id}`,
+        ],
         includeAuth: true,
         keyGenerator: (req) => `calendar:revision:user:${req.user?.userId ?? req.user?.id}`,
     },
 }), getRevisionQueue);
-router.post("/markRevisionDone", authMiddleware, readLimiter, cacheMiddleware(redis, { strategy: "none" }), markRevisionDone);
+router.post("/markRevisionDone", authMiddleware, readLimiter, cacheMiddleware(redis, {
+    invalidate: {
+        tags: (req) => [
+            `calendar:revision:user:${req.user?.userId ?? req.user?.id}`,
+        ],
+    },
+}), markRevisionDone);
 export default router;

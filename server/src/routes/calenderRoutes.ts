@@ -87,7 +87,9 @@ router.get(
   cacheMiddleware(redis, {
     ttl: 300,
     autoCache: {
-      tags: ["calendar:revision"],
+      tags: (req: any) => [
+        `calendar:revision:user:${req.user?.userId ?? req.user?.id}`,
+      ],
       includeAuth: true,
       keyGenerator: (req: any) =>
         `calendar:revision:user:${req.user?.userId ?? req.user?.id}`,
@@ -100,7 +102,13 @@ router.post(
   "/markRevisionDone",
   authMiddleware,
   readLimiter,
-  cacheMiddleware(redis, { strategy: "none" }),
+  cacheMiddleware(redis, {
+    invalidate: {
+      tags: (req: any) => [
+        `calendar:revision:user:${req.user?.userId ?? req.user?.id}`,
+      ],
+    },
+  }),
   markRevisionDone,
 );
 
