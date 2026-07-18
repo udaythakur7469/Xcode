@@ -369,17 +369,30 @@ export const getRevisionQueue = async (req: any, res: any, next: any) => {
     const today = new Date();
     today.setUTCHours(23, 59, 59, 999);
 
+    // Fetch ALL due rows first — do not slice here, dedup happens before slicing
     const revisions = await prisma.problemRevision.findMany({
       where: { userId, reviewDate: { lte: today }, completed: false },
       include: { problem: { select: { title: true, difficulty: true } } },
       orderBy: { reviewDate: "asc" },
-      take: 10,
+      // NOTE: `take: 10` removed from here — was slicing BEFORE dedup,
+      // which is what let duplicate problems consume queue slots.
     });
 
     const now = new Date();
     now.setUTCHours(0, 0, 0, 0);
 
-    const result = revisions.map((r) => {
+    // Deduplicate by problemId — keep the earliest reviewDate per problem.
+    // Rows are already ordered by reviewDate asc, so the first occurrence
+    // of each problemId encountered is guaranteed to be the earliest one.
+    const seen = new Map<number, (typeof revisions)[number]>();
+    for (const r of revisions) {
+      if (!seen.has(r.problemId)) {
+        seen.set(r.problemId, r);
+      }
+    }
+    const deduplicated = Array.from(seen.values()).slice(0, 10);
+
+    const result = deduplicated.map((r) => {
       const dueDate = new Date(r.reviewDate);
       dueDate.setUTCHours(0, 0, 0, 0);
       const diffDays = Math.round(
@@ -405,6 +418,63 @@ export const getRevisionQueue = async (req: any, res: any, next: any) => {
     res.status(200).json(result);
   } catch (error) {
     logger.error("Error fetching revision queue:", error);
+    next(error);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /calendar/markRevisionDone?title=<problemTitle>
+//
+// Marks ALL due (completed: false) ProblemRevision rows for this user +
+// problem as completed in a single updateMany. This is what lets the
+// deduplicated queue entry (above) fully clear in one user action, no
+// matter how many +1/+7/+30-day rows were due for that problem.
+//
+// Guard: the user must already have an accepted Submission for this
+// problem. The frontend also locks the button until a correct submission
+// happens in the current session, but this is checked again server-side
+// so the endpoint can't be called directly to skip that requirement.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const markRevisionDone = async (req: any, res: any, next: any) => {
+  const userId = req.user?.userId ?? req.user?.id;
+  if (!userId) return next(createHttpError.Unauthorized());
+
+  const { title } = req.query;
+  if (!title || typeof title !== "string")
+    return next(createHttpError.BadRequest("title query param is required"));
+
+  try {
+    const problem = await prisma.problem.findFirst({
+      where: { title: { equals: title, mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (!problem) return next(createHttpError.NotFound("Problem not found"));
+
+    // Safety guard — user must have at least one accepted submission
+    const acceptedSubmission = await prisma.submission.findFirst({
+      where: { userId, problemId: problem.id, status: "accepted" },
+      select: { id: true },
+    });
+    if (!acceptedSubmission) {
+      return res.status(403).json({
+        message:
+          "Solve the problem correctly before marking revision as done",
+      });
+    }
+
+    // Mark ALL due revisions for this user + problem as completed at once
+    const result = await prisma.problemRevision.updateMany({
+      where: { userId, problemId: problem.id, completed: false },
+      data: { completed: true },
+    });
+
+    res.status(200).json({
+      message: "Revision marked as done",
+      revisionsCompleted: result.count,
+    });
+  } catch (error) {
+    logger.error("Error marking revision as done:", error);
     next(error);
   }
 };
