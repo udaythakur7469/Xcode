@@ -1,6 +1,7 @@
 import prisma from "../configs/db.js";
 import createHttpError from "http-errors";
 import logger from "../configs/loggerConfig.js";
+import { getLocalDayBoundsUtc, localDayDiff } from "../utils/timezoneutil.js";
 
 /** Parse "YYYY-MM-DD" into a UTC midnight Date */
 function parseIso(iso: string): Date {
@@ -365,9 +366,16 @@ export const getRevisionQueue = async (req: any, res: any, next: any) => {
   const userId = req.user?.userId ?? req.user?.id;
   if (!userId) return next(createHttpError.Unauthorized());
 
+  // e.g. "Asia/Kolkata", "America/New_York", "Europe/London" — sent by the
+  // client via Intl.DateTimeFormat().resolvedOptions().timeZone. Falls back
+  // to UTC internally (in getLocalDayBoundsUtc/localDayDiff) if missing or
+  // invalid, so this is safe even for old clients that don't send it yet.
+  const timezone =
+    typeof req.query.timezone === "string" ? req.query.timezone : undefined;
+
   try {
-    const today = new Date();
-    today.setUTCHours(23, 59, 59, 999);
+    const nowInstant = new Date();
+    const { endUtc: today } = getLocalDayBoundsUtc(nowInstant, timezone);
 
     // Fetch ALL due rows first — do not slice here, dedup happens before slicing
     const revisions = await prisma.problemRevision.findMany({
@@ -377,9 +385,6 @@ export const getRevisionQueue = async (req: any, res: any, next: any) => {
       // NOTE: `take: 10` removed from here — was slicing BEFORE dedup,
       // which is what let duplicate problems consume queue slots.
     });
-
-    const now = new Date();
-    now.setUTCHours(0, 0, 0, 0);
 
     // Deduplicate by problemId — keep the earliest reviewDate per problem.
     // Rows are already ordered by reviewDate asc, so the first occurrence
@@ -393,11 +398,9 @@ export const getRevisionQueue = async (req: any, res: any, next: any) => {
     const deduplicated = Array.from(seen.values()).slice(0, 10);
 
     const result = deduplicated.map((r) => {
-      const dueDate = new Date(r.reviewDate);
-      dueDate.setUTCHours(0, 0, 0, 0);
-      const diffDays = Math.round(
-        (now.getTime() - dueDate.getTime()) / 86_400_000,
-      );
+      // Local calendar-day difference between "now" and this revision's
+      // due date, in the user's own timezone.
+      const diffDays = localDayDiff(nowInstant, r.reviewDate, timezone);
       const isOverdue = diffDays > 0;
 
       let dueDateStr: string;
@@ -458,8 +461,7 @@ export const markRevisionDone = async (req: any, res: any, next: any) => {
     });
     if (!acceptedSubmission) {
       return res.status(403).json({
-        message:
-          "Solve the problem correctly before marking revision as done",
+        message: "Solve the problem correctly before marking revision as done",
       });
     }
 
