@@ -126,6 +126,25 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   // already the only animation that should be visible.
   const [overlayPositionAnimated, setOverlayPositionAnimated] = useState(false);
 
+  // Whether each overlay should still be rendered/visible. Unlike
+  // isAiPanelOpen/isCommentPanelOpen (which flip instantly), these stay
+  // `true` for the duration of the 0.5s closing animation and only drop
+  // to `false` once framer-motion actually finishes animating the panel
+  // off-screen (see onAnimationComplete below). Without this, the
+  // `visibility: hidden` / `pointerEvents: none` styles used to flip the
+  // instant isOpen state changed, which hid the panel in the very same
+  // frame the close animation started — making the animation invisible.
+  const [isAiPanelVisible, setIsAiPanelVisible] = useState(isAiPanelOpen);
+  const [isCommentPanelVisible, setIsCommentPanelVisible] =
+    useState(isCommentPanelOpen);
+
+  useEffect(() => {
+    if (isAiPanelOpen) setIsAiPanelVisible(true);
+  }, [isAiPanelOpen]);
+
+  useEffect(() => {
+    if (isCommentPanelOpen) setIsCommentPanelVisible(true);
+  }, [isCommentPanelOpen]);
   // Measures the right panel's real position/size and keeps the two state
   // values above in sync.
   //
@@ -816,12 +835,18 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             ? { type: "tween", duration: 0.5, ease: "easeInOut" }
             : { duration: 0 }
         }
+        onAnimationComplete={() => {
+          // Only hide once the CLOSE animation finishes — if the panel
+          // was reopened mid-close, isCommentPanelOpen will be true again
+          // and this must not hide it.
+          if (!isCommentPanelOpen) setIsCommentPanelVisible(false);
+        }}
         className={`absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg ${
-          isCommentPanelOpen ? "border" : ""
+          isCommentPanelVisible ? "border" : ""
         }`}
         style={{
           pointerEvents: isCommentPanelOpen ? "auto" : "none",
-          visibility: isCommentPanelOpen ? "visible" : "hidden",
+          visibility: isCommentPanelVisible ? "visible" : "hidden",
         }}
       >
         <PostComments
@@ -853,12 +878,18 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             ? { type: "tween", duration: 0.5, ease: "easeInOut" }
             : { duration: 0 }
         }
+        onAnimationComplete={() => {
+          // Only hide once the CLOSE animation finishes — if the panel
+          // was reopened mid-close, isAiPanelOpen will be true again and
+          // this must not hide it.
+          if (!isAiPanelOpen) setIsAiPanelVisible(false);
+        }}
         className={`absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg ${
-          isAiPanelOpen ? "border" : ""
+          isAiPanelVisible ? "border" : ""
         }`}
         style={{
           pointerEvents: isAiPanelOpen ? "auto" : "none",
-          visibility: isAiPanelOpen ? "visible" : "hidden",
+          visibility: isAiPanelVisible ? "visible" : "hidden",
         }}
       >
         <AIAnalysisPanel
