@@ -22,9 +22,6 @@ import { useSearchParams } from "next/navigation";
 import { useSubmissionStore } from "@/features/submissionStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useCommentPanel } from "@/context/commentPanelContext";
-import PostComments from "../../questionDiscussion/bottomSection/postCard/fullPostPanel/PostComments";
-import { AnimatePresence, motion } from "framer-motion";
 
 type CodeEditorProps = {
   onCodeSubmit?: () => void;
@@ -297,8 +294,9 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
       const isControl = e.ctrlKey || e.metaKey;
       const isLeftArrow = e.key === "ArrowLeft";
 
-      // Ctrl + Right Arrow to maximize (when not maximized)
-      if (isControl && isLeftArrow && !isMaximized) {
+      // Exclude Shift so this doesn't also fire on Ctrl/Cmd+Shift+←, which
+      // is the AI Analysis / Post Comments fullscreen shortcut.
+      if (isControl && isLeftArrow && !isMaximized && !e.shiftKey) {
         e.preventDefault();
         e.stopPropagation();
         handleMaximizeMinimize();
@@ -352,26 +350,8 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   };
 
-  const { isOpen } = useCommentPanel();
-
   return (
     <div className="h-full w-full flex flex-col">
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "tween", duration: 0.3, ease: "easeInOut" }}
-            className="absolute inset-0 z-[40]"
-          >
-            <PostComments
-              isMaximized={isMaximized}
-              handleMaximizeMinimize={handleMaximizeMinimize}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
       <>
         {/* Toolbar */}
         <div className="h-[40px] bg-secondary rounded-md flex flex-row justify-between px-1 items-center">
