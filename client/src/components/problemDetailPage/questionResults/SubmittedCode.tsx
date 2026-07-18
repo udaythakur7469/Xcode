@@ -1,5 +1,6 @@
 import React from "react";
 import { CollapsibleCode } from "../helperComponents/CollapsibleCode";
+import { useAiAnalysisPanel } from "@/context/aiAnalysisPanelContext";
 
 export function SubmittedCode({
   code,
@@ -10,10 +11,10 @@ export function SubmittedCode({
   hlLang: string;
   langLabel: string;
 }) {
+  const { setIsOpen: setIsAiPanelOpen } = useAiAnalysisPanel();
+
   const handleAnalyzeWithAI = () => {
-    // AI panel is explicitly out of scope for this redesign — button only,
-    // per spec. Wired as a no-op placeholder so a future AI feature can
-    // hook in here without touching this component's layout again.
+    setIsAiPanelOpen(true);
   };
 
   return (
