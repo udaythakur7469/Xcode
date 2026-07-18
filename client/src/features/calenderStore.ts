@@ -3,6 +3,20 @@ import axios from "@/lib/axiosInstance";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+/**
+ * Browser's IANA timezone (e.g. "Asia/Kolkata", "America/New_York").
+ * Sent to the server so "due today" is computed against the user's local
+ * calendar day instead of the server's UTC day. Falls back to undefined
+ * (server then defaults to UTC) if Intl isn't available for some reason.
+ */
+function getBrowserTimeZone(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    return undefined;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -300,7 +314,9 @@ export const useCalendarStore = create<CalendarState>()((set, get) => ({
   fetchRevisionQueue: async () => {
     set({ isLoadingRevision: true });
     try {
-      const res = await axios.get(`${API_URL}/calendar/revisionQueue`);
+      const res = await axios.get(`${API_URL}/calendar/revisionQueue`, {
+        params: { timezone: getBrowserTimeZone() },
+      });
       set({
         revisionQueue: res.data as RevisionQueueItem[],
         isLoadingRevision: false,
@@ -313,7 +329,9 @@ export const useCalendarStore = create<CalendarState>()((set, get) => ({
   checkIfProblemInRevisionQueue: async (problemTitle) => {
     set({ isCheckingRevisionQueue: true });
     try {
-      const res = await axios.get(`${API_URL}/calendar/revisionQueue`);
+      const res = await axios.get(`${API_URL}/calendar/revisionQueue`, {
+        params: { timezone: getBrowserTimeZone() },
+      });
       const queue = res.data as RevisionQueueItem[];
       const isIn = queue.some(
         (item) => item.title.toLowerCase() === problemTitle.toLowerCase(),
