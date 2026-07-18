@@ -824,8 +824,13 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
             ? { type: "tween", duration: 0.3, ease: "easeInOut" }
             : { duration: 0 }
         }
-        className="absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg border"
-        style={{ pointerEvents: isAiPanelOpen ? "auto" : "none" }}
+        className={`absolute top-0 bottom-0 z-[40] overflow-hidden rounded-lg ${
+          isCommentPanelOpen ? "border" : ""
+        }`}
+        style={{
+          pointerEvents: isCommentPanelOpen ? "auto" : "none",
+          visibility: isCommentPanelOpen ? "visible" : "hidden",
+        }}
       >
         <AIAnalysisPanel
           isMaximized={isRightMaximized}
