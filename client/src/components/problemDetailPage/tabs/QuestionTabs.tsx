@@ -167,7 +167,9 @@ const QuestionTabs: React.FC<QuestionTabsProps> = ({
     const keyboardShortcut = (e: KeyboardEvent) => {
       const isControl = e.ctrlKey || e.metaKey;
       const isRightArrow = e.key === "ArrowRight";
-      if (isControl && isRightArrow && !isMaximized) {
+      // Exclude Shift so this doesn't also fire on Ctrl/Cmd+Shift+→, which
+      // is the AI Analysis / Post Comments exit-fullscreen shortcut.
+      if (isControl && isRightArrow && !isMaximized && !e.shiftKey) {
         e.preventDefault();
         handleMaximizeMinimize();
       }
