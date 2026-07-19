@@ -292,7 +292,7 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                     <Keyboard className="h-4 w-4" />
                   </div>
                 </DialogTrigger>
-                <ShortcutDialog />
+                <ShortcutDialog open={isShortcutDialogOpen} />
               </Dialog>
               <MenubarMenu>
                 {isUserAuthenticated ? (
