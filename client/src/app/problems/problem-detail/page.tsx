@@ -12,6 +12,7 @@ import {
   getLastActiveProblemTitle,
   setLastActiveProblemTitle,
 } from "@/features/submissionStore";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 const ProblemDetailsPage: React.FC = () => {
   useProblemContext();
@@ -32,6 +33,8 @@ const ProblemDetailsPage: React.FC = () => {
   // how the user got here.
   const searchParams = useSearchParams();
   const problemTitle = searchParams.get("title");
+
+  useDocumentTitle(problemTitle ? `${problemTitle} | Xcode` : null);
 
   useEffect(() => {
     if (!problemTitle) return;
