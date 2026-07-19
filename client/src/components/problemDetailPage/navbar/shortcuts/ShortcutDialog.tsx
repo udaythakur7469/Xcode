@@ -1,26 +1,79 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { Search, Keyboard as KeyboardIcon, X } from "lucide-react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
+import { Search, Keyboard as KeyboardIcon, X, Zap, Menu } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
+  DialogClose,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { shortcutCategories, shortcuts, type Shortcut } from "./ShortcutData";
+import {
+  shortcutCategories,
+  shortcuts,
+  type Shortcut,
+  type ShortcutCategoryId,
+} from "./ShortcutData";
 
 type ShortcutDialogProps = {};
+
+const ARROW_GLYPHS = ["🡲", "🡰", "🡱", "🡳"];
+
+// ── Live shortcut detection helpers ────────────────────────────────────
+// Normalizes a raw KeyboardEvent into the same label vocabulary used in
+// ShortcutData.tsx (e.g. "Ctrl", "Spacebar", "🡲") so the keys the user is
+// physically pressing can be matched against the shortcut list.
+const normalizeEventKey = (key: string): string => {
+  switch (key) {
+    case " ":
+      return "Spacebar";
+    case "ArrowRight":
+      return "🡲";
+    case "ArrowLeft":
+      return "🡰";
+    case "ArrowUp":
+      return "🡱";
+    case "ArrowDown":
+      return "🡳";
+    default:
+      return key.length === 1 ? key.toUpperCase() : key;
+  }
+};
+
+const MODIFIER_KEYS = new Set(["Control", "Alt", "Shift", "Meta"]);
+
+const keysMatch = (a: string[], b: Set<string>) => {
+  if (a.length !== b.size) return false;
+  return a.every((k) => b.has(k.toLowerCase()));
+};
 
 // Renders one keycap. A couple of keys carry an arrow glyph that reads a
 // touch small next to "Ctrl"/"Alt" at the default kbd font size, so those
 // get a slightly larger glyph size to sit visually level with the rest.
-const KeyCap: React.FC<{ label: string }> = ({ label }) => {
-  const isArrow = ["🡲", "🡰", "🡱", "🡳"].includes(label);
+// Every keycap also gets a "physically pressed" inset-shadow treatment on
+// hover (and while it's part of a live-detected match), so the reference
+// list reads as real, pressable keys rather than flat labels.
+const KeyCap: React.FC<{ label: string; pressed?: boolean }> = ({
+  label,
+  pressed,
+}) => {
+  const isArrow = ARROW_GLYPHS.includes(label);
   return (
     <kbd
-      className={`inline-flex min-w-[1.75rem] items-center justify-center rounded-md border border-border bg-secondary px-2 py-1 text-xs font-semibold text-foreground shadow-sm ${
+      className={`inline-flex min-w-[1.75rem] items-center justify-center rounded-md border border-border bg-secondary px-2 py-1 text-xs font-semibold text-foreground shadow-sm transition-all duration-100 hover:translate-y-px hover:shadow-[inset_0_2px_3px_rgba(0,0,0,0.25)] hover:bg-secondary/80 ${
         isArrow ? "text-sm" : ""
+      } ${
+        pressed
+          ? "translate-y-px border-blue-400 bg-blue-100 text-blue-700 shadow-[inset_0_2px_3px_rgba(0,0,0,0.25)] dark:border-blue-500 dark:bg-blue-950/50 dark:text-blue-300"
+          : ""
       }`}
     >
       {label}
@@ -28,11 +81,14 @@ const KeyCap: React.FC<{ label: string }> = ({ label }) => {
   );
 };
 
-const KeyCombo: React.FC<{ keys: string[] }> = ({ keys }) => (
+const KeyCombo: React.FC<{ keys: string[]; pressed?: boolean }> = ({
+  keys,
+  pressed,
+}) => (
   <div className="flex shrink-0 items-center gap-1">
     {keys.map((key, i) => (
       <React.Fragment key={i}>
-        <KeyCap label={key} />
+        <KeyCap label={key} pressed={pressed} />
         {i < keys.length - 1 && (
           <span className="text-xs text-muted-foreground">+</span>
         )}
@@ -41,34 +97,63 @@ const KeyCombo: React.FC<{ keys: string[] }> = ({ keys }) => (
   </div>
 );
 
-const ShortcutRow: React.FC<{ shortcut: Shortcut }> = ({ shortcut }) => {
+const ShortcutRow = React.forwardRef<
+  HTMLDivElement,
+  { shortcut: Shortcut; detected?: boolean; compact?: boolean }
+>(({ shortcut, detected, compact }, ref) => {
   const Icon = shortcut.icon;
   return (
-    <div className="group flex items-center justify-between gap-4 rounded-md px-3 py-2.5 transition-colors hover:bg-secondary">
+    <div
+      ref={ref}
+      className={`group flex items-center justify-between gap-4 rounded-md px-3 py-2.5 transition-colors duration-300 hover:bg-secondary ${
+        detected
+          ? "bg-blue-50 ring-1 ring-blue-400 dark:bg-blue-950/30 dark:ring-blue-500"
+          : ""
+      }`}
+    >
       <div className="flex min-w-0 items-center gap-3">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground transition-colors group-hover:text-blue-500">
+        <div
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-secondary text-muted-foreground transition-colors group-hover:text-blue-500 ${
+            detected ? "text-blue-500" : ""
+          }`}
+        >
           <Icon className="h-3.5 w-3.5" />
         </div>
         <div className="min-w-0">
           <p className="truncate text-sm font-medium leading-snug text-foreground">
             {shortcut.name}
           </p>
-          {shortcut.note && (
+          {shortcut.note && !compact && (
             <p className="truncate text-xs leading-snug text-muted-foreground">
               {shortcut.note}
             </p>
           )}
         </div>
       </div>
-      <KeyCombo keys={shortcut.keys} />
+      <KeyCombo keys={shortcut.keys} pressed={detected} />
     </div>
   );
-};
+});
+ShortcutRow.displayName = "ShortcutRow";
+
+const PINNED_SECTION_ID = "most-useful";
 
 const ShortcutDialog: React.FC<ShortcutDialogProps> = () => {
   const [query, setQuery] = useState("");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [activeCategory, setActiveCategory] = useState<
+    ShortcutCategoryId | typeof PINNED_SECTION_ID
+  >(PINNED_SECTION_ID);
+  const [detectedId, setDetectedId] = useState<string | null>(null);
+
+  const contentRef = useRef<HTMLDivElement>(null);
+  const rowRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const detectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const normalizedQuery = query.trim().toLowerCase();
+  const isSearching = normalizedQuery.length > 0;
+
+  const pinnedShortcuts = useMemo(() => shortcuts.filter((s) => s.pinned), []);
 
   const filteredByCategory = useMemo(() => {
     const matches = (s: Shortcut) => {
@@ -94,19 +179,123 @@ const ShortcutDialog: React.FC<ShortcutDialogProps> = () => {
     0,
   );
 
+  // ── Live shortcut detection ──────────────────────────────────────────
+  // While the dialog is open, listen for real key presses. If the held
+  // combo matches a shortcut in the list, light up that row and scroll it
+  // into view — turning the reference list into something testable.
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (MODIFIER_KEYS.has(e.key)) return;
+
+    const held: string[] = [];
+    if (e.ctrlKey || e.metaKey) held.push("Ctrl");
+    if (e.altKey) held.push("Alt");
+    if (e.shiftKey) held.push("Shift");
+    held.push(normalizeEventKey(e.key));
+
+    const heldSet = new Set(held.map((k) => k.toLowerCase()));
+    // Only combos with at least one modifier should be matched, so plain
+    // typing in the search box never gets hijacked.
+    const hasModifier = held.length > 1;
+    if (!hasModifier) return;
+
+    const match = shortcuts.find((s) => keysMatch(s.keys, heldSet));
+    if (!match) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+
+    setDetectedId(match.id);
+    setActiveCategory(match.category);
+
+    if (detectTimeoutRef.current) clearTimeout(detectTimeoutRef.current);
+    detectTimeoutRef.current = setTimeout(() => setDetectedId(null), 1400);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown, true); // capture phase
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      if (detectTimeoutRef.current) clearTimeout(detectTimeoutRef.current);
+    };
+  }, [handleKeyDown]);
+
+  // Dialog Content remounts fresh every time the dialog opens (Radix
+  // unmounts closed dialogs), so this runs once per open — pin the
+  // scroll position to the very top instead of wherever it happened to
+  // land, which otherwise could read as "opens scrolled to the bottom"
+  // once the intersection observer below picks its initial active section.
+  useEffect(() => {
+    contentRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    setActiveCategory(PINNED_SECTION_ID);
+  }, []);
+
+  useEffect(() => {
+    if (!detectedId) return;
+    const el = rowRefs.current[detectedId];
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [detectedId]);
+
+  // ── Sidebar category nav ─────────────────────────────────────────────
+  const handleJumpToCategory = (
+    id: ShortcutCategoryId | typeof PINNED_SECTION_ID,
+  ) => {
+    setActiveCategory(id);
+    const el = document.getElementById(`shortcut-category-${id}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  useEffect(() => {
+    if (isSearching) return;
+    const container = contentRef.current;
+    if (!container) return;
+
+    const sectionIds: (ShortcutCategoryId | typeof PINNED_SECTION_ID)[] = [
+      ...(pinnedShortcuts.length > 0 ? [PINNED_SECTION_ID] : []),
+      ...shortcutCategories.map((c) => c.id),
+    ];
+    const sectionEls = sectionIds
+      .map((id) => document.getElementById(`shortcut-category-${id}`))
+      .filter((el): el is HTMLElement => el !== null);
+    if (sectionEls.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length > 0) {
+          const id = visible[0].target.id.replace("shortcut-category-", "");
+          setActiveCategory(
+            id as ShortcutCategoryId | typeof PINNED_SECTION_ID,
+          );
+        }
+      },
+      { root: container, rootMargin: "0px 0px -65% 0px", threshold: 0 },
+    );
+
+    sectionEls.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [isSearching, pinnedShortcuts.length]);
+
   return (
-    <DialogContent className="flex max-h-[80vh] max-w-2xl flex-col gap-0 overflow-hidden p-0">
+    <DialogContent className="flex max-h-[80vh] w-[100vw] max-w-6xl flex-col gap-0 overflow-hidden p-0">
+      <DialogClose className="absolute right-4 top-4 z-10 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:bg-accent hover:text-foreground hover:opacity-100">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogClose>
       <DialogHeader className="shrink-0 border-b border-border px-6 pb-4 pt-6">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
             <KeyboardIcon className="h-4 w-4" />
           </div>
           <div className="min-w-0 text-left">
-            <DialogTitle className="text-lg font-semibold leading-tight">
+            <DialogTitle className="text-lg font-semibold leading-tight mb-1">
               Keyboard Shortcuts
             </DialogTitle>
             <p className="text-xs text-muted-foreground">
-              {shortcuts.length} shortcuts to help you move faster
+              {shortcuts.length} shortcuts to help you move faster — try
+              pressing one
             </p>
           </div>
         </div>
@@ -132,44 +321,161 @@ const ShortcutDialog: React.FC<ShortcutDialogProps> = () => {
         </div>
       </DialogHeader>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3 scrollbar-transparent">
-        {totalMatches === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-muted-foreground">
-              <Search className="h-4 w-4" />
-            </div>
-            <p className="text-sm font-medium text-foreground">
-              No shortcuts match &quot;{query}&quot;
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Try searching by action name or a key like &quot;Ctrl&quot;
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {filteredByCategory.map(({ category, items }) => {
-              const CategoryIcon = category.icon;
-              return (
-                <div key={category.id}>
-                  <div className="mb-1 flex items-center gap-2 px-3 py-1">
-                    <CategoryIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {category.label}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* ── Sidebar category nav ───────────────────────────────────── */}
+        {!isSearching && (
+          <AnimatePresence initial={false}>
+            {isSidebarOpen && (
+              <motion.div
+                key="shortcut-sidebar"
+                initial={{ width: 0, x: -16, opacity: 0 }}
+                animate={{ width: 224, x: 0, opacity: 1 }}
+                exit={{ width: 0, x: -16, opacity: 0 }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="shrink-0 overflow-hidden border-r border-border"
+              >
+                <div className="flex h-full w-56 flex-col">
+                  <div className="flex items-center justify-between px-3 py-3 border-b border-border">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Categories
                     </span>
-                    <span className="text-xs text-muted-foreground/60">
-                      {items.length}
-                    </span>
+                    <button
+                      onClick={() => setIsSidebarOpen(false)}
+                      className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                      title="Hide categories"
+                    >
+                      <X size={13} />
+                    </button>
                   </div>
-                  <div className="space-y-0.5">
-                    {items.map((shortcut) => (
-                      <ShortcutRow key={shortcut.id} shortcut={shortcut} />
-                    ))}
-                  </div>
+                  <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5 scrollbar-transparent">
+                    {pinnedShortcuts.length > 0 && (
+                      <>
+                        <button
+                          onClick={() =>
+                            handleJumpToCategory(PINNED_SECTION_ID)
+                          }
+                          className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs leading-snug transition-colors ${
+                            activeCategory === PINNED_SECTION_ID
+                              ? "bg-blue-50 font-medium text-blue-600 dark:bg-blue-950/30 dark:text-blue-400"
+                              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                          }`}
+                        >
+                          <Zap className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                          <span className="truncate">Most Useful</span>
+                        </button>
+                      </>
+                    )}
+                    {shortcutCategories.map((category) => {
+                      const CategoryIcon = category.icon;
+                      const isActive = activeCategory === category.id;
+                      return (
+                        <button
+                          key={category.id}
+                          onClick={() => handleJumpToCategory(category.id)}
+                          className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs leading-snug transition-colors ${
+                            isActive
+                              ? "bg-blue-50 font-medium text-blue-600 dark:bg-blue-950/30 dark:text-blue-400"
+                              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                          }`}
+                        >
+                          <CategoryIcon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{category.label}</span>
+                        </button>
+                      );
+                    })}
+                  </nav>
                 </div>
-              );
-            })}
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
+
+        {/* ── Content ─────────────────────────────────────────────────── */}
+        <div
+          ref={contentRef}
+          className="relative flex-1 overflow-y-auto px-4 py-3 scrollbar-transparent"
+        >
+          {!isSearching && !isSidebarOpen && (
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="mb-3 flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title="Show categories"
+            >
+              <Menu size={13} />
+              Categories
+            </button>
+          )}
+
+          {/* ── Most Useful pinned row ──────────────────────────────── */}
+          {!isSearching && pinnedShortcuts.length > 0 && (
+            <div id={`shortcut-category-${PINNED_SECTION_ID}`} className="mb-5">
+              <div className="mb-1 flex items-center gap-2 px-3 py-1">
+                <Zap className="h-3.5 w-3.5 text-amber-500" />
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Most Useful
+                </span>
+              </div>
+              <div className="space-y-0.5">
+                {pinnedShortcuts.map((shortcut) => (
+                  <ShortcutRow
+                    key={`pinned-${shortcut.id}`}
+                    shortcut={shortcut}
+                    detected={detectedId === shortcut.id}
+                    compact
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {totalMatches === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+                <Search className="h-4 w-4" />
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                No shortcuts match &quot;{query}&quot;
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Try searching by action name or a key like &quot;Ctrl&quot;
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {filteredByCategory.map(({ category, items }) => {
+                const CategoryIcon = category.icon;
+                return (
+                  <div
+                    key={category.id}
+                    id={`shortcut-category-${category.id}`}
+                  >
+                    <div className="mb-1 flex items-center gap-2 px-3 py-1">
+                      <CategoryIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {category.label}
+                      </span>
+                      <span className="text-xs text-muted-foreground/60">
+                        {items.length}
+                      </span>
+                    </div>
+                    <div className="space-y-0.5">
+                      {items.map((shortcut) => (
+                        <ShortcutRow
+                          key={shortcut.id}
+                          shortcut={shortcut}
+                          detected={detectedId === shortcut.id}
+                          ref={(el) => {
+                            rowRefs.current[shortcut.id] = el;
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="shrink-0 border-t border-border px-6 py-3">
