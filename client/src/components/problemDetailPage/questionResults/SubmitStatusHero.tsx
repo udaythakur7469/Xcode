@@ -1,7 +1,7 @@
 import React from "react";
 import type { SubmitCodeSuccess, SubmitCodeError } from "@/features/submissionStore";
 import { getStatusCfg } from "@/lib/share/getStatusConfig";
-import { StatusHeader } from "../helperComponents/StatusHeader";
+import { StatusHeader } from "../helperComponents/codeSubmission/StatusHeader";
 
 export function ProgressBar({
   passed,
