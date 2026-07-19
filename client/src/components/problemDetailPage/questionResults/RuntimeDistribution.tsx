@@ -10,7 +10,7 @@ import {
 } from "recharts";
 import type { RuntimeBucket } from "@/features/submissionStore";
 import { getLanguageConfig } from "@/lib/share/languageConfig";
-import { SectionLabel } from "../helperComponents/ResultAtoms";
+import { SectionLabel } from "../helperComponents/codeSubmission/ResultAtoms";
 
 const USER_BUCKET_COLOR = "#22C55E";
 const NEUTRAL_BUCKET_COLOR = "#64748B";
