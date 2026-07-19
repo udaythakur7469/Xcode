@@ -1,8 +1,11 @@
 import React from "react";
 import type { FailedTestCase } from "@/features/submissionStore";
 import type { StatusCfg } from "@/lib/share/getStatusConfig";
-import { STATUS_ICON_MAP } from "../helperComponents/statusIcons";
-import { PlainCodeBlock, SectionLabel } from "../helperComponents/ResultAtoms";
+import { STATUS_ICON_MAP } from "../helperComponents/codeSubmission/statusIcons";
+import {
+  PlainCodeBlock,
+  SectionLabel,
+} from "../helperComponents/codeSubmission/ResultAtoms";
 
 export function ErrorPanel({
   ft,
