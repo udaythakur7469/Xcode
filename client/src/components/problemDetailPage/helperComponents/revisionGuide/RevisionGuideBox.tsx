@@ -21,6 +21,7 @@ const SECTIONS = [
 
 const RevisionGuideBox: React.FC<RevisionGuideBoxProps> = () => {
   const contentRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState("overview");
 
@@ -72,6 +73,36 @@ const RevisionGuideBox: React.FC<RevisionGuideBoxProps> = () => {
     sectionEls.forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
+  }, []);
+
+  // Size the trailing spacer to exactly however much extra scroll room
+  // the last section needs to reach the top of the viewport when
+  // clicked — no more. Without this, the container's maximum scroll
+  // position could fall short of that target (leaving the last section
+  // stuck partway down); a flat oversized spacer would overshoot it
+  // instead, leaving dead space visible once scrolled all the way down.
+  useEffect(() => {
+    const container = contentRef.current;
+    const spacer = spacerRef.current;
+    if (!container || !spacer) return;
+
+    const recalculate = () => {
+      spacer.style.height = "0px";
+
+      const lastSection = SECTIONS[SECTIONS.length - 1];
+      const lastEl = document.getElementById(lastSection.id);
+      if (!lastEl) return;
+
+      const target = lastEl.offsetTop - container.offsetTop - 24;
+      const maxScroll = container.scrollHeight - container.clientHeight;
+      const needed = target - maxScroll;
+
+      spacer.style.height = needed > 0 ? `${needed}px` : "0px";
+    };
+
+    recalculate();
+    window.addEventListener("resize", recalculate);
+    return () => window.removeEventListener("resize", recalculate);
   }, []);
 
   return (
@@ -574,7 +605,7 @@ const RevisionGuideBox: React.FC<RevisionGuideBoxProps> = () => {
             up when it&apos;s due. Happy revising 🚀
           </p>
         </div>
-        <div aria-hidden="true" className="h-[50vh]" />
+        <div ref={spacerRef} aria-hidden="true" />
       </div>
     </div>
   );
