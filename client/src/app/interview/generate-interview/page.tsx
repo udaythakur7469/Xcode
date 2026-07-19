@@ -1,5 +1,10 @@
-import React, { useEffect } from "react";
+import React from "react";
 import InterviewGeneration from "@/components/interviewPage/interviewGenerationPage/InterviewGeneration";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Generate Interview | Xcode",
+};
 
 type pageProps = {};
 
