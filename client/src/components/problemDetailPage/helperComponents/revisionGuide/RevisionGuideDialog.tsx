@@ -13,7 +13,7 @@ const RevisionGuideDialog: React.FC<RevisionGuideDialogProps> = ({
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl w-[100vw]">
+      <DialogContent className="max-w-6xl w-[100vw] p-0">
         <VisuallyHidden.Root>
           <DialogTitle>Revision system guide</DialogTitle>
         </VisuallyHidden.Root>
