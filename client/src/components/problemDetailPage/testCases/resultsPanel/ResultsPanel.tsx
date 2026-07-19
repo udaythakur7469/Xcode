@@ -18,8 +18,8 @@ import { RunTestCase } from "./RunTestCase";
 import { RunErrorPanel } from "./RunErrorPanel";
 import { RunMetadata } from "./RunMetadata";
 import { RunSubmittedCode } from "./RunSubmittedCode";
-import { RiseIn } from "../../helperComponents/StatusHeader";
-import { Divider } from "../../helperComponents/ResultAtoms";
+import { RiseIn } from "../../helperComponents/codeSubmission/StatusHeader";
+import { Divider } from "../../helperComponents/codeSubmission/ResultAtoms";
 
 SyntaxHighlighter.registerLanguage("cpp", cpp);
 SyntaxHighlighter.registerLanguage("java", java);
