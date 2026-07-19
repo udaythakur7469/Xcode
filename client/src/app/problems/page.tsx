@@ -9,6 +9,7 @@ import { useCalendarStore } from "@/features/calenderStore";
 import ProblemCalendar from "@/components/problemsPage/analyticsPanel/ProblemCalender";
 import PotdCard from "@/components/problemsPage/analyticsPanel/PotdCard";
 import RevisionQueue from "@/components/problemsPage/analyticsPanel/RevisionQueue";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 const analyticsPanelVariants = {
   hidden: { width: 0, opacity: 0, x: 24 },
@@ -36,6 +37,8 @@ const analyticsPanelVariants = {
 
 const ProblemsPage: React.FC = () => {
   const isAnalyticsPanelOpen = useCalendarStore((s) => s.isAnalyticsPanelOpen);
+
+  useDocumentTitle("My Problems | Xcode");
 
   return (
     <>
