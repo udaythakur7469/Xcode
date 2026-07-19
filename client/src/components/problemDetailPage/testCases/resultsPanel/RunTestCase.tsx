@@ -1,6 +1,12 @@
 import React from "react";
 import type { RunCodeSuccess, RunCodeError } from "@/features/submissionStore";
-import { formatMemoryKB, formatRuntimeSeconds, InfoChip, PlainCodeBlock, SectionLabel } from "../../helperComponents/ResultAtoms";
+import {
+  formatMemoryKB,
+  formatRuntimeSeconds,
+  InfoChip,
+  PlainCodeBlock,
+  SectionLabel,
+} from "../../helperComponents/codeSubmission/ResultAtoms";
 
 export function RunTestCase({
   result,
