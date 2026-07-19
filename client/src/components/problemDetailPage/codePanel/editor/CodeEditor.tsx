@@ -23,6 +23,7 @@ import { useSubmissionStore } from "@/features/submissionStore";
 import { useCalendarStore } from "@/features/calenderStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import RevisionInfoButton from "../../helperComponents/revisionGuide/RevisionInforButton";
 
 type CodeEditorProps = {
   onCodeSubmit?: () => void;
@@ -510,25 +511,30 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             </Button>
 
             {isInRevisionQueue && (
-              <HoverCard>
-                <HoverCardTrigger asChild>
-                  <Button
-                    className="bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-                    onClick={handleMarkRevisionDone}
-                    disabled={revisionButtonDisabled}
-                  >
-                    {isRevisionDone && (
-                      <CheckCheck size={15} strokeWidth={2.5} />
-                    )}
-                    {revisionButtonLabel}
-                  </Button>
-                </HoverCardTrigger>
-                {!hasCorrectSubmissionThisSession && !isRevisionDone && (
-                  <HoverCardContent className="p-2 text-xs max-w-[220px] text-center">
-                    Solve the problem correctly first to mark revision as done
-                  </HoverCardContent>
-                )}
-              </HoverCard>
+              // `relative` so the info button below can be absolutely
+              // positioned to superimpose this button's top-right corner.
+              <div className="relative inline-block">
+                <RevisionInfoButton className="absolute -top-1.5 -right-1.5 z-10" />
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <Button
+                      className="bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+                      onClick={handleMarkRevisionDone}
+                      disabled={revisionButtonDisabled}
+                    >
+                      {isRevisionDone && (
+                        <CheckCheck size={15} strokeWidth={2.5} />
+                      )}
+                      {revisionButtonLabel}
+                    </Button>
+                  </HoverCardTrigger>
+                  {!hasCorrectSubmissionThisSession && !isRevisionDone && (
+                    <HoverCardContent className="p-2 text-xs max-w-[220px] text-center">
+                      Solve the problem correctly first to mark revision as done
+                    </HoverCardContent>
+                  )}
+                </HoverCard>
+              </div>
             )}
           </div>
         </div>
