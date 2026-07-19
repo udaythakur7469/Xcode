@@ -1,6 +1,9 @@
 import type { RunCodeError } from "@/features/submissionStore";
 import { getStatusCfg } from "@/lib/share/getStatusConfig";
-import { PlainCodeBlock, SectionLabel } from "../../helperComponents/ResultAtoms";
+import {
+  PlainCodeBlock,
+  SectionLabel,
+} from "../../helperComponents/codeSubmission/ResultAtoms";
 
 export function RunErrorPanel({ error }: { error: RunCodeError }) {
   const isWrongAnswer = error.status === "wrong_answer";
