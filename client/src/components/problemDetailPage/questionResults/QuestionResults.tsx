@@ -23,8 +23,8 @@ import { TestCaseAccordion } from "./TestCaseAccordion";
 import { ErrorPanel } from "./ErrorPanel";
 import { SubmissionMetadata } from "./SubmissionMetadata";
 import { SubmittedCode } from "./SubmittedCode";
-import { RiseIn } from "../helperComponents/StatusHeader";
-import { Divider } from "../helperComponents/ResultAtoms";
+import { RiseIn } from "../helperComponents/codeSubmission/StatusHeader";
+import { Divider } from "../helperComponents/codeSubmission/ResultAtoms";
 
 SyntaxHighlighter.registerLanguage("cpp", cpp);
 SyntaxHighlighter.registerLanguage("java", java);
