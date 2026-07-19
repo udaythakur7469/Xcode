@@ -97,6 +97,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     isMarkingRevisionDone,
     checkIfProblemInRevisionQueue,
     recordCorrectSubmission,
+    hydrateCorrectSubmissionFromStorage,
     markRevisionDone,
     resetRevisionCompletionState,
   } = useCalendarStore();
@@ -119,6 +120,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   useEffect(() => {
     if (problemTitle) {
       checkIfProblemInRevisionQueue(problemTitle);
+      hydrateCorrectSubmissionFromStorage(problemTitle);
     }
     return () => {
       resetRevisionCompletionState();
@@ -126,10 +128,14 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   }, [problemTitle]);
 
   useEffect(() => {
-    if (submitCodeResult && (submitCodeResult as any).success === true) {
-      recordCorrectSubmission();
+    if (
+      submitCodeResult &&
+      (submitCodeResult as any).success === true &&
+      problemTitle
+    ) {
+      recordCorrectSubmission(problemTitle);
     }
-  }, [submitCodeResult]);
+  }, [submitCodeResult, problemTitle]);
   // ────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
