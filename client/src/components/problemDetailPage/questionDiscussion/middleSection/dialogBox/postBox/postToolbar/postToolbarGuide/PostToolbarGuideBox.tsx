@@ -129,7 +129,7 @@ const MarkdownGuideBox: React.FC<MarkdownGuideBoxProps> = () => {
         )}
 
         {/* Main Title */}
-        <h1 className="text-4xl font-bold mb-4">
+        <h1 className="text-4xl font-bold mb-4 flex flex-row justify-center">
           Editor Guide — Markdown & Write with AI
         </h1>
 
