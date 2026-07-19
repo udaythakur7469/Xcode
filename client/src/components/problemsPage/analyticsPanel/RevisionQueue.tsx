@@ -6,6 +6,7 @@ import { RotateCcw, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useCalendarStore } from "@/features/calenderStore";
+import RevisionInfoButton from "@/components/problemDetailPage/helperComponents/revisionGuide/RevisionInforButton";
 
 const diffColor: Record<string, string> = {
   easy: "text-green-500",
@@ -51,7 +52,11 @@ const RevisionQueue: React.FC = () => {
   return (
     // No overflow-hidden here — the parent column (overflow-y-auto) handles
     // scrolling. The card just grows naturally so all items are reachable.
-    <div className="w-full rounded-xl border border-border bg-card">
+    // `relative` so the info button below can be absolutely positioned to
+    // superimpose the card's top-right corner.
+    <div className="relative w-full rounded-xl border border-border bg-card">
+      <RevisionInfoButton className="absolute -top-1.5 -right-0.5 z-10" />
+
       {/* Header — always visible */}
       <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
         <div className="flex items-center gap-1.5">
