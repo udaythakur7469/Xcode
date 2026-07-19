@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 
 type MarkdownGuideBoxProps = {};
 
@@ -34,6 +35,7 @@ const SECTIONS = [
 
 const MarkdownGuideBox: React.FC<MarkdownGuideBoxProps> = () => {
   const contentRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLElement>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeSection, setActiveSection] = useState("text-formatting");
 
@@ -47,69 +49,140 @@ const MarkdownGuideBox: React.FC<MarkdownGuideBoxProps> = () => {
     }
   };
 
+  // Scroll-spy: keep the sidebar highlight in sync with whichever section
+  // is actually visible as the user scrolls, not just the last one clicked.
+  useEffect(() => {
+    const container = contentRef.current;
+    if (!container) return;
+
+    const sectionEls = SECTIONS.map((s) =>
+      document.getElementById(s.id),
+    ).filter((el): el is HTMLElement => el !== null);
+    if (sectionEls.length === 0) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Among all sections currently in the "active zone" (see
+        // rootMargin below), pick the one closest to the top of the
+        // scroll container — that's the section the user is reading.
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+
+        if (visible.length > 0) {
+          setActiveSection(visible[0].target.id);
+        }
+      },
+      {
+        root: container,
+        // A section counts as "active" once it crosses into the top 40%
+        // of the scroll container, and stops counting once it passes the
+        // bottom 60% — this keeps the highlight matched to what's on
+        // screen instead of switching too early or too late.
+        rootMargin: "0px 0px -60% 0px",
+        threshold: 0,
+      },
+    );
+
+    sectionEls.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
+
   const markdownSections = SECTIONS.filter((s) => s.group === "markdown");
   const aiSections = SECTIONS.filter((s) => s.group === "ai");
+
+  // Keep the sidebar itself scrolled so the currently active section's
+  // link is always visible, even if it was brought into view by manual
+  // content scrolling rather than by clicking a sidebar link.
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const activeLink = nav.querySelector<HTMLButtonElement>(
+      `[data-section-id="${activeSection}"]`,
+    );
+    if (!activeLink) return;
+
+    activeLink.scrollIntoView({ block: "nearest" });
+  }, [activeSection]);
 
   return (
     <div className="flex max-h-[75vh] overflow-hidden">
       {/* ── Left Sidebar ─────────────────────────────────────────────────── */}
-      {isSidebarOpen && (
-        <div className="w-52 shrink-0 flex flex-col border-r border-border overflow-hidden">
-          {/* Sidebar header */}
-          <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              Contents
-            </span>
-            <button
-              onClick={() => setIsSidebarOpen(false)}
-              className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="Close index"
-            >
-              <X size={14} />
-            </button>
-          </div>
+      <AnimatePresence initial={false}>
+        {isSidebarOpen && (
+          <motion.div
+            key="sidebar"
+            initial={{ width: 0, x: -16, opacity: 0 }}
+            animate={{ width: 208, x: 0, opacity: 1 }}
+            exit={{ width: 0, x: -16, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="shrink-0 overflow-hidden border-r border-border"
+          >
+            <div className="w-52 h-full flex flex-col">
+              {/* Sidebar header */}
+              <div className="flex items-center justify-between px-4 py-4 border-b border-border">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Contents
+                </span>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  title="Close index"
+                >
+                  <X size={14} />
+                </button>
+              </div>
 
-          {/* Nav */}
-          <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5 scrollbar-transparent">
-            <p className="text-xs font-semibold text-muted-foreground px-2 pb-1 pt-0.5">
-              Markdown
-            </p>
-            {markdownSections.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => handleJump(s.id)}
-                className={`w-full text-left rounded-md px-2 py-1.5 text-xs transition-colors leading-snug ${
-                  activeSection === s.id
-                    ? "bg-violet-50 text-violet-600 font-medium dark:bg-violet-950/30 dark:text-violet-400"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
+              {/* Nav */}
+              <nav
+                ref={navRef}
+                className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5 scrollbar-transparent"
               >
-                {s.label}
-              </button>
-            ))}
+                <p className="text-xs font-semibold text-muted-foreground px-2 pb-1 pt-0.5">
+                  Markdown
+                </p>
+                {markdownSections.map((s) => (
+                  <button
+                    key={s.id}
+                    data-section-id={s.id}
+                    onClick={() => handleJump(s.id)}
+                    className={`w-full text-left rounded-md px-2 py-1.5 text-xs transition-colors leading-snug ${
+                      activeSection === s.id
+                        ? "bg-violet-50 text-violet-600 font-medium dark:bg-violet-950/30 dark:text-violet-400"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
 
-            <div className="my-2 border-t border-border" />
-            <p className="px-1 py-2 space-y-0.5">
-              <p className="text-xs font-semibold text-muted-foreground px-2 pb-1 pt-0.5">
-                AI features
-              </p>
-            </p>
-            {aiSections.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => handleJump(s.id)}
-                className={`w-full text-left rounded-md px-2 py-1.5 text-xs transition-colors leading-snug ${
-                  activeSection === s.id
-                    ? "bg-violet-50 text-violet-600 font-medium dark:bg-violet-950/30 dark:text-violet-400"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </nav>
-        </div>
-      )}
+                <div className="my-2 border-t border-border" />
+                <p className="px-1 py-2 space-y-0.5">
+                  <p className="text-xs font-semibold text-muted-foreground px-2 pb-1 pt-0.5">
+                    AI features
+                  </p>
+                </p>
+                {aiSections.map((s) => (
+                  <button
+                    key={s.id}
+                    data-section-id={s.id}
+                    onClick={() => handleJump(s.id)}
+                    className={`w-full text-left rounded-md px-2 py-1.5 text-xs transition-colors leading-snug ${
+                      activeSection === s.id
+                        ? "bg-violet-50 text-violet-600 font-medium dark:bg-violet-950/30 dark:text-violet-400"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Right Content ─────────────────────────────────────────────────── */}
       <div
@@ -1162,6 +1235,7 @@ const MarkdownGuideBox: React.FC<MarkdownGuideBoxProps> = () => {
             easier to understand for others. Happy coding 🚀
           </p>
         </div>
+        <div aria-hidden="true" className="h-[50vh]" />
       </div>
     </div>
   );
