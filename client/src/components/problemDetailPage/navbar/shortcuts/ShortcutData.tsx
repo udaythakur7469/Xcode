@@ -58,6 +58,10 @@ export type Shortcut = {
   // tab-switching shortcuts, whose target tab shifts depending on
   // whether the Results tab is currently open).
   note?: string;
+  // Marks a shortcut as one of the handful of power-user shortcuts that
+  // get surfaced in the "Most Useful" pinned row at the top of the
+  // dialog, before the user has typed anything into search.
+  pinned?: boolean;
 };
 
 export const shortcutCategories: ShortcutCategory[] = [
@@ -77,6 +81,7 @@ export const shortcuts: Shortcut[] = [
     keys: ["Ctrl", "'"],
     category: "execution",
     icon: Play,
+    pinned: true,
   },
   {
     id: "submit-code",
@@ -132,6 +137,7 @@ export const shortcuts: Shortcut[] = [
     category: "layout",
     icon: LayoutGrid,
     note: "Restores every panel to its default size",
+    pinned: true,
   },
 
   // ── Tabs & Navigation ──────────────────────────────────────────────
@@ -203,6 +209,7 @@ export const shortcuts: Shortcut[] = [
     keys: ["Ctrl", "Q"],
     category: "ai",
     icon: Bot,
+    pinned: true,
   },
   {
     id: "toggle-ai-analysis",
@@ -242,6 +249,7 @@ export const shortcuts: Shortcut[] = [
     keys: ["Ctrl", "K"],
     category: "productivity",
     icon: Command,
+    pinned: true,
   },
   {
     id: "open-sticky-notes",
