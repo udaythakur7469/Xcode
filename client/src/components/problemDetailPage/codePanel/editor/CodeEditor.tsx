@@ -23,7 +23,7 @@ import { useSubmissionStore } from "@/features/submissionStore";
 import { useCalendarStore } from "@/features/calenderStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import RevisionInfoButton from "../../helperComponents/revisionGuide/RevisionInforButton";
+import RevisionInfoButton from "../../helperComponents/revisionGuide/RevisionInfoButton";
 
 type CodeEditorProps = {
   onCodeSubmit?: () => void;
