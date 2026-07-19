@@ -105,11 +105,21 @@ const AIAnalysisPanel: React.FC<AIAnalysisPanelProps> = ({
       </div>
 
       {/* Blank content area — placeholder for the future AI analysis feature */}
-      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 text-muted-foreground select-none">
-        <Sparkles size={28} strokeWidth={1.4} className="opacity-30" />
-        <p className="text-sm font-medium">AI Analysis</p>
-        <p className="text-xs opacity-60 text-center max-w-[220px]">
-          This panel is a placeholder — analysis content coming soon.
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 select-none px-6">
+        <div className="relative">
+          <Sparkles
+            size={32}
+            strokeWidth={1.4}
+            className="text-blue-500 opacity-90"
+          />
+          <span className="absolute -inset-2 -z-10 rounded-full bg-blue-500/20 blur-xl animate-pulse" />
+        </div>
+        <p className="text-base font-semibold bg-gradient-to-r from-blue-500 via-violet-500 to-blue-500 bg-clip-text text-transparent bg-[length:200%_auto] animate-shimmer">
+          AI Features Rolling Out Soon
+        </p>
+        <p className="text-xs text-muted-foreground opacity-70 text-center max-w-[240px]">
+          We&apos;re putting the finishing touches on AI-powered analysis —
+          it&apos;ll be live here shortly.
         </p>
       </div>
     </div>
