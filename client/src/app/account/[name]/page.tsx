@@ -5,6 +5,7 @@ import Navbar from "@/components/landingPage/navbar/Navbar";
 import UserProfile from "@/components/accountPage/UserProfile";
 import { useUserStore } from "@/features/userStore";
 import { UserProfileSkeleton } from "@/components/accountPage/UserProfileSkeleton";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 type pageProps = {
   params: {
@@ -17,6 +18,8 @@ const Page: React.FC<pageProps> = ({ params }) => {
   const { name } = unwrappedParams;
 
   const { isCheckingUserAuth } = useUserStore();
+
+  useDocumentTitle(name ? `${decodeURIComponent(name)} | Xcode` : null);
 
   if (!name) {
     return <div className="text-red-500 text-xl">User not found</div>;
