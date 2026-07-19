@@ -1,5 +1,5 @@
 import React from "react";
-import { CollapsibleCode } from "../../helperComponents/CollapsibleCode";
+import { CollapsibleCode } from "../../helperComponents/codeSubmission/CollapsibleCode";
 
 export function RunSubmittedCode({
   code,
