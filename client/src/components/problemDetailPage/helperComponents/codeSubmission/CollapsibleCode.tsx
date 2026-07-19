@@ -37,28 +37,12 @@ function AnalyzeWithAIButton({ onClick }: { onClick?: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="relative inline-flex items-center gap-1.5 rounded-lg px-3.5 py-[7px] text-[11.5px] font-semibold text-violet-200 bg-secondary overflow-hidden isolate"
+      className="relative inline-flex items-center gap-1.5 rounded-lg px-3.5 py-[7px] text-[11.5px] font-semibold bg-secondary border border-border overflow-hidden isolate"
     >
-      <span
-        className="absolute inset-0 rounded-lg -z-10"
-        style={{ padding: 1 }}
-      >
-        <motion.span
-          className="block w-full h-full rounded-lg"
-          style={{
-            background:
-              "conic-gradient(from 0deg, #a855f7, #6366f1, #22d3ee, #a855f7)",
-            WebkitMask:
-              "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-            WebkitMaskComposite: "xor",
-            maskComposite: "exclude",
-          }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
-        />
+      <Sparkles size={13} strokeWidth={2.2} className="text-blue-500" />
+      <span className="bg-gradient-to-r from-blue-500 via-violet-500 to-blue-500 bg-clip-text text-transparent bg-[length:200%_auto] animate-shimmer">
+        Analyze with AI
       </span>
-      <Sparkles size={13} strokeWidth={2.2} />
-      Analyze with AI
     </button>
   );
 }
@@ -105,8 +89,7 @@ export function CollapsibleCode({
       <div className="relative rounded-lg overflow-hidden border border-border/10">
         <motion.div
           animate={{
-            maxHeight:
-              expanded || !isCollapsible ? 520 : collapsedMaxHeight,
+            maxHeight: expanded || !isCollapsible ? 520 : collapsedMaxHeight,
           }}
           initial={false}
           transition={{ duration: 0.32, ease: "easeInOut" }}
