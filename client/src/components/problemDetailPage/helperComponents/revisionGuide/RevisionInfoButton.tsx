@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Info } from "lucide-react";
+import { Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import RevisionGuideDialog from "./RevisionGuideDialog";
 
@@ -11,7 +11,7 @@ type RevisionInfoButtonProps = {
 };
 
 /**
- * Small circular "i" button that opens the Revision Guide dialog.
+ * Small circular lightbulb button that opens the Revision Guide dialog.
  * Self-contained: owns its own open/close state, so it can be dropped
  * anywhere (e.g. absolutely positioned over a corner) without the parent
  * needing to manage dialog state itself.
@@ -34,11 +34,11 @@ const RevisionInfoButton: React.FC<RevisionInfoButtonProps> = ({
         title="How does the revision queue work?"
         aria-label="Open revision guide"
         className={cn(
-          "flex h-4 w-4 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:border-blue-400 hover:text-blue-400 hover:bg-accent",
+          "flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition-colors hover:bg-blue-700",
           className,
         )}
       >
-        <Info size={10} strokeWidth={2.5} />
+        <Lightbulb size={12} strokeWidth={2.5} />
       </button>
 
       <RevisionGuideDialog
