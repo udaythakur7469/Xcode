@@ -1,7 +1,12 @@
 import React from "react";
 import type { SubmitCodeSuccess, SubmitCodeError } from "@/features/submissionStore";
 import { getLanguageConfig } from "@/lib/share/languageConfig";
-import { formatMemoryMB, formatTimestamp, MetadataFooter, MetaItem } from "../helperComponents/ResultAtoms";
+import {
+  formatMemoryMB,
+  formatTimestamp,
+  MetadataFooter,
+  MetaItem,
+} from "../helperComponents/codeSubmission/ResultAtoms";
 
 export function SubmissionMetadata({
   result,
