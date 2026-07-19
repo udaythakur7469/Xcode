@@ -25,7 +25,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import MarkdownGuideDialog from "./markdownGuide/MarkdownGuideDialog";
+import MarkdownGuideDialog from "./postToolbarGuide/PostToolbarGuideDialog";
 import { usePostEditorStore } from "@/features/postEditorStore";
 
 type PostToolbarProps = {
