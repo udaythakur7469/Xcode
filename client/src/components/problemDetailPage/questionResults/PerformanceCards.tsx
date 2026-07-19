@@ -1,6 +1,6 @@
 import React from "react";
 import { Zap, HardDrive, ListChecks, TrendingUp } from "lucide-react";
-import { formatMemoryMB } from "../helperComponents/ResultAtoms";
+import { formatMemoryMB } from "../helperComponents/codeSubmission/ResultAtoms";
 
 type PerformanceCardsProps = {
   isSuccess: boolean;
