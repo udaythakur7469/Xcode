@@ -6,6 +6,7 @@ import { useInterviewStore } from "@/features/interviewStore";
 import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/landingPage/navbar/Navbar";
 import { FeedbackPageSkeleton } from "@/components/interviewPage/feedbackPage/FeedbackPageSkeleton";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 
 type pageProps = { params: { id: string } };
 
@@ -33,6 +34,12 @@ const page: React.FC<pageProps> = ({ params }) => {
     feedbackHistory,
     // eslint-disable-next-line react-hooks/rules-of-hooks
   } = useInterviewStore();
+
+  useDocumentTitle(
+    interview?.role
+      ? `Feedback: ${interview.role} | Xcode`
+      : "Feedback | Xcode",
+  );
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
