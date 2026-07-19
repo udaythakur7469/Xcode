@@ -17,6 +17,35 @@ function getBrowserTimeZone(): string | undefined {
   }
 }
 
+/**
+ * Prefix for the localStorage key that remembers "the user got a correct
+ * submission for this problem since it last became eligible for revision".
+ * Namespaced per problem title, same convention as the code-draft keys in
+ * CodeEditor.tsx. Uses localStorage (not sessionStorage) specifically
+ * because this needs to survive closing the tab/browser entirely, not just
+ * a reload.
+ */
+const REVISION_SOLVED_KEY_PREFIX = "xcode_revision_solved:";
+
+function getRevisionSolvedKey(problemTitle: string): string {
+  return `${REVISION_SOLVED_KEY_PREFIX}${problemTitle}`;
+}
+
+function readRevisionSolvedFlag(problemTitle: string): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(getRevisionSolvedKey(problemTitle)) === "true";
+}
+
+function writeRevisionSolvedFlag(problemTitle: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(getRevisionSolvedKey(problemTitle), "true");
+}
+
+function clearRevisionSolvedFlag(problemTitle: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(getRevisionSolvedKey(problemTitle));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -152,7 +181,11 @@ interface CalendarState {
   /** Checks whether `problemTitle` is currently in the revision queue */
   checkIfProblemInRevisionQueue: (problemTitle: string) => Promise<void>;
   /** Called by CodeEditor when a submission comes back with success: true */
-  recordCorrectSubmission: () => void;
+  recordCorrectSubmission: (problemTitle: string) => void;
+  /** Reads the persisted "solved" flag for this problem from localStorage
+   *  and applies it to `hasCorrectSubmissionThisSession`. Call this whenever
+   *  the open problem changes (including on first mount / page reload). */
+  hydrateCorrectSubmissionFromStorage: (problemTitle: string) => void;
   /** Calls POST /calendar/markRevisionDone for the given problem */
   markRevisionDone: (problemTitle: string) => Promise<void>;
   /** Resets all revision-completion state — call on unmount / problem change */
@@ -343,8 +376,15 @@ export const useCalendarStore = create<CalendarState>()((set, get) => ({
     }
   },
 
-  recordCorrectSubmission: () => {
+  recordCorrectSubmission: (problemTitle) => {
+    writeRevisionSolvedFlag(problemTitle);
     set({ hasCorrectSubmissionThisSession: true });
+  },
+
+  hydrateCorrectSubmissionFromStorage: (problemTitle) => {
+    set({
+      hasCorrectSubmissionThisSession: readRevisionSolvedFlag(problemTitle),
+    });
   },
 
   markRevisionDone: async (problemTitle) => {
@@ -353,6 +393,7 @@ export const useCalendarStore = create<CalendarState>()((set, get) => ({
       await axios.post(`${API_URL}/calendar/markRevisionDone`, null, {
         params: { title: problemTitle },
       });
+      clearRevisionSolvedFlag(problemTitle);
       set({ isRevisionDone: true, isMarkingRevisionDone: false });
       // Refresh the queue so the sidebar RevisionQueue widget drops this problem
       get().fetchRevisionQueue();
