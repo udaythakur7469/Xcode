@@ -23,7 +23,7 @@ import {
   type ShortcutCategoryId,
 } from "./ShortcutData";
 
-type ShortcutDialogProps = {};
+type ShortcutDialogProps = {open: boolean;};
 
 const ARROW_GLYPHS = ["🡲", "🡰", "🡱", "🡳"];
 
@@ -138,7 +138,7 @@ ShortcutRow.displayName = "ShortcutRow";
 
 const PINNED_SECTION_ID = "most-useful";
 
-const ShortcutDialog: React.FC<ShortcutDialogProps> = () => {
+const ShortcutDialog: React.FC<ShortcutDialogProps> = ({ open }) => {
   const [query, setQuery] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeCategory, setActiveCategory] = useState<
@@ -203,7 +203,6 @@ const ShortcutDialog: React.FC<ShortcutDialogProps> = () => {
 
     e.preventDefault();
     e.stopPropagation();
-    e.stopImmediatePropagation();
 
     setDetectedId(match.id);
     setActiveCategory(match.category);
@@ -212,13 +211,34 @@ const ShortcutDialog: React.FC<ShortcutDialogProps> = () => {
     detectTimeoutRef.current = setTimeout(() => setDetectedId(null), 1400);
   }, []);
 
+  // Tied to `open`, not to mount/unmount. Radix keeps DialogContent (and
+  // this component) mounted for its ~200ms exit animation after `open`
+  // goes false, so an unmount-driven cleanup would detach this listener
+  // late — and if that exit animation ever fails to resolve cleanly, it
+  // would never detach at all, silently blocking every matching shortcut
+  // forever. Gating on `open` guarantees the listener comes off the
+  // instant the dialog is asked to close, in the same tick as the state
+  // update, regardless of how long the close animation takes.
   useEffect(() => {
+    if (!open) return;
+
     window.addEventListener("keydown", handleKeyDown, true); // capture phase
     return () => {
       window.removeEventListener("keydown", handleKeyDown, true);
-      if (detectTimeoutRef.current) clearTimeout(detectTimeoutRef.current);
     };
-  }, [handleKeyDown]);
+  }, [open, handleKeyDown]);
+
+  // Belt-and-suspenders: clear any pending "detected" highlight and its
+  // timeout as soon as the dialog is closed, so nothing lingers into the
+  // next open.
+  useEffect(() => {
+    if (open) return;
+    setDetectedId(null);
+    if (detectTimeoutRef.current) {
+      clearTimeout(detectTimeoutRef.current);
+      detectTimeoutRef.current = null;
+    }
+  }, [open]);
 
   // Dialog Content remounts fresh every time the dialog opens (Radix
   // unmounts closed dialogs), so this runs once per open — pin the
