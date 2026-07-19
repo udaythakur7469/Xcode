@@ -6,7 +6,7 @@ import { RotateCcw, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useCalendarStore } from "@/features/calenderStore";
-import RevisionInfoButton from "@/components/problemDetailPage/helperComponents/revisionGuide/RevisionInforButton";
+import RevisionInfoButton from "@/components/problemDetailPage/helperComponents/revisionGuide/RevisionInfoButton";
 
 const diffColor: Record<string, string> = {
   easy: "text-green-500",
