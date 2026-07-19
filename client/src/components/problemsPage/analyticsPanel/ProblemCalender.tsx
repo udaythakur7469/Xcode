@@ -5,6 +5,7 @@ import { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { ActivityMap, toIso, useCalendarStore } from "@/features/calenderStore";
+import CalendarInfoButton from "@/components/problemDetailPage/helperComponents/calenderGuide/CalenderInfoButton";
 
 function heatStyle(count: number): React.CSSProperties {
   if (count === 0) return {};
@@ -187,28 +188,31 @@ const ProblemCalendar: React.FC = () => {
   return (
     <div>
       <ModeToggle mode={calendarMode} onChange={setCalendarMode} />
+      <div className="relative">
+        {calendarMode === "single" ? (
+          <Calendar
+            mode="single"
+            selected={selectedSingle}
+            onSelect={handleSingleSelect}
+            month={displayMonth}
+            onMonthChange={setDisplayMonth}
+            className={calendarClassName}
+            components={{ DayContent: DayContentRenderer }}
+          />
+        ) : (
+          <Calendar
+            mode="range"
+            selected={selectedRangePicker}
+            onSelect={handleRangeSelect}
+            month={displayMonth}
+            onMonthChange={setDisplayMonth}
+            className={calendarClassName}
+            components={{ DayContent: DayContentRenderer }}
+          />
+        )}
 
-      {calendarMode === "single" ? (
-        <Calendar
-          mode="single"
-          selected={selectedSingle}
-          onSelect={handleSingleSelect}
-          month={displayMonth}
-          onMonthChange={setDisplayMonth}
-          className={calendarClassName}
-          components={{ DayContent: DayContentRenderer }}
-        />
-      ) : (
-        <Calendar
-          mode="range"
-          selected={selectedRangePicker}
-          onSelect={handleRangeSelect}
-          month={displayMonth}
-          onMonthChange={setDisplayMonth}
-          className={calendarClassName}
-          components={{ DayContent: DayContentRenderer }}
-        />
-      )}
+        <CalendarInfoButton className="absolute -bottom-1.5 -right-0.5 z-10" />
+      </div>
 
       <Legend />
     </div>
