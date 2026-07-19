@@ -511,22 +511,31 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             </Button>
 
             {isInRevisionQueue && (
-              // `relative` so the info button below can be absolutely
-              // positioned to superimpose this button's top-right corner.
               <div className="relative inline-block">
                 <RevisionInfoButton className="absolute -top-1.5 -right-1.5 z-10" />
                 <HoverCard>
                   <HoverCardTrigger asChild>
-                    <Button
-                      className="bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
-                      onClick={handleMarkRevisionDone}
-                      disabled={revisionButtonDisabled}
+                    <span
+                      tabIndex={0}
+                      className={
+                        revisionButtonDisabled
+                          ? "inline-block cursor-not-allowed"
+                          : "inline-block"
+                      }
                     >
-                      {isRevisionDone && (
-                        <CheckCheck size={15} strokeWidth={2.5} />
-                      )}
-                      {revisionButtonLabel}
-                    </Button>
+                      <Button
+                        className={`bg-indigo-600 text-white disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2${
+                          revisionButtonDisabled ? " pointer-events-none" : ""
+                        }`}
+                        onClick={handleMarkRevisionDone}
+                        disabled={revisionButtonDisabled}
+                      >
+                        {isRevisionDone && (
+                          <CheckCheck size={15} strokeWidth={2.5} />
+                        )}
+                        {revisionButtonLabel}
+                      </Button>
+                    </span>
                   </HoverCardTrigger>
                   {!hasCorrectSubmissionThisSession && !isRevisionDone && (
                     <HoverCardContent className="p-2 text-xs max-w-[220px] text-center">
