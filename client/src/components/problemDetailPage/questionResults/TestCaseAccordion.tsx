@@ -1,7 +1,10 @@
 import React, { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { TestCaseResult } from "@/features/submissionStore";
-import { PlainCodeBlock, SectionLabel } from "../helperComponents/ResultAtoms";
+import {
+  PlainCodeBlock,
+  SectionLabel,
+} from "../helperComponents/codeSubmission/ResultAtoms";
 
 const PASS_COLOR = "#22C55E";
 const FAIL_COLOR = "#EF4444";
