@@ -1,6 +1,10 @@
 import React from "react";
 import type { RunCodeSuccess, RunCodeError } from "@/features/submissionStore";
-import { formatTimestamp, MetadataFooter, MetaItem } from "../../helperComponents/ResultAtoms";
+import {
+  formatTimestamp,
+  MetadataFooter,
+  MetaItem,
+} from "../../helperComponents/codeSubmission/ResultAtoms";
 
 export function RunMetadata({
   result,
