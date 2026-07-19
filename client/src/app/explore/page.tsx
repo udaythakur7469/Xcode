@@ -2,6 +2,11 @@ import React from "react";
 import Features from "@/components/explorePage/Features";
 import Title from "@/components/explorePage/Title";
 import Navbar from "@/components/landingPage/navbar/Navbar";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Explore | Xcode",
+};
 
 type pageProps = {};
 
