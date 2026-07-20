@@ -1,15 +1,15 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import LandingPage from "@/components/landingPage/LandingPage";
 
 type PageProps = {};
 
 const Page: React.FC<PageProps> = () => {
   return (
-    <>
+    <Suspense fallback={null}>
       <LandingPage />
-    </>
+    </Suspense>
   );
 };
 

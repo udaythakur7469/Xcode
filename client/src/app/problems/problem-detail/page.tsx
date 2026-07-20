@@ -13,8 +13,9 @@ import {
   setLastActiveProblemTitle,
 } from "@/features/submissionStore";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import dynamic from "next/dynamic";
 
-const ProblemDetailsPage: React.FC = () => {
+const ProblemDetailsPageContent: React.FC = () => {
   useProblemContext();
 
   // Run/submit results are persisted in sessionStorage per problem so they
@@ -141,6 +142,11 @@ const ProblemDetailsPage: React.FC = () => {
       </div>
     </SidebarProvider>
   );
-};;
+};
+
+const ProblemDetailsPage = dynamic(
+  () => Promise.resolve(ProblemDetailsPageContent),
+  { ssr: false },
+);
 
 export default ProblemDetailsPage;

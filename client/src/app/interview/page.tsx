@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import InterviewLandingPage from "@/components/interviewPage/landingPage/InterviewLandingPage";
 import { Metadata } from "next";
 
@@ -10,9 +10,9 @@ type pageProps = {};
 
 const page: React.FC<pageProps> = () => {
   return (
-    <>
+    <Suspense fallback={null}>
       <InterviewLandingPage />
-    </>
+    </Suspense>
   );
 };
 export default page;

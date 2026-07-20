@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/landingPage/navbar/Navbar";
 import ProblemList from "@/components/problemsPage/problemsList/ProblemList";
@@ -35,7 +35,7 @@ const analyticsPanelVariants = {
   },
 };
 
-const ProblemsPage: React.FC = () => {
+const ProblemsPageContent: React.FC = () => {
   const isAnalyticsPanelOpen = useCalendarStore((s) => s.isAnalyticsPanelOpen);
 
   useDocumentTitle("My Problems | Xcode");
@@ -78,6 +78,14 @@ const ProblemsPage: React.FC = () => {
         </div>
       </div>
     </>
+  );
+};
+
+const ProblemsPage: React.FC = () => {
+  return (
+    <Suspense fallback={null}>
+      <ProblemsPageContent />
+    </Suspense>
   );
 };
 
