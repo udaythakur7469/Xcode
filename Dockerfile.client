@@ -1,59 +1,24 @@
-# ================================================================
-# Dockerfile.client — builds the Next.js 15 frontend
-#
-# Uses a multi-stage build:
-#   Stage 1 (builder): installs packages, compiles TypeScript, builds Next.js
-#   Stage 2 (runner):  copies only the built output — much smaller final image
-#
-# IMPORTANT: Place a file named ".dockerignore" in your client/
-# folder with this content to speed up builds:
-#   node_modules
-#   .next
-#   .env
-#   *.log
-# ================================================================
-
-# ── Stage 1: Builder ─────────────────────────────────────────────
 FROM node:20-alpine AS builder
-
 WORKDIR /app
-
-# Copy package files first (separate layer for caching)
 COPY package*.json ./
-
-# Install all dependencies
 RUN npm ci
-
-# Copy all source code
 COPY . .
-
-# NEXT_PUBLIC_ variables MUST be available at build time.
-# They get compiled into the JavaScript bundle — not read at runtime.
-# Docker Compose passes these from your .env file as build arguments.
 ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_SOCKET_URL
+ARG NEXT_PUBLIC_VAPI_WEB_TOKEN
+ARG NEXT_PUBLIC_VAPI_ASSISTANT_ID
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_SOCKET_URL=$NEXT_PUBLIC_SOCKET_URL
-
-# Build Next.js — this is the slow step (3-10 minutes)
-# NODE_OPTIONS limits memory usage to prevent crashes on t3.small
+ENV NEXT_PUBLIC_VAPI_WEB_TOKEN=$NEXT_PUBLIC_VAPI_WEB_TOKEN
+ENV NEXT_PUBLIC_VAPI_ASSISTANT_ID=$NEXT_PUBLIC_VAPI_ASSISTANT_ID
 ENV NODE_OPTIONS="--max-old-space-size=1536"
 RUN npm run build
 
-# ── Stage 2: Runner (production image) ───────────────────────────
 FROM node:20-alpine AS runner
-
 WORKDIR /app
-
 ENV NODE_ENV=production
-
-# Copy only what's needed to run the app (not the full build environment)
 COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/next.config.ts ./
-
 EXPOSE 3000
-
 CMD ["npm", "start"]
