@@ -1,0 +1,110 @@
+# ================================================================
+# Xcode CI/CD Pipeline
+# File location: .github/workflows/deploy.yml (inside the PRIVATE xcode repo)
+#
+# Triggers ONLY on pushes to "main" in the xcode repo.
+# Has NO effect on Judge0 — that's a completely separate pipeline
+# in the separate judge0 repo.
+#
+# REQUIRED SECRETS (GitHub → this repo → Settings → Secrets → Actions):
+#   EC2_HOST     → your Elastic IP
+#   EC2_USER     → ubuntu
+#   EC2_SSH_KEY  → full contents of your EC2 .pem key
+#   EC2_APP_DIR  → /home/ubuntu/xcode
+# ================================================================
+
+name: Deploy Xcode to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Xcode
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed services
+        id: changes
+        run: |
+          git diff --name-only HEAD~1 HEAD > changed_files.txt || \
+            git diff --name-only $(git hash-object -t tree /dev/null) HEAD > changed_files.txt
+
+          if grep -qE "^server/" changed_files.txt; then
+            echo "server_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "server_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          if grep -qE "^client/" changed_files.txt; then
+            echo "client_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "client_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          if grep -qE "^server/prisma/" changed_files.txt; then
+            echo "prisma_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "prisma_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          if grep -qE "^(docker-compose|Dockerfile|nginx)" changed_files.txt; then
+            echo "deploy_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "deploy_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Changed files:"
+          cat changed_files.txt
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 15m
+          script: |
+            set -e
+            echo "========================================"
+            echo "  Xcode Deployment — $(date)"
+            echo "========================================"
+
+            cd ${{ secrets.EC2_APP_DIR }}
+
+            echo ">>> Pulling latest Xcode code from GitHub..."
+            git pull origin main
+
+            if [ "${{ steps.changes.outputs.prisma_changed }}" = "true" ]; then
+              echo ">>> Prisma schema changed — running migrations..."
+              docker compose run --rm server npx prisma migrate deploy
+            fi
+
+            if [ "${{ steps.changes.outputs.server_changed }}" = "true" ] || \
+               [ "${{ steps.changes.outputs.deploy_changed }}" = "true" ]; then
+              echo ">>> Rebuilding Xcode server..."
+              docker compose up --build -d server
+            fi
+
+            if [ "${{ steps.changes.outputs.client_changed }}" = "true" ] || \
+               [ "${{ steps.changes.outputs.deploy_changed }}" = "true" ]; then
+              echo ">>> Rebuilding Xcode client..."
+              docker compose up --build -d client
+            fi
+
+            if [ "${{ steps.changes.outputs.server_changed }}" = "false" ] && \
+               [ "${{ steps.changes.outputs.client_changed }}" = "false" ] && \
+               [ "${{ steps.changes.outputs.deploy_changed }}" = "false" ]; then
+              echo ">>> No service files changed — ensuring containers are up..."
+              docker compose up -d
+            fi
+
+            echo "========================================"
+            echo "  Xcode Deployment Complete — $(date)"
+            echo "========================================"
+            docker compose ps
