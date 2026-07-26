@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: ../Dockerfile.server
+    container_name: xcode-server
+    restart: always
+    env_file:
+      - ./server/.env
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - xcode-judge0-net
+
+  client:
+    build:
+      context: ./client
+      dockerfile: ../Dockerfile.client
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL}
+    container_name: xcode-client
+    restart: always
+    env_file:
+      - ./client/.env.local
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - server
+    networks:
+      - xcode-judge0-net
+
+networks:
+  xcode-judge0-net:
+    external: true
+    name: xcode-judge0-net
