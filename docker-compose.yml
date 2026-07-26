@@ -22,7 +22,8 @@ services:
       dockerfile: ../Dockerfile.client
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-        - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL}
+        - NEXT_PUBLIC_VAPI_WEB_TOKEN=${NEXT_PUBLIC_VAPI_WEB_TOKEN}
+        - NEXT_PUBLIC_VAPI_ASSISTANT_ID=${NEXT_PUBLIC_VAPI_ASSISTANT_ID}
     container_name: xcode-client
     restart: always
     env_file:
@@ -37,4 +38,4 @@ services:
 networks:
   xcode-judge0-net:
     external: true
-    name: xcode-judge0-net
+    name: xcode-judge0-net 
