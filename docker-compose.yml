@@ -1,0 +1,54 @@
+version: "3.9"
+
+# ================================================================
+# Xcode docker-compose.yml — for the SHARED Xcode+Judge0 EC2 instance
+#
+# This file lives in your PRIVATE xcode GitHub repo at the repo root.
+#
+# Connects to the SAME external Docker network as Judge0
+# (xcode-judge0-net) so the Xcode server can reach Judge0 via
+# http://judge0-server:2358 — a direct container-to-container call,
+# not a public internet request. This is the whole point of the merge.
+#
+# IMPORTANT: The external network "xcode-judge0-net" must already
+# exist before this runs. setup.sh creates it automatically.
+# ================================================================
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: ../Dockerfile.server
+    container_name: xcode-server
+    restart: always
+    env_file:
+      - ./server/.env
+    environment:
+      - NODE_ENV=production
+    ports:
+      - "127.0.0.1:8000:8000"
+    networks:
+      - xcode-judge0-net   # so it can reach judge0-server directly
+
+  client:
+    build:
+      context: ./client
+      dockerfile: ../Dockerfile.client
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+        - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL}
+    container_name: xcode-client
+    restart: always
+    env_file:
+      - ./client/.env.local
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - server
+    networks:
+      - xcode-judge0-net   # client doesn't need judge0, but shares the net for simplicity
+
+networks:
+  xcode-judge0-net:
+    external: true
+    name: xcode-judge0-net
