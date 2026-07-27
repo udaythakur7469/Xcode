@@ -28,6 +28,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - name: Detect changed services
         id: changes
@@ -81,8 +83,7 @@ jobs:
             git pull origin main
 
             if [ "${{ steps.changes.outputs.prisma_changed }}" = "true" ]; then
-              echo ">>> Prisma schema changed — running migrations..."
-              docker compose run --rm server npx prisma migrate deploy
+              docker compose run --rm server npx prisma db push
             fi
 
             if [ "${{ steps.changes.outputs.server_changed }}" = "true" ] || \
