@@ -194,6 +194,7 @@ p, h1 {
 .animate-marquee-slow {
   animation: marquee-scroll 50s linear infinite;
 }
+
 .animate-marquee-paused-hover:hover {
   animation-play-state: paused;
 }
