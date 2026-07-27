@@ -1,73 +1,147 @@
 "use client";
 
 import React, { useState } from "react";
-import { UserPlus, UserRoundPen } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
-import { Button } from "@/components/ui/button";
 import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/ForgotPasswordDialog";
 import { useUserStore } from "@/features/userStore";
 
 type FooterPageProps = {};
 
 const FooterPage: React.FC<FooterPageProps> = () => {
-  // State to control the login dialog
+  const router = useRouter();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
-
-  // State to control the signup dialog
   const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+  const { checkAuth, userData } = useUserStore();
 
-  const [isForgotPasswordOpen, setIsForgotPasswordOpen] =
-    useState<boolean>(false);
+  const navigateTo = (path: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push(path);
+  };
 
-  const { checkAuth } = useUserStore();
+  const goToAccountPage = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const name = encodeURIComponent(userData?.name || "");
+    router.push(`/account/${name}`);
+  };
 
   return (
     <>
-      <div
-        id="footer"
-        className="h-screen w-full flex flex-col items-center justify-center"
-      >
-        {/* Heading Section */}
-        <div className="basis-1/3 h-full w-full flex flex-col items-center justify-between p-10">
-          <div className="p-5" />
-          <h1 className="font-bold text-8xl text-center">
-            Get started with Xcode today
-          </h1>
-        </div>
+      <footer id="footer" className="border-t border-border pt-[60px] pb-8">
+        <div className="max-w-[1280px] mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr] gap-10 mb-[50px]">
+            <div>
+              <div className="flex items-center gap-2.5 font-bold text-xl">
+                <span
+                  className="w-2.5 h-2.5 rounded-full bg-brand"
+                  style={{ boxShadow: "0 0 12px var(--brand-glow)" }}
+                />
+                xCode
+              </div>
+              <p className="text-muted-foreground text-sm leading-relaxed mt-3.5 max-w-[280px]">
+                A modern, judged coding platform to practice, get AI interview
+                feedback, and actually retain what you learn.
+              </p>
+            </div>
 
-        {/* Paragraph Section */}
-        <div className="basis-1/3 h-full w-full flex flex-col items-center justify-center p-10">
-          <p className="text-lg font-bold text-center w-1/2 ">
-            No matter which company you aspire to join, we equip you with the
-            ultimate resources, expert guidance, and a comprehensive preparation
-            platform to tackle even the toughest challenges.
-          </p>
-        </div>
+            <div>
+              <h5 className="font-mono text-xs uppercase tracking-wide text-muted-foreground mb-4">
+                Platform
+              </h5>
+              <ul className="flex flex-col gap-2.5 text-sm">
+                <li>
+                  <a
+                    href="/problems"
+                    onClick={navigateTo("/problems")}
+                    className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
+                  >
+                    Problems
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/explore"
+                    onClick={navigateTo("/explore")}
+                    className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
+                  >
+                    Explore
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/interview"
+                    onClick={navigateTo("/interview")}
+                    className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
+                  >
+                    Practice Interviews
+                  </a>
+                </li>
+              </ul>
+            </div>
 
-        {/* Buttons Section */}
-        <div className="basis-1/3 h-full w-full flex flex-col items-center justify-center p-10">
-          {/* Buttons Container */}
-          <div className="flex flex-row justify-center items-center gap-x-4 w-full max-w-md">
-            <Button
-              variant="outline"
-              className="w-1/2 p-7 text-lg border-2 border-white shadow"
-              onClick={() => setIsSignupOpen(true)}
-            >
-              <UserPlus /> Sign Up for free
-            </Button>
-            <Button
-              variant="outline"
-              className="w-1/2 p-7 text-lg border-2 border-white shadow"
-              onClick={() => setIsLoginOpen(true)}
-            >
-              <UserRoundPen /> Login
-            </Button>
+            <div>
+              <h5 className="font-mono text-xs uppercase tracking-wide text-muted-foreground mb-4">
+                Interview Prep
+              </h5>
+              <ul className="flex flex-col gap-2.5 text-sm">
+                <li>
+                  <a
+                    href="/interview"
+                    onClick={navigateTo("/interview")}
+                    className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
+                  >
+                    Practice Interviews
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h5 className="font-mono text-xs uppercase tracking-wide text-muted-foreground mb-4">
+                Account
+              </h5>
+              <ul className="flex flex-col gap-2.5 text-sm">
+                <li>
+                  <button
+                    type="button"
+                    onClick={goToAccountPage}
+                    className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
+                  >
+                    My Account
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setIsSignupOpen(true)}
+                    className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
+                  >
+                    Sign up
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setIsLoginOpen(true)}
+                    className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
+                  >
+                    Log in
+                  </button>
+                </li>
+              </ul>
+            </div>
           </div>
-          <div className="p-10 gap-y-5" />
+
+          <div className="flex flex-wrap justify-between items-center gap-3.5 pt-[26px] border-t border-border text-sm text-muted-foreground">
+            <span>
+              © {new Date().getFullYear()} xCode. Built by Uday Thakur.
+            </span>
+          </div>
         </div>
-      </div>
-      {/* Login Dialog */}
+      </footer>
+
       <LoginDialog
         isOpen={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
@@ -81,8 +155,6 @@ const FooterPage: React.FC<FooterPageProps> = () => {
         }}
         onSuccessfulAuth={checkAuth}
       />
-
-      {/* Signup Dialog */}
       <SignupDialog
         isOpen={isSignupOpen}
         onClose={() => setIsSignupOpen(false)}
