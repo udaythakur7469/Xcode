@@ -14,16 +14,7 @@ const EXPLORE_STATS = [
 
 const ExploreHero: React.FC = () => {
   return (
-    <section className="relative overflow-hidden py-20 text-center">
-      <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
-      <div
-        className="absolute -top-36 left-1/2 -translate-x-1/2 w-[900px] h-[500px] rounded-full pointer-events-none blur-3xl"
-        style={{
-          background:
-            "radial-gradient(ellipse, var(--brand-glow) 0%, transparent 70%)",
-        }}
-      />
-
+    <section className="relative py-20 text-center">
       <div className="relative z-10 max-w-[1280px] mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -56,9 +47,9 @@ const ExploreHero: React.FC = () => {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="text-[1.1rem] text-muted-foreground max-w-[640px] mx-auto leading-relaxed mb-12"
         >
-          From a real judged code editor to AI mock interviews, spaced
-          revision, and community discussion — here&apos;s exactly how each
-          part of xCode works, and how it fits together.
+          From a real judged code editor to AI mock interviews, spaced revision,
+          and community discussion — here&apos;s exactly how each part of xCode
+          works, and how it fits together.
         </motion.p>
 
         <RevealOnScroll className="grid grid-cols-2 md:grid-cols-4 gap-5">
