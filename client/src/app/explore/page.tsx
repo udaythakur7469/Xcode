@@ -18,36 +18,44 @@ type pageProps = {};
 const page: React.FC<pageProps> = () => {
   return (
     <Suspense fallback={null}>
-      <Navbar
-        firstButton={"Solve Problems"}
-        secondButton={"Mock Interviews"}
-        fixed
-        variant="default"
-      />
+      <div className="bg-background min-h-screen">
+        <div className="fixed top-0 inset-x-0 z-50">
+          <Navbar
+            firstButton={"Solve Problems"}
+            secondButton={"Mock Interviews"}
+            fixed
+            variant="default"
+          />
+        </div>
 
-      {/* Fixed navbar takes itself out of flow — this spacer keeps the
-          hero from rendering underneath it. Height matches the navbar's
-          rendered height (p-5 wrapper + h-[50px] bar ≈ 90px); adjust this
-          value if you change the navbar's padding/height. */}
-      <div className="h-[90px]" />
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 dot-grid-bg pointer-events-none" />
+          <div
+            className="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full pointer-events-none blur-3xl"
+            style={{
+              background:
+                "radial-gradient(ellipse, var(--brand-glow) 0%, transparent 70%)",
+            }}
+          />
 
-      <ExploreHero />
+          <div className="pt-[30px]">
+            <ExploreHero />
+          </div>
+        </div>
 
-      {/* First feature (Problem Database) rendered on its own so the
-          topic marquee can sit directly beneath its "Browse Problems"
-          button, matching the approved demo. */}
-      <FeatureDetailsSection features={[FEATURE_DETAILS[0]]} startIndex={0} />
+        <FeatureDetailsSection features={[FEATURE_DETAILS[0]]} startIndex={0} />
 
-      <TopicMarquee />
+        <TopicMarquee />
 
-      <FeatureDetailsSection
-        features={FEATURE_DETAILS.slice(1)}
-        startIndex={1}
-      />
+        <FeatureDetailsSection
+          features={FEATURE_DETAILS.slice(1)}
+          startIndex={1}
+        />
 
-      <DifficultyBreakdownSection />
-      <ExploreCTASection />
-      <FooterPage />
+        <DifficultyBreakdownSection />
+        <ExploreCTASection />
+        <FooterPage />
+      </div>
     </Suspense>
   );
 };
