@@ -6,6 +6,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
+import { cn } from "@/lib/utils";
 
 type NavbarShellProps = {
   firstButton: string;
@@ -13,6 +14,8 @@ type NavbarShellProps = {
   goToHomePage: () => void;
   goToPage: (button: string) => void;
   rightSlot: React.ReactNode;
+  fixed?: boolean;
+  variant?: "default" | "brand";
 };
 
 const NavbarShell: React.FC<NavbarShellProps> = ({
@@ -21,10 +24,28 @@ const NavbarShell: React.FC<NavbarShellProps> = ({
   goToHomePage,
   goToPage,
   rightSlot,
+  fixed = false,
+  variant = "default",
 }) => {
   return (
-    <div className="p-5">
-      <Menubar className="flex w-full items-center justify-between border shadow h-[50px]">
+    <div
+      className={cn(
+        fixed ? "fixed top-0 inset-x-0 z-50 px-6 py-4" : "p-5"
+      )}
+    >
+      <Menubar
+        className={cn(
+          "flex w-full items-center justify-between h-[50px]",
+          variant === "brand"
+            ? "border-none shadow-lg bg-gradient-to-r from-brand to-brand-dim"
+            : "border shadow"
+        )}
+        style={
+          variant === "brand"
+            ? { color: "var(--brand-foreground)" }
+            : undefined
+        }
+      >
         <MenubarMenu>
           <MenubarTrigger className="h-full">
             <Image
