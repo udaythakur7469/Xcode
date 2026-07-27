@@ -1,48 +1,58 @@
 "use client";
 
 import React from "react";
-import FeatureCards from "../helperComponents/FeatureCards";
-import { ArrowDown } from "lucide-react";
-import data from "@/components/landingPage/landingPageData/data";
-import { Button } from "../../ui/button";
+import { motion } from "framer-motion";
+import RevealOnScroll from "../helperComponents/RevealOnScroll";
+import { HOMEPAGE_FEATURES } from "../landingPageData/featuresData";
 
-type FeaturesSectionProps = {};
-
-const FeaturesSection: React.FC<FeaturesSectionProps> = () => {
-  const takeToFooterSection = () => {
-    const element = document.getElementById("footer");
-    element?.scrollIntoView({ behavior: "smooth", block: "end" });
-  };
+const FeaturesSection: React.FC = () => {
   return (
-    <div id="featured" className="w-full h-screen flex flex-col">
-      {/* Title Section */}
-      <div className="flex flex-col items-center justify-center m-10 my-6 px-5">
-        <p className="text-6xl font-bold py-5">Everything you need to Ace</p>
-        <p className="text-6xl font-bold py-5">your Technical Interviews</p>
-      </div>
+    <section id="featured" className="py-[90px]">
+      <div className="max-w-[1280px] mx-auto px-6">
+        <RevealOnScroll className="text-center max-w-[640px] mx-auto mb-14">
+          <span className="block font-mono text-xs uppercase tracking-wide text-brand mb-3.5">
+            Why xCode
+          </span>
+          <h2 className="text-[1.7rem] md:text-[2.4rem] font-extrabold tracking-tight mb-3.5">
+            Everything you need to actually get interview-ready
+          </h2>
+          <p className="text-muted-foreground">
+            Not just a problem list — a full loop from practicing to
+            retaining to performing under pressure.
+          </p>
+        </RevealOnScroll>
 
-      {/* Cards Section (Takes Remaining Space) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 flex-1 px-10">
-        {data.map((item, index) => (
-          <FeatureCards
-            key={index}
-            logo={item.logo}
-            title={item.title}
-            description={item.description}
-            footer={item.footer}
-          />
-        ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-[22px]">
+          {HOMEPAGE_FEATURES.map((feature, index) => (
+            <RevealOnScroll key={feature.id} delay={index * 0.06}>
+              <motion.div
+                whileHover={{ y: -5 }}
+                transition={{ duration: 0.25 }}
+                className="h-full p-[30px] rounded-lg border bg-card hover:shadow-lg transition-colors"
+                style={{ borderColor: "var(--border)" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "var(--brand-glow)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border)";
+                }}
+              >
+                <div className="w-[46px] h-[46px] rounded-[10px] flex items-center justify-center text-[1.3rem] mb-[18px] bg-brand-muted text-brand">
+                  {feature.icon}
+                </div>
+                <h3 className="text-[1.08rem] font-bold mb-2.5">
+                  {feature.title}
+                </h3>
+                <p className="text-[0.92rem] text-muted-foreground leading-relaxed">
+                  {feature.description}
+                </p>
+              </motion.div>
+            </RevealOnScroll>
+          ))}
+        </div>
       </div>
-      <div className="flex justify-center items-center">
-        <Button
-          variant="outline"
-          className="m-5 p-7 text-lg border-2 border-white shadow"
-          onClick={takeToFooterSection}
-        >
-          <ArrowDown /> Get Started
-        </Button>
-      </div>
-    </div>
+    </section>
   );
 };
+
 export default FeaturesSection;
