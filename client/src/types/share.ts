@@ -1,3 +1,24 @@
+export interface CodeExplanation {
+  snippet: string;
+  explanation: string;
+}
+
+export interface TestCaseRow {
+  input: string;
+  output: string;
+  notes: string;
+}
+
+export interface VisualizationData {
+  url: string;
+  alt: string;
+}
+
+export interface AlternativeApproach {
+  label: string;
+  content: string;
+}
+
 export interface ParsedPostData {
   title: string;
   problemLink: string;
@@ -16,6 +37,11 @@ export interface ParsedPostData {
   edgeCases: string[];
   relatedProblems: { name: string; url: string }[];
   summaryPoints: string[];
+  // New extracted sections
+  codeExplanation: CodeExplanation | null;
+  testCases: TestCaseRow[];
+  visualization: VisualizationData | null;
+  alternativeApproaches: AlternativeApproach[];
   isTemplatePost: boolean; // false = freeform, formatters degrade gracefully
 }
 
