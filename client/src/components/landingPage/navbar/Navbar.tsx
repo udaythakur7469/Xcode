@@ -23,13 +23,21 @@ import {
 } from "@/components/ui/logout-dropdown-menu";
 import { UserProfileSkeleton } from "@/components/accountPage/UserProfileSkeleton";
 import NavbarShell from "./NavbarShell";
+import { cn } from "@/lib/utils";
 
 type NavbarProps = {
   firstButton: string;
   secondButton: string;
+  fixed?: boolean;
+  variant?: "default" | "brand";
 };
 
-const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
+const Navbar: React.FC<NavbarProps> = ({
+  firstButton,
+  secondButton,
+  fixed = false,
+  variant = "default",
+}) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -109,6 +117,8 @@ const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
           goToHomePage={goToHomePage}
           goToPage={goToPage}
           rightSlot={<div className="w-8 h-8" />}
+          fixed={fixed}
+          variant={variant}
         />
         <UserProfileSkeleton />
       </>
@@ -117,8 +127,24 @@ const Navbar: React.FC<NavbarProps> = ({ firstButton, secondButton }) => {
 
   return (
     <>
-      <div className="p-5">
-        <Menubar className="flex w-full items-center justify-between border shadow h-[50px]">
+      <div
+        className={cn(
+          fixed ? "fixed top-0 inset-x-0 z-50 px-6 py-4" : "p-5"
+        )}
+      >
+        <Menubar
+          className={cn(
+            "flex w-full items-center justify-between h-[50px]",
+            variant === "brand"
+              ? "border-none shadow-lg bg-gradient-to-r from-brand to-brand-dim"
+              : "border shadow"
+          )}
+          style={
+            variant === "brand"
+              ? { color: "var(--brand-foreground)" }
+              : undefined
+          }
+        >
           {/* Logo */}
           <MenubarMenu>
             <MenubarTrigger className="h-full">
