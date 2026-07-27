@@ -229,6 +229,33 @@ p, h1 {
   animation: blink-cursor 1s step-end infinite;
 }
 
+/* ── Explore page: interview waveform bars ── */
+@keyframes interview-wave {
+  0%, 100% { height: 10px; }
+  50% { height: 44px; }
+}
+.animate-interview-wave {
+  animation: interview-wave 1.2s ease-in-out infinite;
+}
+
+/* ── Explore page: topic tag marquee, opposite directions, same speed ──
+   Two distinct keyframes (not `animation-direction: reverse`) since reverse
+   caused a visible jump/glitch at the loop boundary during the HTML demo. */
+@keyframes scroll-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-33.3333%); }
+}
+@keyframes scroll-right {
+  from { transform: translateX(-33.3333%); }
+  to { transform: translateX(0); }
+}
+.animate-scroll-left {
+  animation: scroll-left 34s linear infinite;
+}
+.animate-scroll-right {
+  animation: scroll-right 34s linear infinite;
+}
+
 
 /* React Calendar Heatmap Styles 
 .react-calendar-heatmap {
