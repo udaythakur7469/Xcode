@@ -52,6 +52,16 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 220 13% 91%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* ── Homepage brand accent (light mode) ──────────────────────────────
+       Matches the existing "accepted" verdict green used in
+       lib/share/getStatusConfig.ts, so the homepage stays visually
+       consistent with the rest of the product. */
+    --brand: #16a34a;
+    --brand-dim: #15803d;
+    --brand-foreground: #ffffff;
+    --brand-muted: rgba(22, 163, 74, 0.08);
+    --brand-glow: rgba(22, 163, 74, 0.25);
   }
 
   .dark {
@@ -91,6 +101,13 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* ── Homepage brand accent (dark mode) ── */
+    --brand: #22c55e;
+    --brand-dim: #16a34a;
+    --brand-foreground: #ecfdf3;
+    --brand-muted: rgba(34, 197, 94, 0.12);
+    --brand-glow: rgba(34, 197, 94, 0.35);
   }
 
     * {
@@ -138,6 +155,80 @@ p, h1 {
 .dark .animate-pulse {
   background-color: #3a3a3e;
 }
+
+/* ── Homepage: dot-grid hero background ── */
+.dot-grid-bg {
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(ellipse 65% 65% at 50% 30%, black 40%, transparent 80%);
+  mask-image: radial-gradient(ellipse 65% 65% at 50% 30%, black 40%, transparent 80%);
+  opacity: 0.6;
+}
+
+/* ── Homepage: transparent scrollbar (still scrollable, just invisible track) ── */
+.scrollbar-transparent {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scrollbar-transparent::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  background: transparent;
+}
+.scrollbar-transparent::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 8px;
+}
+.scrollbar-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ── Homepage: infinite marquee animations (languages + testimonials) ── */
+@keyframes marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee-scroll 24s linear infinite;
+}
+.animate-marquee-slow {
+  animation: marquee-scroll 50s linear infinite;
+}
+.animate-marquee-paused-hover:hover {
+  animation-play-state: paused;
+}
+
+/* ── Homepage: heatmap intensity levels ──
+   Note: Tailwind's `bg-brand/20` opacity modifier does NOT work here because
+   --brand is a plain hex string, not an rgb()/hsl() function Tailwind can
+   inject alpha into (same limitation already present for --primary, --border
+   etc. elsewhere in this file). Use these explicit classes instead. */
+.heatmap-l0 { background: var(--secondary); }
+.heatmap-l1 { background: color-mix(in srgb, var(--brand) 20%, var(--secondary)); }
+.heatmap-l2 { background: color-mix(in srgb, var(--brand) 45%, var(--secondary)); }
+.heatmap-l3 { background: color-mix(in srgb, var(--brand) 70%, var(--secondary)); }
+.heatmap-l4 { background: var(--brand); }
+
+/* ── Homepage: dedicated pulse/blink animations ──
+   NOT using Tailwind's `animate-pulse` here on purpose: this file already
+   defines `.dark .animate-pulse { background-color: #3a3a3e; }` for skeleton
+   loaders, and that selector has higher specificity than a `bg-*` utility,
+   so it would silently override any brand color applied via animate-pulse
+   in dark mode. These are separate, unaffected animations. */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 1.8s infinite;
+}
+@keyframes blink-cursor {
+  50% { opacity: 0; }
+}
+.animate-blink-cursor {
+  animation: blink-cursor 1s step-end infinite;
+}
+
 
 /* React Calendar Heatmap Styles 
 .react-calendar-heatmap {
