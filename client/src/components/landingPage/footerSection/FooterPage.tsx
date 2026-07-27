@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
 import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/ForgotPasswordDialog";
@@ -12,6 +12,8 @@ type FooterPageProps = {};
 
 const FooterPage: React.FC<FooterPageProps> = () => {
   const router = useRouter();
+  const pathname = usePathname();
+
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
@@ -22,6 +24,8 @@ const FooterPage: React.FC<FooterPageProps> = () => {
     const name = encodeURIComponent(userData?.name || "");
     router.push(`/account/${name}`);
   };
+
+  const isExplorePage = pathname?.includes("/explore");
 
   return (
     <>
@@ -52,16 +56,25 @@ const FooterPage: React.FC<FooterPageProps> = () => {
                     href="/problems"
                     className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
                   >
-                    Problems
+                    Solve problems
                   </Link>
                 </li>
                 <li>
-                  <Link
-                    href="/"
-                    className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
-                  >
-                    Home
-                  </Link>
+                  {isExplorePage ? (
+                    <Link
+                      href="/"
+                      className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
+                    >
+                      Visit home
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/explore"
+                      className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
+                    >
+                      Explore Xcode
+                    </Link>
+                  )}
                 </li>
                 <li>
                   <Link
