@@ -1,103 +1,138 @@
 "use client";
 
-import Image from "next/image";
-import * as React from "react";
-import Autoplay from "embla-carousel-autoplay";
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { useUserStore } from "@/features/userStore";
+import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
+import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
+import CodeEditorMock from "./CodeEditorMock";
 
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
-import { ArrowDown } from "lucide-react";
-import { Button } from "../../ui/button";
-import { Card } from "../../ui/card";
+const HERO_TAGS = ["arrays", "dynamic programming", "graphs", "Practice interviews"];
 
 const HeroSection: React.FC = () => {
-  const takeToFeaturedSection = () => {
-    const element = document.getElementById("featured");
-    element?.scrollIntoView({ behavior: "smooth", block: "end" });
+  const router = useRouter();
+  const { isUserAuthenticated, checkAuth } = useUserStore();
+  const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [isLoginOpenFromSignup, setIsLoginOpenFromSignup] = useState(false);
+
+  const handleStartSolving = () => {
+    if (isUserAuthenticated) {
+      router.push("/problems");
+    } else {
+      setIsSignupOpen(true);
+    }
   };
 
-  const plugin = React.useRef(
-    Autoplay({ delay: 3000, stopOnInteraction: true })
-  );
-
-  // Fix hydration issue by ensuring rendering happens only on client
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null; // Avoid mismatches by rendering only on client
+  const handleExploreXcode = () => {
+    router.push("/explore");
+  };
 
   return (
-    <div id="hero" className="h-screen flex flex-col">
-      <div className="h-[5vh]" />
-      {/* Title Section (Fixed Height) */}
-      <div className="h-[10vh] flex items-center justify-center">
-        <div className="text-4xl font-bold text-center p-2 cursor-default border-b">
-          What Xcode offers you
-        </div>
-      </div>
+    <section id="hero" className="relative py-24 md:py-28">
+      <div className="relative z-10 max-w-[1280px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-14 items-center">
+        <div>
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border font-mono text-[0.8rem] mb-6"
+            style={{
+              borderColor: "var(--brand-glow)",
+              background: "var(--brand-muted)",
+              color: "var(--brand)",
+            }}
+          >
+            <span className="w-[7px] h-[7px] rounded-full bg-brand animate-pulse-dot" />
+            AI Mock Interviews · Smart Revision · Real-time Judging
+          </motion.div>
 
-      {/* Fullscreen Carousel (Fixed Height) */}
-      <div className="h-full flex items-center justify-center p-10 w-full">
-        <Carousel
-          plugins={[plugin.current]}
-          className="w-full max-w-6xl h-full"
-          onMouseEnter={plugin.current.stop}
-          onMouseLeave={plugin.current.reset}
-        >
-          <CarouselContent>
-            {Array.from({ length: 3 }).map((_, index) => (
-              <CarouselItem key={index}>
-                <div className="flex w-full h-[70vh] items-center justify-center">
-                  {/* Left Section (Text - 40%) */}
-                  <div className="basis-2/5 h-full flex items-center justify-center p-10">
-                    <p className="text-2xl font-medium text-center cursor-default">
-                      {index === 0
-                        ? "Solve Problems"
-                        : index === 1
-                        ? "Explore Xcode"
-                        : "Start an Interview"}
-                    </p>
-                  </div>
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.05 }}
+            className="text-[2.3rem] md:text-[3.6rem] font-extrabold leading-[1.12] tracking-tight mb-6"
+          >
+            Master coding interviews with a platform that{" "}
+            <span className="text-brand">actually adapts</span> to you.
+          </motion.h1>
 
-                  {/* Right Section (Image - 60%) */}
-                  <div className="basis-3/5 h-full flex justify-center items-center relative w-full border rounded-lg">
-                    <Image
-                      src={`/Image${index + 1}.png`} // Different images for slides
-                      alt={`Slide ${index + 1}`}
-                      priority
-                      fill
-                      className="object-center border rounded-lg"
-                    />
-                  </div>
-                </div>
-              </CarouselItem>
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-[1.1rem] text-muted-foreground max-w-[520px] mb-8 leading-relaxed"
+          >
+            Solve curated problems, get instant judged feedback, practice with
+            an AI interviewer, and let spaced revision make sure what you learn
+            actually sticks.
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="flex flex-wrap gap-3.5 mb-10"
+          >
+            <Button
+              size="lg"
+              className="bg-brand text-brand-foreground hover:bg-brand-dim px-7 py-6 text-base"
+              onClick={handleStartSolving}
+            >
+              Start Solving →
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="px-7 py-6 text-base"
+              onClick={handleExploreXcode}
+            >
+              Explore Xcode
+            </Button>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="flex flex-wrap gap-2.5"
+          >
+            {HERO_TAGS.map((tag) => (
+              <span
+                key={tag}
+                className="font-mono text-xs text-muted-foreground border border-border rounded-md px-2.5 py-1.5"
+              >
+                {tag}
+              </span>
             ))}
-          </CarouselContent>
-          <CarouselPrevious />
-          <CarouselNext />
-        </Carousel>
+          </motion.div>
+        </div>
+
+        <CodeEditorMock />
       </div>
 
-      {/* Subtitle Section (Fixed Height) */}
-      <div className="h-[10vh] flex items-center justify-center">
-        <Button
-          variant="outline"
-          className="m-5 p-7 text-lg border-2 border-white shadow"
-          onClick={takeToFeaturedSection}
-        >
-          <ArrowDown /> Learn More
-        </Button>
-      </div>
-      <div className="h-[5vh]" />
-    </div>
+      {/* Signup dialog reused from the real auth flow — same one Navbar uses */}
+      <SignupDialog
+        isOpen={isSignupOpen}
+        onClose={() => setIsSignupOpen(false)}
+        openLogin={() => {
+          setIsSignupOpen(false);
+          setIsLoginOpenFromSignup(true);
+        }}
+        onSuccessfulAuth={checkAuth}
+      />
+      <LoginDialog
+        isOpen={isLoginOpenFromSignup}
+        onClose={() => setIsLoginOpenFromSignup(false)}
+        openSignup={() => {
+          setIsLoginOpenFromSignup(false);
+          setIsSignupOpen(true);
+        }}
+        openForgotPassword={() => setIsLoginOpenFromSignup(false)}
+        onSuccessfulAuth={checkAuth}
+      />
+    </section>
   );
 };
 
