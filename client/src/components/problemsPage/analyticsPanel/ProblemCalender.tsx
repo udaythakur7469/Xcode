@@ -211,7 +211,7 @@ const ProblemCalendar: React.FC = () => {
           />
         )}
 
-        <CalendarInfoButton className="absolute -bottom-1.5 -right-0.5 z-10" />
+        <CalendarInfoButton className="absolute -bottom-1.5 -left-0.4 z-10" />
       </div>
 
       <Legend />

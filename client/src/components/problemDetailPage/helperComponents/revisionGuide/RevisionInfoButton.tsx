@@ -34,11 +34,11 @@ const RevisionInfoButton: React.FC<RevisionInfoButtonProps> = ({
         title="How does the revision queue work?"
         aria-label="Open revision guide"
         className={cn(
-          "flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition-colors hover:bg-blue-700",
+          "flex h-5 w-5 items-center justify-center rounded-full bg-brand text-white shadow-sm transition-colors hover:bg-brand-dim",
           className,
         )}
       >
-        <Lightbulb size={12} strokeWidth={2.5} />
+        <Lightbulb size={12} strokeWidth={2.5} color="#000000"/>
       </button>
 
       <RevisionGuideDialog

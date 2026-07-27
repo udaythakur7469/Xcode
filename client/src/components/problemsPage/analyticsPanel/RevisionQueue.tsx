@@ -55,7 +55,7 @@ const RevisionQueue: React.FC = () => {
     // `relative` so the info button below can be absolutely positioned to
     // superimpose the card's top-right corner.
     <div className="relative w-full rounded-xl border border-border bg-card">
-      <RevisionInfoButton className="absolute -top-1.5 -right-0.5 z-10" />
+      <RevisionInfoButton className="absolute -top-1.5 -left-0.4 z-10" />
 
       {/* Header — always visible */}
       <div className="flex items-center justify-between border-b border-border px-3.5 py-2.5">
