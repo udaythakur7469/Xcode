@@ -6,6 +6,7 @@ import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
 import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/ForgotPasswordDialog";
 import { useUserStore } from "@/features/userStore";
+import Link from "next/link";
 
 type FooterPageProps = {};
 
@@ -15,11 +16,6 @@ const FooterPage: React.FC<FooterPageProps> = () => {
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const { checkAuth, userData } = useUserStore();
-
-  const navigateTo = (path: string) => (e: React.MouseEvent) => {
-    e.preventDefault();
-    router.push(path);
-  };
 
   const goToAccountPage = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -52,31 +48,28 @@ const FooterPage: React.FC<FooterPageProps> = () => {
               </h5>
               <ul className="flex flex-col gap-2.5 text-sm">
                 <li>
-                  <a
+                  <Link
                     href="/problems"
-                    onClick={navigateTo("/problems")}
                     className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
                   >
                     Problems
-                  </a>
+                  </Link>
                 </li>
                 <li>
-                  <a
-                    href="/explore"
-                    onClick={navigateTo("/explore")}
+                  <Link
+                    href="/"
                     className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
                   >
-                    Explore
-                  </a>
+                    Home
+                  </Link>
                 </li>
                 <li>
-                  <a
+                  <Link
                     href="/interview"
-                    onClick={navigateTo("/interview")}
                     className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
                   >
                     Practice Interviews
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
@@ -87,13 +80,12 @@ const FooterPage: React.FC<FooterPageProps> = () => {
               </h5>
               <ul className="flex flex-col gap-2.5 text-sm">
                 <li>
-                  <a
+                  <Link
                     href="/interview"
-                    onClick={navigateTo("/interview")}
                     className="opacity-80 hover:opacity-100 hover:text-brand transition-colors"
                   >
                     Practice Interviews
-                  </a>
+                  </Link>
                 </li>
               </ul>
             </div>
