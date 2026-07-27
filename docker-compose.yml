@@ -7,8 +7,8 @@ services:
       dockerfile: ../Dockerfile.server
     container_name: xcode-server
     restart: always
-    env_file:
-      - ./server/.env
+    volumes:
+      - ./server/.env:/app/.env:ro
     environment:
       - NODE_ENV=production
     ports:

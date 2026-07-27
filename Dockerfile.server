@@ -17,10 +17,19 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies including devDependencies (TypeScript needs them)
+# Note: if package.json has a "postinstall": "prisma generate" script, it will
+# fail/no-op here because prisma/schema.prisma doesn't exist yet at this point —
+# that's expected. We generate explicitly below, after the full source is copied.
 RUN npm ci
 
-# Copy all source code
+# Copy all source code (including prisma/schema.prisma)
 COPY . .
+
+# Generate the Prisma Client — this creates the actual TypeScript types
+# (enums like Difficulty, SubmissionStatus, etc.) based on schema.prisma.
+# Without this step, @prisma/client only has empty stub types and every
+# file importing a Prisma-generated enum fails to compile.
+RUN npx prisma generate
 
 # Compile TypeScript → JavaScript (outputs to dist/ folder)
 RUN npm run build
