@@ -1,10 +1,12 @@
 import dotenv from "dotenv";
-import http from "http";
-import app from "./app.js";
-import logger from "./configs/loggerConfig.js";
-import { initSocket } from "./configs/socketConfig.js";
-
 dotenv.config();
+
+import type { Server } from "http";
+
+const { default: http } = await import("http");
+const { default: app } = await import("./app.js");
+const { default: logger } = await import("./configs/loggerConfig.js");
+const { initSocket } = await import("./configs/socketConfig.js");
 
 const PORT = process.env.PORT || 8000;
 
@@ -12,7 +14,7 @@ const httpServer = http.createServer(app);
 
 initSocket(httpServer);
 
-let server: http.Server;
+let server: Server;
 
 server = httpServer.listen(PORT, () => {
   logger.info(`server listening at port ${PORT}`);
