@@ -26,7 +26,7 @@ const TitleSection: React.FC<TitleSectionProps> = () => {
       <div className="p-2" />
       <div className="p-10 flex flex-col items-center justify-center cursor-default">
         <div className="text-xl">
-          <p className="font-poppins">introducing Nexcode</p>
+          <p className="font-poppins">introducing Nexxcode</p>
         </div>
         <div className="p-3" />
         <div className="m-8 mb-2 flex items-center justify-center">
