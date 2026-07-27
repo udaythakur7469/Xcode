@@ -12,4 +12,5 @@ build/
 Thumbs.db
 *.log
 npm-debug.log*
+.vscode
 "@ | Out-File -FilePath ".gitignore" -Encoding UTF8
