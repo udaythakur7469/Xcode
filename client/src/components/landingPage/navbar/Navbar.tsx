@@ -24,6 +24,7 @@ import {
 import { UserProfileSkeleton } from "@/components/accountPage/UserProfileSkeleton";
 import NavbarShell from "./NavbarShell";
 import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
 
 type NavbarProps = {
   firstButton: string;
@@ -41,6 +42,13 @@ const Navbar: React.FC<NavbarProps> = ({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [isAuthChecked, setIsAuthChecked] = useState<boolean>(false);
 
@@ -107,6 +115,11 @@ const Navbar: React.FC<NavbarProps> = ({
 
   const goToHomePage = () => router.push("/");
 
+  const logoSrc =
+    mounted && resolvedTheme === "dark"
+      ? "/logo-dark-bg.svg"
+      : "/logo-light-bg.svg";
+
   const isAccountPage = pathname?.includes("/account");
   if (!isAuthChecked && isAccountPage) {
     return (
@@ -128,16 +141,14 @@ const Navbar: React.FC<NavbarProps> = ({
   return (
     <>
       <div
-        className={cn(
-          fixed ? "fixed top-0 inset-x-0 z-50 px-6 py-4" : "p-5"
-        )}
+        className={cn(fixed ? "fixed top-0 inset-x-0 z-50 px-6 py-4" : "p-5")}
       >
         <Menubar
           className={cn(
             "flex w-full items-center justify-between h-[50px]",
             variant === "brand"
               ? "border-none shadow-lg bg-gradient-to-r from-brand to-brand-dim"
-              : "border shadow"
+              : "border shadow",
           )}
           style={
             variant === "brand"
@@ -149,7 +160,7 @@ const Navbar: React.FC<NavbarProps> = ({
           <MenubarMenu>
             <MenubarTrigger className="h-full">
               <Image
-                src="/logo.png"
+                src={logoSrc}
                 width={100}
                 height={100}
                 alt="logo"

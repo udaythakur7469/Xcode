@@ -177,14 +177,16 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
         {/* Left Section */}
         <div className="flex justify-start items-center h-full">
           <MenubarMenu>
-            <Image
-              src="/Icon-Image-Black.png"
-              width={28}
-              height={28}
-              alt="logo"
-              onClick={goToHomePage}
-              className="p-0 ml-2 mr-2 cursor-pointer"
-            />
+            <div className="flex items-center justify-center w-11 h-11 ml-2 mr-2 cursor-pointer">
+              <Image
+                src="/logo-icon-only.svg"
+                width={44}
+                height={44}
+                alt="logo"
+                onClick={goToHomePage}
+                className="p-0"
+              />
+            </div>
             <div className="flex space-x-2 h-full items-center">
               <div
                 className="flex justify-center items-center rounded-md px-2 bg-secondary h-8 cursor-pointer bg-red-500"
