@@ -316,7 +316,7 @@ export const useFABSystem = () => {
       }
 
       // Ctrl + K for Command Palette
-      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+      if (e.key?.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         // Close AI chat if open, then open command palette
         if (aiChatDialogOpen) {
