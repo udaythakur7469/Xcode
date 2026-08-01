@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, Check, Copy, Info, ArrowLeft } from "lucide-react";
+import { AlertTriangle, Check, Copy, Info, ArrowLeft, X } from "lucide-react";
 import { ShareWarning, SmartSharePlatform } from "@/types/share";
 import { copyToClipboard } from "@/lib/share/shareUtils";
 
@@ -40,6 +40,21 @@ const SharePreviewModal: React.FC<SharePreviewModalProps> = ({
   const [copied, setCopied] = useState(false);
   const [showRaw, setShowRaw] = useState(false);
   const [autoOpen, setAutoOpen] = useState(true);
+
+  // Tracks which warning indices the user has dismissed. Reset whenever the
+  // platform or warning set changes so dismissals don't leak across a
+  // different smart-share selection.
+  const [dismissedWarnings, setDismissedWarnings] = useState<Set<number>>(
+    new Set(),
+  );
+
+  useEffect(() => {
+    setDismissedWarnings(new Set());
+  }, [platform, warnings]);
+
+  const dismissWarning = (index: number) => {
+    setDismissedWarnings((prev) => new Set(prev).add(index));
+  };
 
   const handleCopy = async () => {
     await copyToClipboard(content);
@@ -76,25 +91,35 @@ const SharePreviewModal: React.FC<SharePreviewModalProps> = ({
         </DialogHeader>
 
         {/* Warnings */}
-        {warnings.length > 0 && (
+        {warnings.some((_, i) => !dismissedWarnings.has(i)) && (
           <div className="px-5 pt-3 pb-2 shrink-0 space-y-1.5">
-            {warnings.map((w, i) => (
-              <div
-                key={i}
-                className={`flex items-start gap-2 text-xs px-3 py-2 rounded-md ${
-                  w.severity === "warn"
-                    ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-                    : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                }`}
-              >
-                {w.severity === "warn" ? (
-                  <AlertTriangle size={13} className="mt-0.5 shrink-0" />
-                ) : (
-                  <Info size={13} className="mt-0.5 shrink-0" />
-                )}
-                {w.message}
-              </div>
-            ))}
+            {warnings.map((w, i) => {
+              if (dismissedWarnings.has(i)) return null;
+              return (
+                <div
+                  key={i}
+                  className={`flex items-start gap-2 text-xs pl-3 pr-2 py-2 rounded-md ${
+                    w.severity === "warn"
+                      ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                      : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                  }`}
+                >
+                  {w.severity === "warn" ? (
+                    <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                  ) : (
+                    <Info size={13} className="mt-0.5 shrink-0" />
+                  )}
+                  <span className="flex-1">{w.message}</span>
+                  <button
+                    onClick={() => dismissWarning(i)}
+                    aria-label="Dismiss warning"
+                    className="shrink-0 opacity-60 hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-foreground/10"
+                  >
+                    <X size={13} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
 
