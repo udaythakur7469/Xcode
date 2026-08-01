@@ -92,31 +92,35 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   return (
     <div className="px-2 py-2">
-      <div className="relative">
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            isActivePathGenerating
-              ? "AI is generating a response…"
-              : "Chat with Nova… (Enter to send, Ctrl+Enter for newline)"
-          }
-          disabled={disabled}
-          rows={1}
-          className="
-            w-full resize-none
-            px-3 py-2.5 pr-12
-            rounded-2xl border border-zinc-600
-            bg-zinc-800 text-white text-sm
-            placeholder-zinc-500
-            leading-relaxed outline-none
-            focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-            disabled:cursor-not-allowed disabled:opacity-50
-            transition-colors
-          "
-        />
+      <div className="flex items-start gap-1">
+        <div className="relative flex-1">
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              isActivePathGenerating
+                ? "AI is generating a response…"
+                : "Chat with Nova… (Enter to send, Ctrl+Enter for newline)"
+            }
+            disabled={disabled}
+            rows={1}
+            spellCheck={false}
+            className="
+              w-full resize-none
+              min-h-12
+              px-4 py-3
+              rounded-2xl border border-zinc-600
+              bg-zinc-800 text-white text-sm
+              placeholder-zinc-500
+              leading-relaxed outline-none
+              focus:ring-1 focus:ring-[var(--brand)] focus:border-[var(--brand)]
+              disabled:cursor-not-allowed disabled:opacity-50
+              transition-colors
+            "
+          />
+        </div>
 
         {/* Stop button — shown while AI is generating on active path */}
         {isActivePathGenerating ? (
@@ -124,10 +128,10 @@ const ChatInput: React.FC<ChatInputProps> = ({
             onClick={handleStop}
             title="Stop generation"
             className="
-              absolute right-2 bottom-2
-              h-8 w-8
+              flex-shrink-0
+              h-12 w-12
               flex items-center justify-center
-              rounded-full
+              rounded-xl
               bg-red-600 hover:bg-red-500
               text-white
               transition-colors duration-150
@@ -141,15 +145,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
             onClick={handleSend}
             disabled={!canSend}
             className={`
-              absolute right-2 bottom-2
-              h-8 w-8
+              flex-shrink-0
+              h-12 w-12
               flex items-center justify-center
-              rounded-full
+              rounded-xl
               transition-all duration-150
               ${
                 canSend
-                  ? "bg-blue-600 hover:bg-blue-500 text-white"
-                  : "opacity-0 pointer-events-none"
+                  ? "bg-[var(--brand)] hover:bg-[var(--brand-dim)] text-white"
+                  : "bg-zinc-700 text-zinc-500 pointer-events-none"
               }
             `}
           >

@@ -515,26 +515,27 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
             }}
           >
             <style>{`
-              @keyframes blinkBlue {
-                0%, 100% { 
-                  outline-color: transparent; 
+              @keyframes blinkGreen {
+                0%, 100% {
+                  outline-color: transparent;
                   outline-offset: 0px;
                 }
-                16.6%, 83.3% { 
-                  outline-color: rgb(37, 99, 235); 
+                16.6%, 83.3% {
+                  outline-color: rgb(22, 163, 74);
                   outline-offset: 0px;
                 }
-                33.3%, 66.6% { 
-                  outline-color: transparent; 
+                33.3%, 66.6% {
+                  outline-color: transparent;
                   outline-offset: 0px;
                 }
-                50% { 
-                  outline-color: rgb(37, 99, 235); 
+                50% {
+                  outline-color: rgb(22, 163, 74);
                   outline-offset: 0px;
                 }
               }
+
               .animate-blink-green {
-                animation: blinkBlue 1.8s ease-in-out;
+                animation: blinkGreen 1.8s ease-in-out;
                 outline: 3px solid transparent;
                 outline-offset: 0px;
               }
@@ -542,25 +543,25 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
             {/* Edge Handles - Extended 20px on each side */}
             {/* Left */}
             <div
-              className="absolute left-1 top-1/2 -translate-y-1/2 w-1 cursor-w-resize bg-gray-300 rounded-full z-10 transition-all opacity-0 hover:opacity-100"
+              className="absolute left-1 top-1/2 -translate-y-1/2 w-1 cursor-w-resize bg-[var(--brand)] rounded-full z-10 transition-all opacity-0 hover:opacity-60"
               style={{ height: "calc(1.5rem + 40px)" }}
               onMouseDown={(e) => handleResizeMouseDown(e, "left")}
             />
             {/* Right */}
             <div
-              className="absolute right-1 top-1/2 -translate-y-1/2 w-1 cursor-e-resize bg-gray-300 rounded-full z-10 transition-all opacity-0 hover:opacity-100"
+              className="absolute right-1 top-1/2 -translate-y-1/2 w-1 cursor-e-resize bg-[var(--brand)] rounded-full z-10 transition-all opacity-0 hover:opacity-60"
               style={{ height: "calc(1.5rem + 40px)" }}
               onMouseDown={(e) => handleResizeMouseDown(e, "right")}
             />
             {/* Top */}
             <div
-              className="absolute top-1 left-1/2 -translate-x-1/2 h-1 cursor-n-resize bg-gray-300 rounded-full z-10 transition-all opacity-0 hover:opacity-100"
+              className="absolute top-1 left-1/2 -translate-x-1/2 h-1 cursor-n-resize bg-[var(--brand)] rounded-full z-10 transition-all opacity-0 hover:opacity-60"
               style={{ width: "calc(2rem + 40px)" }}
               onMouseDown={(e) => handleResizeMouseDown(e, "top")}
             />
             {/* Bottom */}
             <div
-              className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 cursor-s-resize bg-gray-300 rounded-full z-10 transition-all opacity-0 hover:opacity-100"
+              className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 cursor-s-resize bg-[var(--brand)] rounded-full z-10 transition-all opacity-0 hover:opacity-60"
               style={{ width: "calc(2rem + 40px)" }}
               onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
             />
@@ -649,7 +650,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
             {/* Header */}
             <div
-              className="cursor-move active:cursor-grabbing p-3 flex flex-row items-center justify-between"
+              className="cursor-move active:cursor-grabbing p-3 flex flex-row items-center justify-between bg-gradient-to-b from-[var(--brand-muted)] to-transparent border-b border-[var(--border)]/10"
               onMouseDown={handleDragMouseDown}
             >
               <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -674,9 +675,9 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                     disabled={forceSidebarClosed}
                   >
                     {isSidebarOpen ? (
-                      <X strokeWidth={3} />
+                      <X strokeWidth={3} className="text-green-500" />
                     ) : (
-                      <Menu strokeWidth={3} />
+                      <Menu strokeWidth={3} className="text-green-500" />
                     )}
                   </Button>
                 )}
@@ -697,7 +698,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                     variant="secondary"
                     onClick={handleMaximize}
                     onMouseDown={(e) => e.stopPropagation()}
-                    className="text-small text-white hover:text-green-600 rounded p-2"
+                    className="text-small text-[var(--brand)] hover:text-[var(--brand)] hover:bg-[var(--brand-muted)] rounded p-2"
                     title={isMaximized ? "Minimize" : "Maximize"}
                   >
                     {isMaximized ? (
@@ -712,7 +713,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                     variant="secondary"
                     onClick={handleReset}
                     onMouseDown={(e) => e.stopPropagation()}
-                    className="text-small text-white hover:text-yellow-600 rounded p-2"
+                    className="text-small text-yellow-300 hover:text-yellow-500 hover:bg-yellow-900 rounded p-2"
                     title="Reset position and size"
                   >
                     <RotateCcw strokeWidth={3} />
@@ -722,7 +723,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                   variant="secondary"
                   onClick={() => onOpenChange(false)}
                   onMouseDown={(e) => e.stopPropagation()}
-                  className="text-small text-red-500 hover:text-red-800 rounded p-2"
+                  className="text-small text-red-500 hover:text-red-500 hover:bg-red-900 rounded p-2"
                   title="Close"
                 >
                   <X strokeWidth={3} />

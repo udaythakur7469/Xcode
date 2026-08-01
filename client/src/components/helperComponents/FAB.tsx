@@ -66,7 +66,7 @@ const FAB: React.FC<FABProps> = ({
       <button
         onMouseDown={handleMouseDown}
         onClick={handleClick}
-        className="relative w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl transition-all cursor-grab active:cursor-grabbing flex items-center justify-center"
+        className="relative w-14 h-14 rounded-full bg-gradient-to-br from-[var(--brand)] to-[var(--brand-dim)] text-white transition-transform hover:scale-[1.08] cursor-grab active:cursor-grabbing flex items-center justify-center animate-fab-glow"
         aria-label={label}
       >
         {icon}

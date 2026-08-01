@@ -48,7 +48,7 @@ const ChatTitle: React.FC = () => {
 
         <DropdownMenuContent
           align="start"
-          className="min-w-[120px] bg-zinc-900 border-zinc-700 text-zinc-200"
+          className="min-w-[120px] bg-zinc-900 border-zinc-700 text-white"
         >
           {MODEL_OPTIONS.map((model) => (
             <DropdownMenuItem
@@ -57,7 +57,7 @@ const ChatTitle: React.FC = () => {
               className={`
                 text-xs cursor-pointer
                 hover:bg-zinc-700 focus:bg-zinc-700
-                ${aiModel === model ? "text-blue-400 font-semibold" : ""}
+                ${aiModel === model ? "text-green-600 font-semibold" : ""}
               `}
             >
               {MODEL_LABELS[model]}

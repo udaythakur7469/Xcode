@@ -33,7 +33,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
   return (
     <div className="h-full w-full flex flex-col">
       <div
-        className="flex flex-row items-center justify-center gap-x-3 text-lg border rounded-2xl p-2 my-2 mx-10 bg-blue-600 cursor-pointer select-none"
+        className="flex flex-row items-center justify-center gap-x-3 text-lg border rounded-2xl p-2 my-2 mx-10 bg-green-600 cursor-pointer select-none"
         onClick={onNewChat}
       >
         <MessageCirclePlus />
@@ -66,7 +66,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 border
                 flex flex-row items-center justify-between
                 ${
-                  activeChatId === chat.id ? "bg-blue-700" : "hover:bg-zinc-600"
+                  activeChatId === chat.id ? "bg-green-600" : "hover:bg-zinc-600"
                 }
               `}
             >
@@ -89,7 +89,7 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         e.stopPropagation();
                         onShareChat(chat.id);
                       }}
-                      className="hover:text-blue-300 transition-colors cursor-pointer"
+                      className="hover:text-green-300 transition-colors cursor-pointer"
                       title="Share this chat"
                     />
                   )}

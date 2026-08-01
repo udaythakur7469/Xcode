@@ -35,8 +35,8 @@ const CommandPaletteItem = forwardRef<HTMLDivElement, CommandPaletteItemProps>(
         ref={ref}
         className={`w-full h-auto p-2 my-2 flex flex-row border rounded-md cursor-pointer items-center transition-all duration-150 ${
           isSelected
-            ? "bg-blue-600/20 border-blue-600 scale-[1.02]"
-            : "bg-transparent border-gray-700 hover:bg-gray-800/50 hover:border-gray-600"
+            ? "bg-[var(--brand)] border-[var(--brand)] text-[var(--brand-foreground)] scale-[1.02]"
+            : "bg-transparent border-gray-700 hover:bg-[var(--brand-muted)] hover:border-[var(--brand)]/40"
         }`}
         onClick={onClick}
         onMouseEnter={onMouseEnter}
@@ -44,7 +44,11 @@ const CommandPaletteItem = forwardRef<HTMLDivElement, CommandPaletteItemProps>(
         <div className="flex mr-3 ml-1">{icon}</div>
         <div className="flex flex-col flex-1">
           <div className="font-medium">{title}</div>
-          <div className="flex flex-row items-center text-sm text-gray-400">
+          <div
+            className={`flex flex-row items-center text-sm ${
+              isSelected ? "text-[var(--brand-foreground)]/80" : "text-gray-400"
+            }`}
+          >
             <ChevronsRight />
             {!isActionItem && "....."}
             {showLink}

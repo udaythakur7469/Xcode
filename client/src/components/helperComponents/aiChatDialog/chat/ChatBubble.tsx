@@ -175,8 +175,8 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
     isEditing
       ? "bg-zinc-800 border-zinc-600 w-full max-w-[80%]"
       : isUser
-        ? "max-w-[70%] bg-blue-600 border-blue-500"
-        : "max-w-[70%] bg-zinc-800 border-zinc-700",
+        ? "max-w-[70%] bg-gradient-to-br from-[var(--brand)] to-[var(--brand-dim)] border-transparent"
+        : "max-w-[70%] bg-[var(--brand-muted)] border-[var(--brand)]/25",
     isSending ? "opacity-60 animate-pulse" : "",
     isError && !isUser ? "bg-red-950 border-red-500/50" : "",
     isAborted && !isUser ? "bg-yellow-950/60 border-yellow-600/40" : "",
@@ -188,7 +188,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
     <>
       {/* Outer wrapper — hover zone covers bubble + navigator + action bar */}
       <div
-        className={`flex flex-col mb-3 ${isUser ? "items-end" : "items-start"}`}
+        className={`flex flex-col mb-4 ${isUser ? "items-end" : "items-start"}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onTouchStart={isUser ? handleTouchStart : undefined}
@@ -246,7 +246,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
                 {message.text}
               </div>
               {message.status === "sent" && (
-                <div className="mt-1 text-[11px] text-zinc-400 text-right">
+                <div className="mt-1 text-[11px] text-white text-right">
                   {formatDate(message.updatedAt)}
                 </div>
               )}
@@ -268,91 +268,93 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
         {!isEditing && <BranchNavigator message={message} />}
 
         {/* ── Action bar ──────────────────────────────────────────────────── */}
-        {showActionBar && (
-          <div className="flex items-center gap-0.5 mt-1 animate-[fadeIn_0.12s_ease_forwards]">
-            {isUser ? (
-              /* User bubble: Copy, Edit, Regenerate */
-              <>
-                <ActionButton
-                  onClick={handleCopy}
-                  title="Copy message"
-                  label={copied ? "Copied!" : "Copy"}
-                  icon={
-                    copied ? (
-                      <Check size={13} className="text-green-400" />
-                    ) : (
-                      <Copy size={13} />
-                    )
-                  }
-                />
-                {showDestructiveActions && (
-                  <>
-                    <ActionButton
-                      onClick={enterEditMode}
-                      title="Edit message"
-                      label="Edit"
-                      icon={<Pencil size={13} />}
-                    />
-                    <ActionButton
-                      onClick={handleRegenerateClick}
-                      title="Regenerate response"
-                      label="Regenerate"
-                      icon={<RotateCcw size={13} />}
-                    />
-                  </>
-                )}
-              </>
-            ) : (
-              /* AI bubble: Copy, Like, Dislike */
-              <>
-                <ActionButton
-                  onClick={handleCopy}
-                  title="Copy message"
-                  label={copied ? "Copied!" : "Copy"}
-                  icon={
-                    copied ? (
-                      <Check size={13} className="text-green-400" />
-                    ) : (
-                      <Copy size={13} />
-                    )
-                  }
-                />
-                <ActionButton
-                  onClick={() => handleFeedback("LIKE")}
-                  title="Like response"
-                  label="Like"
-                  icon={
-                    <ThumbsUp
-                      size={13}
-                      className={
-                        message.feedback === "LIKE"
-                          ? "text-green-400 fill-green-400"
-                          : ""
-                      }
-                    />
-                  }
-                  active={message.feedback === "LIKE"}
-                />
-                <ActionButton
-                  onClick={() => handleFeedback("DISLIKE")}
-                  title="Dislike response"
-                  label="Dislike"
-                  icon={
-                    <ThumbsDown
-                      size={13}
-                      className={
-                        message.feedback === "DISLIKE"
-                          ? "text-red-400 fill-red-400"
-                          : ""
-                      }
-                    />
-                  }
-                  active={message.feedback === "DISLIKE"}
-                />
-              </>
-            )}
-          </div>
-        )}
+        <div
+          className={`flex items-center gap-0.5 mt-1 h-5 transition-opacity duration-150 ${
+            showActionBar ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        >
+          {isUser ? (
+            /* User bubble: Copy, Edit, Regenerate */
+            <>
+              <ActionButton
+                onClick={handleCopy}
+                title="Copy message"
+                label={copied ? "Copied!" : "Copy"}
+                icon={
+                  copied ? (
+                    <Check size={13} className="text-green-400" />
+                  ) : (
+                    <Copy size={13} />
+                  )
+                }
+              />
+              {showDestructiveActions && (
+                <>
+                  <ActionButton
+                    onClick={enterEditMode}
+                    title="Edit message"
+                    label="Edit"
+                    icon={<Pencil size={13} />}
+                  />
+                  <ActionButton
+                    onClick={handleRegenerateClick}
+                    title="Regenerate response"
+                    label="Regenerate"
+                    icon={<RotateCcw size={13} />}
+                  />
+                </>
+              )}
+            </>
+          ) : (
+            /* AI bubble: Copy, Like, Dislike */
+            <>
+              <ActionButton
+                onClick={handleCopy}
+                title="Copy message"
+                label={copied ? "Copied!" : "Copy"}
+                icon={
+                  copied ? (
+                    <Check size={13} className="text-green-400" />
+                  ) : (
+                    <Copy size={13} />
+                  )
+                }
+              />
+              <ActionButton
+                onClick={() => handleFeedback("LIKE")}
+                title="Like response"
+                label="Like"
+                icon={
+                  <ThumbsUp
+                    size={13}
+                    className={
+                      message.feedback === "LIKE"
+                        ? "text-green-400 fill-green-400"
+                        : ""
+                    }
+                  />
+                }
+                active={message.feedback === "LIKE"}
+              />
+              <ActionButton
+                onClick={() => handleFeedback("DISLIKE")}
+                title="Dislike response"
+                label="Dislike"
+                icon={
+                  <ThumbsDown
+                    size={13}
+                    className={
+                      message.feedback === "DISLIKE"
+                        ? "text-red-400 fill-red-400"
+                        : ""
+                    }
+                  />
+                }
+                active={message.feedback === "DISLIKE"}
+              />
+            </>
+          )}
+        </div>
       </div>
 
       <style>{`
