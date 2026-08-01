@@ -205,14 +205,34 @@ const Agent: React.FC<agentProps> = ({ type, id }) => {
 
   return (
     <>
-      <div className="h-screen w-full p-8">
+      <div className="w-full px-8 pb-16 pt-4">
         <AgentNavbar type={type} />
-        <div className="flex flex-row w-full justify-between items-stretch gap-10">
+        <div className="flex flex-row w-full justify-between items-stretch gap-5">
           {/*AI Interviewer*/}
-          <div className="flex flex-col items-center justify-center w-1/2 gap-2 p-7 h-[400px] blue-gradient-dark rounded-lg border-2 border-primary-200/50 flex-1">
-            <div className="z-10 flex items-center justify-center blue-gradient rounded-full size-[120px] relative ">
+          <div
+            className={cn(
+              "flex flex-col items-center justify-center w-1/2 gap-3.5 p-7 h-[300px] rounded-2xl border flex-1 relative overflow-hidden transition-all",
+              isAISpeaking && "shadow-[0_0_0_1px_rgba(34,197,94,0.12),0_18px_40px_-20px_var(--brand-glow)]",
+            )}
+            style={{
+              background: "linear-gradient(160deg, #202024 0%, #141416 100%)",
+              borderColor: isAISpeaking ? "var(--brand-dim)" : "var(--border)",
+              borderWidth: isAISpeaking ? 1 : 1,
+              borderStyle: "solid",
+            }}
+          >
+            <div
+              className="z-10 flex items-center justify-center rounded-full size-[110px] relative border"
+              style={{
+                background: "linear-gradient(145deg,#2c2c30,#1a1a1c)",
+                borderColor: "#3a3a3e",
+              }}
+            >
               {isAISpeaking && (
-                <span className="absolute inset-0 animate-ping rounded-full bg-blue-400 opacity-30" />
+                <span
+                  className="absolute -inset-1.5 rounded-full animate-ping"
+                  style={{ border: "2px solid var(--brand)" }}
+                />
               )}
               <Image
                 src="/ai-avatar.png"
@@ -222,13 +242,38 @@ const Agent: React.FC<agentProps> = ({ type, id }) => {
                 className="object-cover relative z-10"
               />
             </div>
-            <p className="text-xl mt-6">AI interviewer</p>
+            <p className="text-[15px] font-medium text-foreground/90 z-10">
+              AI interviewer
+            </p>
+            <small className="text-xs text-muted-foreground z-10">
+              {isAISpeaking ? "speaking…" : "listening"}
+            </small>
           </div>
           {/*Human Interviewee*/}
-          <div className="flex flex-col items-center justify-center w-1/2 gap-2 p-7 h-[400px] blue-gradient-dark rounded-lg border-2 border-primary-200/50 flex-1">
-            <div className="z-10 flex items-center justify-center blue-gradient rounded-full size-[120px] relative ">
+          <div
+            className={cn(
+              "flex flex-col items-center justify-center w-1/2 gap-3.5 p-7 h-[300px] rounded-2xl border flex-1 relative overflow-hidden transition-all",
+              isUserSpeaking && "shadow-[0_0_0_1px_rgba(34,197,94,0.12),0_18px_40px_-20px_var(--brand-glow)]",
+            )}
+            style={{
+              background: "linear-gradient(160deg, #202024 0%, #141416 100%)",
+              borderColor: isUserSpeaking ? "var(--brand-dim)" : "var(--border)",
+              borderWidth: 1,
+              borderStyle: "solid",
+            }}
+          >
+            <div
+              className="z-10 flex items-center justify-center rounded-full size-[110px] relative border overflow-hidden"
+              style={{
+                background: "linear-gradient(145deg,#2c2c30,#1a1a1c)",
+                borderColor: "#3a3a3e",
+              }}
+            >
               {isUserSpeaking && (
-                <span className="absolute inset-0 animate-ping rounded-full bg-blue-400 opacity-30" />
+                <span
+                  className="absolute -inset-1.5 rounded-full animate-ping"
+                  style={{ border: "2px solid var(--brand)" }}
+                />
               )}
               {userPicture ? (
                 <Image
@@ -246,17 +291,31 @@ const Agent: React.FC<agentProps> = ({ type, id }) => {
                 />
               )}
             </div>
-            <p className="text-xl  mt-6">You</p>
+            <p className="text-[15px] font-medium text-foreground/90 z-10">You</p>
+            <small className="text-xs text-muted-foreground z-10">
+              {isUserSpeaking ? "speaking…" : "listening"}
+            </small>
           </div>
         </div>
 
         {message.length > 0 && (
-          <div className="bg-gradient-to-b from-[#4B4D4F] to-[#4B4D4F33] p-0.5 rounded-2xl w-full mt-5">
-            <div className="bg-gradient-to-b from-[#1A1C20] to-[#08090D] rounded-2xl min-h-12 px-5 py-3 flex items-center justify-center">
+          <div
+            className="p-px rounded-2xl w-full mt-6"
+            style={{
+              background:
+                "linear-gradient(180deg, var(--brand-glow), rgba(34,197,94,0.03))",
+            }}
+          >
+            <div
+              className="rounded-[15px] min-h-12 px-5 py-3.5 flex items-center justify-center"
+              style={{
+                background: "linear-gradient(180deg,#151517,#0d0d0f)",
+              }}
+            >
               <p
                 key={latestMessage}
                 className={cn(
-                  "text-lg text-center text-white",
+                  "text-[15px] text-center text-foreground/90",
                   "transition-opacity duration-500 opacity-0",
                   "animate-fadeIn opacity-100",
                 )}
@@ -270,14 +329,22 @@ const Agent: React.FC<agentProps> = ({ type, id }) => {
         <div className="w-full flex justify-center mt-10">
           {callStatus === "ACTIVE" ? (
             <Button
-              className="w-52 h-16 px-7 py-3 rounded-full shadow-sm focus:outline-none focus:shadow-2xl text-xl font-bold text-white border border-transparent bg-[#f75353] hover:bg-[#c44141]"
+              className="w-52 h-16 px-7 py-3 rounded-full shadow-sm focus:outline-none focus:shadow-2xl text-lg font-semibold text-white border border-transparent transition-transform hover:-translate-y-0.5"
+              style={{
+                background: "linear-gradient(135deg,#f75353,#c44141)",
+                boxShadow: "0 12px 30px -12px rgba(247,83,83,0.5)",
+              }}
               onClick={handleDisconnect}
             >
               End call
             </Button>
           ) : (
             <Button
-              className="relative w-52 h-16 px-7 py-3 rounded-full shadow-sm focus:outline-none focus:shadow-2xl text-xl font-bold text-white border border-transparent bg-[#008000] hover:bg-[#198c19]"
+              className="relative w-52 h-16 px-7 py-3 rounded-full shadow-sm focus:outline-none focus:shadow-2xl text-lg font-semibold text-white border border-transparent transition-transform hover:-translate-y-0.5"
+              style={{
+                background: "linear-gradient(135deg, var(--brand), var(--brand-dim))",
+                boxShadow: "0 12px 30px -12px var(--brand-glow)",
+              }}
               onClick={handleCall}
               disabled={callStatus === CallStatus.CONNECTING}
             >
