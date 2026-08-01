@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import Navbar from "@/components/landingPage/navbar/Navbar";
 import { FeedbackPageSkeleton } from "@/components/interviewPage/feedbackPage/FeedbackPageSkeleton";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import InterviewAmbientBackground from "@/components/interviewPage/helperComponents/InterviewAmbientBackground";
 
 type pageProps = { params: { id: string } };
 
@@ -67,13 +68,16 @@ const page: React.FC<pageProps> = ({ params }) => {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col bg-background">
-      <Navbar firstButton={"Explore Xcode"} secondButton={"Solve Problems"} />
-      <FeedbackPage
-        feedback={feedback}
-        interview={interview}
-        feedbackHistory={feedbackHistory}
-      />
+    <div className="relative min-h-screen w-full flex flex-col bg-background overflow-hidden">
+      <InterviewAmbientBackground />
+      <div className="relative z-10 flex min-h-screen w-full flex-col">
+        <Navbar firstButton={"Explore Xcode"} secondButton={"Solve Problems"} />
+        <FeedbackPage
+          feedback={feedback}
+          interview={interview}
+          feedbackHistory={feedbackHistory}
+        />
+      </div>
     </div>
   );
 };
