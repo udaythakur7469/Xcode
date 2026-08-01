@@ -45,7 +45,7 @@ const HeroSection: React.FC = () => {
             }}
           >
             <span className="w-[7px] h-[7px] rounded-full bg-brand animate-pulse-dot" />
-            AII Mock Interviews · Smart Revision · Real-time Judging
+            AI Mock Interviews · Smart Revision · Real-time Judging
           </motion.div>
 
           <motion.h1
