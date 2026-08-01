@@ -201,8 +201,8 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className="h-full w-full flex flex-col items-center justify-center p-6 text-center">
         <div className="max-w-xs w-full space-y-4">
           <div className="flex justify-center">
-            <div className="p-3 bg-blue-600/20 rounded-full">
-              <MessageSquare size={22} className="text-blue-400" />
+            <div className="p-3 bg-green-600/20 rounded-full">
+              <MessageSquare size={22} className="text-green-400" />
             </div>
           </div>
 
@@ -230,7 +230,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({
           <div className="flex flex-col gap-2">
             <button
               onClick={onOpenLogin}
-              className="flex items-center justify-center gap-2 w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg transition-colors"
+              className="flex items-center justify-center gap-2 w-full py-2.5 bg-green-600 hover:bg-green-500 text-white text-sm font-semibold rounded-lg transition-colors"
             >
               <LogIn size={16} />
               Log In

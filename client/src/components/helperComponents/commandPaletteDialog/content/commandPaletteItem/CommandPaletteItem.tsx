@@ -1,7 +1,7 @@
 "use client";
 
 import React, { forwardRef } from "react";
-import { ChevronsRight, ArrowUp, Home, ArrowDown } from "lucide-react";
+import { ChevronsRight, ArrowUp, ArrowDown } from "lucide-react";
 
 type CommandPaletteItemProps = {
   title: string;
