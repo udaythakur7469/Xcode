@@ -32,6 +32,8 @@ interface authData {
   updateProfilePicture: (file: File) => Promise<void>;
 }
 
+let checkAuthRequestId = 0;
+
 export const useUserStore = create<authData>()((set) => ({
   userData: null,
   isUserAuthenticated: false,
@@ -45,21 +47,30 @@ export const useUserStore = create<authData>()((set) => ({
   userLinks: null,
   solvedLanguages: null,
   heatmapData: null,
-  setUser: (user: User) =>
+  setUser: (user: User) => {
+    checkAuthRequestId++; // invalidate any in-flight checkAuth() calls
     set({
       userData: user,
       isUserAuthenticated: true,
       isCheckingUserAuth: false,
-    }),
+    });
+  },
 
-  clearUser: () =>
+  clearUser: () => {
+    checkAuthRequestId++; // invalidate any in-flight checkAuth() calls
     set({
       userData: null,
       isUserAuthenticated: false,
       isCheckingUserAuth: false,
-    }),
+    });
+  },
 
   checkAuth: async () => {
+    // Tag this call. Only the most recently started checkAuth() (or the
+    // most recent setUser/clearUser) is allowed to write to the store —
+    // anything older is a straggler and must be ignored.
+    const requestId = ++checkAuthRequestId;
+
     set({
       isCheckingUserAuth: true,
       error: null,
@@ -67,8 +78,8 @@ export const useUserStore = create<authData>()((set) => ({
     });
     try {
       const response = await axios.get(`${API_URL}/user/checkUser`);
+      if (requestId !== checkAuthRequestId) return; // stale — ignore
 
-      // Format links if they exist
       const userLinks = response.data.user.links
         ? response.data.user.links
         : null;
@@ -81,6 +92,8 @@ export const useUserStore = create<authData>()((set) => ({
         isLoading: false,
       });
     } catch (error: any) {
+      if (requestId !== checkAuthRequestId) return; // stale — ignore
+
       const errMsg = error.response?.data?.message || "Error getting user data";
       set({
         error: errMsg,
