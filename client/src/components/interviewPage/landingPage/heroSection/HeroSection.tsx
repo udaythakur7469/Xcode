@@ -1,31 +1,28 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { ArrowDown } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
-import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
-import { useUserStore } from "@/features/userStore";
+import { useInterviewAuthGuard } from "@/hooks/useInterviewAuthGuard";
+import InterviewAuthDialogs from "@/components/interviewPage/helperComponents/InterviewAuthDialogs";
 
 type HeroSectionProps = {};
 
 const HeroSection: React.FC<HeroSectionProps> = () => {
-  const router = useRouter();
-
-  const { checkAuth, isUserAuthenticated } = useUserStore();
-
-  // State to control the login dialog
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const {
+    goToInterview,
+    isLoginOpen,
+    setIsLoginOpen,
+    isSignupOpen,
+    setIsSignupOpen,
+    isForgotPasswordOpen,
+    setIsForgotPasswordOpen,
+    onSuccessfulAuth,
+  } = useInterviewAuthGuard();
 
   const generateInterview = () => {
-    if (isUserAuthenticated) {
-      router.push("/interview/generate-interview");
-    } else {
-      setIsLoginOpen(true);
-    }
+    goToInterview("/interview/generate-interview");
   };
 
   const takeToUserInterviewsSection = () => {
@@ -81,26 +78,15 @@ const HeroSection: React.FC<HeroSectionProps> = () => {
           </Button>
         </div>
       </div>
-      {/* Login Dialog */}
-      <LoginDialog
-        isOpen={isLoginOpen}
-        onClose={() => setIsLoginOpen(false)}
-        openSignup={() => {
-          setIsLoginOpen(false);
-          setIsSignupOpen(true);
-        }}
-        onSuccessfulAuth={checkAuth}
-      />
-
-      {/* Signup Dialog */}
-      <SignupDialog
-        isOpen={isSignupOpen}
-        onClose={() => setIsSignupOpen(false)}
-        openLogin={() => {
-          setIsSignupOpen(false);
-          setIsLoginOpen(true);
-        }}
-        onSuccessfulAuth={checkAuth}
+      {/* Auth dialogs — opened only if goToInterview finds the user unauthenticated */}
+      <InterviewAuthDialogs
+        isLoginOpen={isLoginOpen}
+        setIsLoginOpen={setIsLoginOpen}
+        isSignupOpen={isSignupOpen}
+        setIsSignupOpen={setIsSignupOpen}
+        isForgotPasswordOpen={isForgotPasswordOpen}
+        setIsForgotPasswordOpen={setIsForgotPasswordOpen}
+        onSuccessfulAuth={onSuccessfulAuth}
       />
     </>
   );

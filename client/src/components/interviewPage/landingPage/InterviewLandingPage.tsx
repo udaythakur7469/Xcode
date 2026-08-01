@@ -4,15 +4,19 @@ import React from "react";
 import HeroSection from "./heroSection/HeroSection";
 import Interviews from "./Interviews/Interviews";
 import Navbar from "@/components/landingPage/navbar/Navbar";
+import InterviewAmbientBackground from "@/components/interviewPage/helperComponents/InterviewAmbientBackground";
 
 type InterviewLandingPageProps = {};
 
 const InterviewLandingPage: React.FC<InterviewLandingPageProps> = () => {
   return (
-    <div className="bg-background w-screen">
-      <Navbar firstButton={"Explore Xcode"} secondButton={"Solve Problems"} />
-      <HeroSection />
-      <Interviews />
+    <div className="relative bg-background w-screen overflow-hidden">
+      <InterviewAmbientBackground />
+      <div className="relative z-10">
+        <Navbar firstButton={"Explore Xcode"} secondButton={"Solve Problems"} />
+        <HeroSection />
+        <Interviews />
+      </div>
     </div>
   );
 };

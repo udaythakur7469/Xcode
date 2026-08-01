@@ -9,6 +9,8 @@ import { getRandomInterviewCover, getTechLogos } from "@/services/interviewServi
 import moment from "moment";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useInterviewAuthGuard } from "@/hooks/useInterviewAuthGuard";
+import InterviewAuthDialogs from "@/components/interviewPage/helperComponents/InterviewAuthDialogs";
 
 enum interviewType {
   BEHAVIORAL = "BEHAVIORAL",
@@ -71,15 +73,26 @@ const InterviewCard = forwardRef<HTMLDivElement, InterviewCardProps>(
     const formattedDate = moment(updatedAt).format("DD MMMM YYYY");
 
     const router = useRouter();
+    const {
+      goToInterview,
+      isLoginOpen,
+      setIsLoginOpen,
+      isSignupOpen,
+      setIsSignupOpen,
+      isForgotPasswordOpen,
+      setIsForgotPasswordOpen,
+      onSuccessfulAuth,
+    } = useInterviewAuthGuard();
 
     const takeToFeedbackPage = (source: "user" | "all") => {
       router.push(`interview/feedback/${id}?source=${source}`);
     };
     const takeToPracticeInterviewPage = () => {
-      router.push(`interview/practice-interview/${id}`);
+      goToInterview(`/interview/practice-interview/${id}`);
     };
 
     return (
+      <>
       <div
         ref={ref}
         className="h-[296px] w-[400px] border rounded-xl blue-gradient-dark"
@@ -162,6 +175,16 @@ const InterviewCard = forwardRef<HTMLDivElement, InterviewCardProps>(
           </div>
         </div>
       </div>
+      <InterviewAuthDialogs
+        isLoginOpen={isLoginOpen}
+        setIsLoginOpen={setIsLoginOpen}
+        isSignupOpen={isSignupOpen}
+        setIsSignupOpen={setIsSignupOpen}
+        isForgotPasswordOpen={isForgotPasswordOpen}
+        setIsForgotPasswordOpen={setIsForgotPasswordOpen}
+        onSuccessfulAuth={onSuccessfulAuth}
+      />
+      </>
     );
   }
 );
