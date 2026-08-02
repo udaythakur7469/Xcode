@@ -16,6 +16,16 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { CheckCheck, History, Maximize, Minimize } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CodeEditorSkeleton } from "./CodeEditorSkeleton";
 import { useProblemStore } from "@/features/problemStore";
 import { useSearchParams } from "next/navigation";
@@ -61,6 +71,20 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   // base code has ALSO been applied to `code`, so there's no frame where
   // the editor is visible again but still showing the just-deleted draft.
   const [isResettingCode, setIsResettingCode] = useState(false);
+
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+  const [saveIndicator, setSaveIndicator] = useState<"saved" | "saving">(
+    "saved",
+  );
+  const saveIndicatorTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  useEffect(() => {
+    return () => {
+      if (saveIndicatorTimeoutRef.current)
+        clearTimeout(saveIndicatorTimeoutRef.current);
+    };
+  }, []);
 
   // CodeMirror's onChange fires for ANY document change — including the
   // ones WE make programmatically (hydrating a saved draft, or resetting
@@ -235,6 +259,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   const handleResetCode = useCallback(async () => {
     if (problemTitle) {
       localStorage.removeItem(getCodeDraftKey(problemTitle, language));
+      setSaveIndicator("saved");
     }
     if (problemId) {
       // isResettingCode keeps the skeleton up for the ENTIRE reset — not
@@ -425,17 +450,45 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           </div>
           <div className="flex justify-end mr-2 items-center space-x-3">
             {/* Reset Code Hover Card */}
-            <HoverCard>
-              <HoverCardTrigger asChild>
-                <History
-                  className="text-yellow-500 cursor-pointer"
-                  onClick={handleResetCode}
-                />
-              </HoverCardTrigger>
-              <HoverCardContent className="mr-5 p-1">
-                Reset code
-              </HoverCardContent>
-            </HoverCard>
+            <span className="text-xs text-muted-foreground select-none w-12 text-right">
+              {saveIndicator === "saving" ? "Saving…" : "Saved"}
+            </span>
+            <AlertDialog
+              open={isResetConfirmOpen}
+              onOpenChange={setIsResetConfirmOpen}
+            >
+              <HoverCard>
+                <HoverCardTrigger asChild>
+                  <History
+                    className="text-yellow-500 cursor-pointer"
+                    onClick={() => setIsResetConfirmOpen(true)}
+                  />
+                </HoverCardTrigger>
+                <HoverCardContent className="mr-5 p-1">
+                  Reset code
+                </HoverCardContent>
+              </HoverCard>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset to starter code?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Your current code will be lost and replaced with the starter
+                    template. This can&apos;t be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      setIsResetConfirmOpen(false);
+                      handleResetCode();
+                    }}
+                  >
+                    Reset
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             {/* Toggle between Maximize and Minimize icons */}
             {isMaximized ? (
               <HoverCard>
@@ -487,10 +540,16 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
                 const isProgrammaticEcho =
                   value === lastProgrammaticValueRef.current;
                 if (!isProgrammaticEcho && problemTitle) {
+                  setSaveIndicator("saving");
                   localStorage.setItem(
                     getCodeDraftKey(problemTitle, language),
                     value,
                   );
+                  if (saveIndicatorTimeoutRef.current)
+                    clearTimeout(saveIndicatorTimeoutRef.current);
+                  saveIndicatorTimeoutRef.current = setTimeout(() => {
+                    setSaveIndicator("saved");
+                  }, 400);
                 }
               }}
               style={{ fontSize: `${fontSize}px`, height: "100%" }}
