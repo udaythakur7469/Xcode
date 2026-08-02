@@ -50,6 +50,17 @@ model User {
 
   institution String?
 
+  // ── Contest system ──────────────────────────────────────────────────
+  role          UserRole @default(USER)
+  contestRating Int      @default(1200)
+  peakRating    Int      @default(1200)
+
+  contestsCreated       Contest[]            @relation("ContestCreator")
+  contestParticipations ContestParticipant[]
+  contestSubmissions    ContestSubmission[]
+  ratingHistory         RatingHistory[]
+  achievements          UserAchievement[]
+
   links UserLink[]
 
   Interviews Interview[]
@@ -88,15 +99,15 @@ model User {
 
   stickyNotes StickyNote[]
 
-  revisions      ProblemRevision[]
+  revisions ProblemRevision[]
 
-  aiHintCaches  AiHintCache[]
+  aiHintCaches AiHintCache[]
 
   potdCompletions PotdCompletion[]
   // Timestamp fields.
-  lastLogin DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt()
+  lastLogin       DateTime         @default(now())
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt()
 }
 
 // =========================================================
@@ -166,6 +177,17 @@ model Problem {
   // Array of tags associated with the problem.
   tags String[]
 
+  // ── Contest system ──────────────────────────────────────────────────
+  // Defaults to PUBLIC (visible in /problems as today). The contest
+  // generator flips a problem to CONTEST_ONLY and sets hiddenUntil to
+  // the contest's endTime when it's pulled into a contest (participants
+  // still reach it through the gated contest workspace); a nightly job
+  // (see contestWorker.ts) flips it back to PUBLIC once hiddenUntil passes.
+  visibility  ProblemVisibility @default(PUBLIC)
+  hiddenUntil DateTime?
+
+  contestProblems ContestProblem[]
+
   // Status to check whether problem is solved or not
   solved Boolean @default(false)
 
@@ -206,9 +228,9 @@ model Problem {
 
   submissionRuntimes SubmissionRuntime[]
 
-  revisions       ProblemRevision[]
+  revisions ProblemRevision[]
 
-  aiHintCaches  AiHintCache[]
+  aiHintCaches AiHintCache[]
 
   potdAssignments ProblemOfTheDay[]
 
@@ -367,6 +389,10 @@ model Submission {
   // Timestamps.
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
+
+  // ── Contest system ──────────────────────────────────────────────────
+  // Present only when this submission was made inside a contest workspace.
+  contestSubmission ContestSubmission?
 }
 
 // =========================================================
@@ -473,22 +499,22 @@ enum InterviewType {
 // =========================================================
 
 model Feedback {
-  id                  Int             @id @default(autoincrement())
+  id                  Int                @id @default(autoincrement())
   interviewId         Int
-  interview           Interview       @relation(fields: [interviewId], references: [id])
+  interview           Interview          @relation(fields: [interviewId], references: [id])
   userId              Int
-  user                User            @relation(fields: [userId], references: [id])
+  user                User               @relation(fields: [userId], references: [id])
   totalScore          Float
   categoryScores      CategoryScore[]
   strengths           String[]
   areasForImprovement String[]
   finalAssessment     String
   finalVerdict        Verdict
-  candidateTalkRatio  Float               @default(0)
+  candidateTalkRatio  Float              @default(0)
   questionScores      QuestionScore[]
   keyMoments          KeyMoment[]
   recommendedTopics   RecommendedTopic[]
-  createdAt           DateTime        @default(now())
+  createdAt           DateTime           @default(now())
 }
 
 model QuestionScore {
@@ -654,7 +680,7 @@ model Chat {
 
   sourceShareId String?
 
-  sourceChatId  String?
+  sourceChatId String?
 
   // Timestamps
   createdAt DateTime @default(now())
@@ -696,8 +722,8 @@ model Message {
   feedback MessageFeedback?
 
   // Timestamps
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
   embedding MessageEmbedding?
 
   @@index([ChatId, createdAt]) // Index for efficient message queries
@@ -733,14 +759,14 @@ enum MessageFeedback {
 }
 
 model RegenerateState {
-  id              String   @id @default(cuid())
-  chatId          String
-  userMessageId   String   @unique // Track by USER message ID
-  regenerateCount Int      @default(0)
-  lastUsedModel   String
+  id                      String   @id @default(cuid())
+  chatId                  String
+  userMessageId           String   @unique // Track by USER message ID
+  regenerateCount         Int      @default(0)
+  lastUsedModel           String
   lastRetrievalConfidence Float    @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
   @@index([chatId, userMessageId])
 }
@@ -781,32 +807,32 @@ model StickyNote {
 }
 
 model SharedChat {
-  id        String   @id @default(cuid())
-  title     String
-  messages  Json
-  userId    Int?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id           String    @id @default(cuid())
+  title        String
+  messages     Json
+  userId       Int?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   sourceChatId String?
   expiresAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt    DateTime  @default(now())
 
   @@index([userId])
 }
 
 model ProblemRevision {
-  id        Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
 
-  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
   problemId Int
 
   /// The date this revision is scheduled for
-  reviewDate  DateTime
+  reviewDate DateTime
 
   /// True once the user has revisited the problem on or after reviewDate
-  completed   Boolean  @default(false)
+  completed Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -816,23 +842,23 @@ model ProblemRevision {
 }
 
 model ProblemOfTheDay {
-  id           Int      @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-  problem      Problem  @relation(fields: [problemId], references: [id])
-  problemId    Int
+  problem   Problem @relation(fields: [problemId], references: [id])
+  problemId Int
 
   /// UTC midnight of the day this problem was assigned
   assignedDate DateTime
 
   /// Users who completed the POTD on this day
-  solvedBy     PotdCompletion[]
+  solvedBy PotdCompletion[]
 
   @@unique([assignedDate])
   @@index([assignedDate])
 }
 
 model PotdCompletion {
-  id     Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
   potd   ProblemOfTheDay @relation(fields: [potdId], references: [id], onDelete: Cascade)
   potdId Int
@@ -846,14 +872,14 @@ model PotdCompletion {
 }
 
 model MessageEmbedding {
-  id        String      @id @default(cuid())
-  messageId String      @unique
-  message   Message     @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  id        String                      @id @default(cuid())
+  messageId String                      @unique
+  message   Message                     @relation(fields: [messageId], references: [id], onDelete: Cascade)
   chatId    String
-  content   String      @db.Text
+  content   String                      @db.Text
   embedding Unsupported("vector(1536)")
   role      MessageRole
-  createdAt DateTime    @default(now())
+  createdAt DateTime                    @default(now())
 
   @@index([chatId])
 }
@@ -874,14 +900,14 @@ model ConversationSummary {
 }
 
 model RefusalState {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  problemId     Int
-  problem       Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
-  intensity     Int      @default(3)
-  denialCount   Int      @default(0)
-  lastUpdatedAt DateTime @default(now())
+  id                  Int      @id @default(autoincrement())
+  userId              Int
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problemId           Int
+  problem             Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  intensity           Int      @default(3)
+  denialCount         Int      @default(0)
+  lastUpdatedAt       DateTime @default(now())
   branchRootMessageId String?
 
   @@unique([userId, problemId])
@@ -939,6 +965,195 @@ model AiHintCache {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, problemId, language])
-
   @@index([userId, problemId])
+}
+
+// =========================================================
+// Contest System
+// A contest is a timed competitive event made up of an
+// ordered set of problems (existing bank problems reused via
+// visibility gating, or new ones authored for the contest).
+// Contests are auto-generated by a scheduled job — see
+// contestGeneratorService.ts / contestSchedulerWorker.ts.
+// =========================================================
+
+enum UserRole {
+  USER
+  PROBLEM_SETTER
+  ADMIN
+}
+
+enum ProblemVisibility {
+  PUBLIC
+  CONTEST_ONLY
+}
+
+enum ContestType {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum ContestStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+}
+
+model Contest {
+  id Int @id @default(autoincrement())
+
+  title       String
+  slug        String  @unique
+  description String?
+
+  type ContestType
+
+  startTime DateTime
+  endTime   DateTime
+
+  rated        Boolean @default(true)
+  ratingWeight Float   @default(1.0)
+
+  status ContestStatus @default(SCHEDULED)
+
+  // Populated once, by a delayed job, at 75% through the contest —
+  // see contestLifecycleWorker.ts's handleFreeze. While this is
+  // non-null and the contest is still LIVE, the leaderboard endpoint
+  // serves this static snapshot instead of live standings; it's
+  // ignored once the contest ends and the true final standings take over.
+  frozenStandings Json?
+
+  // Populated once, by a delayed job, at the contest's halfway point —
+  // used only to detect the "Comeback" achievement at settlement
+  // (compare each participant's rank here to their final rank). Not
+  // shown anywhere in the UI.
+  midpointStandings Json?
+
+  problems      ContestProblem[]
+  participants  ContestParticipant[]
+  submissions   ContestSubmission[]
+  ratingHistory RatingHistory[]
+
+  createdById Int
+  createdBy   User @relation("ContestCreator", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type, startTime])
+  @@index([status])
+}
+
+model ContestProblem {
+  id Int @id @default(autoincrement())
+
+  contestId Int
+  contest   Contest @relation(fields: [contestId], references: [id])
+
+  problemId Int
+  problem   Problem @relation(fields: [problemId], references: [id])
+
+  label  String
+  points Int
+
+  contestSubmissions ContestSubmission[]
+
+  @@unique([contestId, problemId])
+  @@unique([contestId, label])
+}
+
+model ContestParticipant {
+  id Int @id @default(autoincrement())
+
+  contestId Int
+  contest   Contest @relation(fields: [contestId], references: [id])
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  registeredAt DateTime @default(now())
+
+  rank        Int?
+  solvedCount Int  @default(0)
+  penaltyMins Int  @default(0)
+  totalPoints Int  @default(0)
+
+  ratingBefore Int?
+  ratingAfter  Int?
+  ratingDelta  Int?
+
+  virtualStartTime DateTime?
+
+  @@unique([contestId, userId])
+  @@index([contestId, totalPoints, penaltyMins])
+}
+
+model ContestSubmission {
+  id Int @id @default(autoincrement())
+
+  contestId Int
+  contest   Contest @relation(fields: [contestId], references: [id])
+
+  contestProblemId Int
+  contestProblem   ContestProblem @relation(fields: [contestProblemId], references: [id])
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  submissionId Int        @unique
+  submission   Submission @relation(fields: [submissionId], references: [id])
+
+  submittedAtMins Int
+  isFirstAccept   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([contestId, userId])
+}
+
+model RatingHistory {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  contestId Int
+  contest   Contest @relation(fields: [contestId], references: [id])
+
+  rating Int
+  delta  Int
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, contestId])
+  @@index([userId, createdAt])
+}
+
+model Achievement {
+  id          Int    @id @default(autoincrement())
+  key         String @unique
+  name        String
+  description String
+  icon        String
+  category    String
+
+  unlocks UserAchievement[]
+}
+
+model UserAchievement {
+  id Int @id @default(autoincrement())
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  achievementId Int
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+
+  contestId Int?
+
+  unlockedAt DateTime @default(now())
+
+  @@unique([userId, achievementId])
 }
