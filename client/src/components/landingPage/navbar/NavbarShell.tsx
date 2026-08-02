@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Menubar, MenubarTrigger, MenubarMenu } from "@/components/ui/menubar";
 import Image from "next/image";
 import {
@@ -28,6 +29,9 @@ const NavbarShell: React.FC<NavbarShellProps> = ({
   fixed = false,
   variant = "default",
 }) => {
+
+  const router = useRouter();
+
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -88,6 +92,19 @@ const NavbarShell: React.FC<NavbarShellProps> = ({
                 <HoverCardTrigger>{secondButton}</HoverCardTrigger>
                 <HoverCardContent className="text-sm p-3">
                   {secondButton}
+                </HoverCardContent>
+              </HoverCard>
+            </MenubarTrigger>
+          </MenubarMenu>
+          <MenubarMenu>
+            <MenubarTrigger
+              className="h-full text-lg"
+              onClick={() => router.push("/contests")}
+            >
+              <HoverCard>
+                <HoverCardTrigger>Contests</HoverCardTrigger>
+                <HoverCardContent className="text-sm p-3">
+                  Contests
                 </HoverCardContent>
               </HoverCard>
             </MenubarTrigger>
