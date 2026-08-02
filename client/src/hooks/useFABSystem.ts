@@ -1,5 +1,7 @@
 "use client";
 
+import { useContestStore } from "@/features/contestStore";
+import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 export type FABType = "aiChat" | "commandPalette";
@@ -28,9 +30,24 @@ export const useFABSystem = () => {
     useState(false);
 
   // Computed visibility - FAB is visible if not permanently hidden AND dialog is closed
-  const aiChatVisible = !aiChatPermanentlyHidden && !aiChatDialogOpen;
+  const pathname = usePathname();
+  const { workspace, activeContest } = useContestStore();
+  const isContestWorkspaceRoute = /^\/contests\/[^/]+\/workspace/.test(
+    pathname ?? "",
+  );
+  const isLiveRatedContestWorkspace =
+    isContestWorkspaceRoute &&
+    workspace?.contest?.status === "LIVE" &&
+    !!activeContest?.rated;
+
+  const aiChatVisible =
+    !aiChatPermanentlyHidden &&
+    !aiChatDialogOpen &&
+    !isLiveRatedContestWorkspace;
   const commandPaletteVisible =
-    !commandPalettePermanentlyHidden && !commandPaletteDialogOpen;
+    !commandPalettePermanentlyHidden &&
+    !commandPaletteDialogOpen &&
+    !isContestWorkspaceRoute;
 
   const [isDragging, setIsDragging] = useState<FABType | null>(null);
   const [draggedButton, setDraggedButton] = useState<FABType | null>(null);
@@ -301,7 +318,11 @@ export const useFABSystem = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl/Cmd + Q for AI Chat
-      if (e.key === "q" && (e.metaKey || e.ctrlKey)) {
+      if (
+        e.key === "q" &&
+        (e.metaKey || e.ctrlKey) &&
+        !isLiveRatedContestWorkspace
+      ) {
         e.preventDefault();
         // Close command palette if open, then open AI chat
         if (commandPaletteDialogOpen) {
@@ -316,7 +337,11 @@ export const useFABSystem = () => {
       }
 
       // Ctrl + K for Command Palette
-      if (e.key?.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+      if (
+        e.key.toLowerCase() === "k" &&
+        (e.metaKey || e.ctrlKey) &&
+        !isContestWorkspaceRoute
+      ) {
         e.preventDefault();
         // Close AI chat if open, then open command palette
         if (aiChatDialogOpen) {
@@ -333,7 +358,12 @@ export const useFABSystem = () => {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [aiChatDialogOpen, commandPaletteDialogOpen]);
+  }, [
+    aiChatDialogOpen,
+    commandPaletteDialogOpen,
+    isLiveRatedContestWorkspace,
+    isContestWorkspaceRoute,
+  ]);
 
   // Handle window resize
   useEffect(() => {
