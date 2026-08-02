@@ -262,11 +262,13 @@ interface SubmissionStore {
     language: string,
     code: string,
     problemTitle: string,
+    contestContext?: { contestId: number; contestProblemId: number },
   ) => Promise<void>;
   submitCode: (
     language: string,
     code: string,
     problemTitle: string,
+    contestContext?: { contestId: number; contestProblemId: number },
   ) => Promise<void>;
   clearRunCodeResult: (problemTitle?: string) => void;
   clearSubmitCodeResult: (problemTitle?: string) => void;
@@ -367,7 +369,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     }
   },
 
-  runCode: (language, code, problemTitle) => {
+  runCode: (language, code, problemTitle, contestContext) => {
     const previousRunController = runCodeAbortController;
     runCodeAbortController = new AbortController();
     previousRunController?.abort();
@@ -384,7 +386,16 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
       Promise.race([
         axios.post(
           `${API_URL}/submission/runCode`,
-          { language, code },
+          {
+            language,
+            code,
+            ...(contestContext
+              ? {
+                  contestId: contestContext.contestId,
+                  contestProblemId: contestContext.contestProblemId,
+                }
+              : {}),
+          },
           { params: { title: problemTitle }, signal: controller.signal },
         ),
         abortPromise,
@@ -428,7 +439,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     });
   },
 
-  submitCode: (language, code, problemTitle) => {
+  submitCode: (language, code, problemTitle, contestContext) => {
     const previousSubmitController = submitCodeAbortController;
     submitCodeAbortController = new AbortController();
     previousSubmitController?.abort();
@@ -445,7 +456,16 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
       Promise.race([
         axios.post(
           `${API_URL}/submission/submitCode`,
-          { language, code },
+          {
+            language,
+            code,
+            ...(contestContext
+              ? {
+                  contestId: contestContext.contestId,
+                  contestProblemId: contestContext.contestProblemId,
+                }
+              : {}),
+          },
           { params: { title: problemTitle }, signal: controller.signal },
         ),
         abortPromise,
