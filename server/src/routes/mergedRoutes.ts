@@ -11,6 +11,7 @@ import commentRoutes from "./commentRoutes.js";
 import stickyNotesRoutes from "./stickyNotesRoutes.js";
 import calenderRoutes from "./calenderRoutes.js";
 import healthRoutes from "./healthRoutes.js";
+import contestRoutes from "./contestRoutes.js";
 
 const router = express.Router();
 
@@ -26,5 +27,6 @@ router.use("/comment", commentRoutes);
 router.use("/stickyNotes", stickyNotesRoutes);
 router.use("/calendar", calenderRoutes);
 router.use("/health", healthRoutes);
+router.use("/contest", contestRoutes);
 
 export default router;
