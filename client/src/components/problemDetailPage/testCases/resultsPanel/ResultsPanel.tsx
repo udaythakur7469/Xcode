@@ -102,8 +102,12 @@ function isNetworkError(r: any): r is NetworkError {
 }
 
 const ResultsPanel: React.FC = () => {
-  const { runCodeResult, isRunningCode, hydrateRunCodeResult } =
-    useSubmissionStore();
+  const {
+    runCodeResult,
+    isRunningCode,
+    hydrateRunCodeResult,
+    runningLanguage,
+  } = useSubmissionStore();
   const searchParams = useSearchParams();
   const problemTitle = searchParams.get("title");
 
@@ -120,7 +124,10 @@ const ResultsPanel: React.FC = () => {
     <div className="h-full w-full overflow-y-auto scrollbar-white">
       {isRunningCode && (
         <div className="h-full w-full flex items-center justify-center">
-          <QuestionResultsLoader isLoading={isRunningCode} size={50} />
+          <QuestionResultsLoader
+            isLoading={isRunningCode}
+            language={runningLanguage}
+          />
         </div>
       )}
       {!isRunningCode && !runCodeResult && <EmptyState />}

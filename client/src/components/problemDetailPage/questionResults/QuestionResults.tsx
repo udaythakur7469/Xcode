@@ -186,13 +186,17 @@ function SubmitResultCard({
 // ─── QuestionResults ──────────────────────────────────────────────────────────
 
 const QuestionResults: React.FC = () => {
-  const { submitCodeResult, isSubmittingCode } = useSubmissionStore();
+  const { submitCodeResult, isSubmittingCode, submittingLanguage } =
+    useSubmissionStore();
 
   return (
     <div className="absolute inset-0 overflow-y-auto scrollbar-white">
       {isSubmittingCode && (
         <div className="h-full w-full flex items-center justify-center">
-          <QuestionResultsLoader isLoading={isSubmittingCode} size={150} />
+          <QuestionResultsLoader
+            isLoading={isSubmittingCode}
+            language={submittingLanguage}
+          />
         </div>
       )}
       {!isSubmittingCode && !submitCodeResult && <EmptyState />}
