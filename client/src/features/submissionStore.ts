@@ -255,6 +255,8 @@ interface SubmissionStore {
   submitCodeResult: SubmitCodeResponse | null;
   isRunningCode: boolean;
   isSubmittingCode: boolean;
+  runningLanguage: string | null;
+  submittingLanguage: string | null;
   fetchBaseClassCode: (problemId: number, language: string) => Promise<void>;
   getUserSubmissions: (page: number, problemTitle?: string) => Promise<void>;
   getAllSubmissions: (problemTitle: string, page: number) => Promise<void>;
@@ -299,6 +301,8 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
   submitCodeResult: null,
   isRunningCode: false,
   isSubmittingCode: false,
+  runningLanguage: null,
+  submittingLanguage: null,
 
   fetchBaseClassCode: async (problemId, language) => {
     set({ isBaseCodeLoading: true, baseCodeError: null });
@@ -372,7 +376,12 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     runCodeAbortController = new AbortController();
     previousRunController?.abort();
 
-    set({ isRunningCode: true, error: null, runCodeResult: null });
+    set({
+      isRunningCode: true,
+      error: null,
+      runCodeResult: null,
+      runningLanguage: language,
+    });
     removeFromSession(getRunResultKey(problemTitle));
     const controller = runCodeAbortController;
     return new Promise<void>((resolve) => {
@@ -433,7 +442,12 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     submitCodeAbortController = new AbortController();
     previousSubmitController?.abort();
 
-    set({ isSubmittingCode: true, error: null, submitCodeResult: null });
+    set({
+      isSubmittingCode: true,
+      error: null,
+      submitCodeResult: null,
+      submittingLanguage: language,
+    });
     removeFromSession(getSubmitResultKey(problemTitle));
     const controller = submitCodeAbortController;
     return new Promise<void>((resolve) => {
