@@ -571,7 +571,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   const handleCodeRun = () => {
     console.log("handleCodeRun clicked");
     setShowTestCasesResultsTab(true);
-    setVerticalSizes([50, 50]);
+    setVerticalSizes([20, 80]);
     setShouldResize(true);
   };
 
@@ -619,8 +619,8 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     if (shouldResize) {
       isAnimatingRef.current = true;
       Promise.all([
-        animateResize(codeEditorPanelRef, 50, 500),
-        animateResize(testCasesPanelRef, 50, 500),
+        animateResize(codeEditorPanelRef, 20, 500),
+        animateResize(testCasesPanelRef, 80, 500),
       ]).then(() => {
         setShouldResize(false);
         isAnimatingRef.current = false;
