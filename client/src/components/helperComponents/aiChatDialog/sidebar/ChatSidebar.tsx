@@ -40,7 +40,10 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
         New Chat
       </div>
       {/* Chat List */}
-      <div className="flex-1 overflow-y-auto px-2">
+      <div
+        className="flex-1 overflow-y-auto px-2"
+        style={{ overscrollBehavior: "contain" }}
+      >
         {gettingChatsError ? (
           <div className="flex h-full justify-center items-center break-words text-red-500 text-sm">
             {gettingChatsError}
@@ -66,7 +69,9 @@ const ChatSidebar: React.FC<ChatSidebarProps> = ({
                 border
                 flex flex-row items-center justify-between
                 ${
-                  activeChatId === chat.id ? "bg-green-600" : "hover:bg-zinc-600"
+                  activeChatId === chat.id
+                    ? "bg-green-600"
+                    : "hover:bg-zinc-600"
                 }
               `}
             >

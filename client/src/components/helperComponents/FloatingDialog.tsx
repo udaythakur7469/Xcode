@@ -112,6 +112,28 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
   const savedSidebarWidthPercent = useRef(31.1);
 
+  // Lock the page's own scroll while this dialog is open, so scrolling
+  // beyond the top/bottom of the dialog's content never falls through
+  // to the page underneath.
+  useEffect(() => {
+    if (!open) return;
+
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+
+    document.body.style.overflow = "hidden";
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+    };
+  }, [open]);
+
   // Motion values for smooth animation
   const motionX = useMotionValue(position.x);
   const motionY = useMotionValue(position.y);
@@ -490,7 +512,11 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
           className="fixed inset-0 z-[9999] flex items-center justify-center"
           onMouseDown={handleOverlayClick}
         >
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-md will-change-auto pointer-events-none z-[0]" />
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-md will-change-auto z-[0]"
+            style={{ overscrollBehavior: "contain" }}
+            onWheel={(e) => e.preventDefault()}
+          />
 
           <motion.div
             ref={dialogRef}
@@ -749,6 +775,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                     className={`h-full rounded-bl-lg overflow-auto ${
                       dialogType === "AIChat" ? "border" : ""
                     }`}
+                    style={{ overscrollBehavior: "contain" }}
                   >
                     {sidebarContent}
                   </div>
@@ -770,6 +797,11 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                     ? "border overflow-hidden"
                     : "border px-2 pb-2 overflow-auto"
                 } ${isSidebarOpen ? "" : "rounded-b-lg"}`}
+                style={
+                  dialogType === "AIChat"
+                    ? undefined
+                    : { overscrollBehavior: "contain" }
+                }
               >
                 {children}
               </div>

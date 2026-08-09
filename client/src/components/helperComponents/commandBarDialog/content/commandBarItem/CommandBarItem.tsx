@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 import { ChevronRight, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CommandBarEntry } from "../commandBarData/commandBarTypes";
@@ -14,6 +15,7 @@ type CommandBarItemProps = {
   onMouseEnter: () => void;
   isFirst: boolean;
   isLast: boolean;
+  registerRef: (el: HTMLDivElement | null) => void;
 };
 
 const CommandBarItem: React.FC<CommandBarItemProps> = ({
@@ -22,25 +24,42 @@ const CommandBarItem: React.FC<CommandBarItemProps> = ({
   onMouseEnter,
   isFirst,
   isLast,
+  registerRef,
 }) => {
   const isProblemLike = entry.kind === "problem" || entry.kind === "recent";
 
   return (
     <div
+      ref={registerRef}
       role="option"
       aria-selected={isSelected}
       className={cn(
-        "my-1 flex w-full cursor-pointer flex-row items-center gap-3 rounded-md border px-3 py-2.5 transition-colors duration-150",
+        "relative my-1 flex w-full cursor-pointer flex-row items-center gap-3 rounded-md border px-3 py-2.5 transition-colors duration-150",
         isSelected
-          ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-foreground)]"
+          ? "border-[var(--brand)] text-[var(--brand-foreground)]"
           : "border-transparent bg-secondary/40 hover:border-border hover:bg-secondary",
       )}
       onClick={entry.onSelect}
       onMouseEnter={onMouseEnter}
     >
-      <CommandBarItemIcon icon={entry.icon} isSelected={isSelected} />
+      {isSelected && (
+        <motion.div
+          layoutId="command-bar-highlight"
+          className="absolute inset-0 z-0 rounded-md bg-[var(--brand)]"
+          transition={{
+            type: "spring",
+            stiffness: 500,
+            damping: 40,
+            mass: 0.8,
+          }}
+        />
+      )}
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="relative z-10 flex shrink-0 items-center">
+        <CommandBarItemIcon icon={entry.icon} isSelected={isSelected} />
+      </div>
+
+      <div className="relative z-10 flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-2 text-sm font-semibold">
           {entry.title}
           {isProblemLike && entry.difficulty && (
@@ -63,7 +82,7 @@ const CommandBarItem: React.FC<CommandBarItemProps> = ({
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5">
+      <div className="relative z-10 flex shrink-0 items-center gap-1.5">
         {isFirst && (
           <CommandBarKeyboardHint label="Home" isSelected={isSelected} />
         )}

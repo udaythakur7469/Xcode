@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/features/userStore";
 import type { CommandBarGroup } from "./commandBarData/commandBarTypes";
@@ -26,7 +26,8 @@ function matchesSearch(searchQuery: string, title: string, subtitle: string) {
   const query = searchQuery.toLowerCase().trim();
   if (!query) return true;
   return (
-    title.toLowerCase().includes(query) || subtitle.toLowerCase().includes(query)
+    title.toLowerCase().includes(query) ||
+    subtitle.toLowerCase().includes(query)
   );
 }
 
@@ -119,6 +120,21 @@ const CommandBarDialogContent: React.FC<CommandBarDialogContentProps> = ({
   const { selectedIndex, setSelectedIndex } =
     useCommandBarKeyboardNav(flatEntries);
 
+  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  const registerItemRef = (index: number, el: HTMLDivElement | null) => {
+    if (el) {
+      itemRefs.current.set(index, el);
+    } else {
+      itemRefs.current.delete(index);
+    }
+  };
+
+  useEffect(() => {
+    const selectedEl = itemRefs.current.get(selectedIndex);
+    selectedEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [selectedIndex]);
+
   if (flatEntries.length === 0) {
     return <CommandBarEmptyState searchQuery={searchQuery} />;
   }
@@ -138,6 +154,7 @@ const CommandBarDialogContent: React.FC<CommandBarDialogContentProps> = ({
             totalCount={flatEntries.length}
             selectedIndex={selectedIndex}
             setSelectedIndex={setSelectedIndex}
+            registerItemRef={registerItemRef}
           />
         );
       })}

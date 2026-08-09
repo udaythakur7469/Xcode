@@ -108,7 +108,11 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   };
 
   return (
-    <div ref={containerRef} className="h-full overflow-y-auto px-3 py-2">
+    <div
+      ref={containerRef}
+      className="h-full overflow-y-auto px-3 py-2"
+      style={{ overscrollBehavior: "contain" }}
+    >
       {messages.map((msg) => (
         <ChatBubble
           key={msg.id}

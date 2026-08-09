@@ -8,6 +8,7 @@ type CommandBarSectionProps = {
   totalCount: number;
   selectedIndex: number;
   setSelectedIndex: (index: number) => void;
+  registerItemRef: (index: number, el: HTMLDivElement | null) => void;
 };
 
 const CommandBarSection: React.FC<CommandBarSectionProps> = ({
@@ -16,6 +17,7 @@ const CommandBarSection: React.FC<CommandBarSectionProps> = ({
   totalCount,
   selectedIndex,
   setSelectedIndex,
+  registerItemRef,
 }) => {
   if (group.items.length === 0) return null;
 
@@ -34,6 +36,7 @@ const CommandBarSection: React.FC<CommandBarSectionProps> = ({
             onMouseEnter={() => setSelectedIndex(flatIndex)}
             isFirst={flatIndex === 0}
             isLast={flatIndex === totalCount - 1}
+            registerRef={(el) => registerItemRef(flatIndex, el)}
           />
         );
       })}
