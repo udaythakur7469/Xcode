@@ -14,6 +14,7 @@ import {
   problemReaction,
   searchProblems,
   updateHintUnlock,
+  getRandomProblem,
 } from "../controllers/problemController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import {
@@ -171,5 +172,13 @@ router.get(
   }),
   getProblemReactions,
 );
+
+router
+  .route("/randomProblem")
+  .get(
+    readLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    getRandomProblem,
+  );
 
 export default router;
