@@ -14,6 +14,8 @@ import {
 } from "@/features/submissionStore";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import dynamic from "next/dynamic";
+import { useProblemStore } from "@/features/problemStore";
+import { addRecentlyViewedProblem } from "@/services/recentlyViewedProblems";
 
 const ProblemDetailsPageContent: React.FC = () => {
   useProblemContext();
@@ -45,6 +47,19 @@ const ProblemDetailsPageContent: React.FC = () => {
     }
     setLastActiveProblemTitle(problemTitle);
   }, [problemTitle]);
+
+  // Feeds the command palette's "Recently Viewed" section. Runs once the
+  // full problem details (including difficulty) have loaded, so the badge
+  // shown in the palette is accurate rather than guessed from the URL.
+  const problemDetails = useProblemStore((s) => s.problem);
+  useEffect(() => {
+    if (problemDetails?.title && problemDetails?.difficulty) {
+      addRecentlyViewedProblem({
+        title: problemDetails.title,
+        difficulty: problemDetails.difficulty,
+      });
+    }
+  }, [problemDetails?.title, problemDetails?.difficulty]);
 
   const [resetLayoutTrigger, setResetLayoutTrigger] = useState(0);
 
