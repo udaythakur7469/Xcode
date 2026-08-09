@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Menubar, MenubarTrigger, MenubarMenu } from "@/components/ui/menubar";
 import Image from "next/image";
 import {
@@ -11,8 +10,7 @@ import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 
 type NavbarShellProps = {
-  firstButton: string;
-  secondButton: string;
+  buttons: string[];
   goToHomePage: () => void;
   goToPage: (button: string) => void;
   rightSlot: React.ReactNode;
@@ -21,17 +19,13 @@ type NavbarShellProps = {
 };
 
 const NavbarShell: React.FC<NavbarShellProps> = ({
-  firstButton,
-  secondButton,
+  buttons,
   goToHomePage,
   goToPage,
   rightSlot,
   fixed = false,
   variant = "default",
 }) => {
-
-  const router = useRouter();
-
   const { resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -70,45 +64,21 @@ const NavbarShell: React.FC<NavbarShellProps> = ({
         </MenubarMenu>
 
         <div className="flex gap-8 h-full">
-          <MenubarMenu>
-            <MenubarTrigger
-              className="h-full text-lg"
-              onClick={() => goToPage(firstButton)}
-            >
-              <HoverCard>
-                <HoverCardTrigger>{firstButton}</HoverCardTrigger>
-                <HoverCardContent className="text-sm p-3">
-                  {firstButton}
-                </HoverCardContent>
-              </HoverCard>
-            </MenubarTrigger>
-          </MenubarMenu>
-          <MenubarMenu>
-            <MenubarTrigger
-              className="h-full text-lg"
-              onClick={() => goToPage(secondButton)}
-            >
-              <HoverCard>
-                <HoverCardTrigger>{secondButton}</HoverCardTrigger>
-                <HoverCardContent className="text-sm p-3">
-                  {secondButton}
-                </HoverCardContent>
-              </HoverCard>
-            </MenubarTrigger>
-          </MenubarMenu>
-          <MenubarMenu>
-            <MenubarTrigger
-              className="h-full text-lg"
-              onClick={() => router.push("/contests")}
-            >
-              <HoverCard>
-                <HoverCardTrigger>Contests</HoverCardTrigger>
-                <HoverCardContent className="text-sm p-3">
-                  Contests
-                </HoverCardContent>
-              </HoverCard>
-            </MenubarTrigger>
-          </MenubarMenu>
+          {(buttons ?? []).map((button) => (
+            <MenubarMenu key={button}>
+              <MenubarTrigger
+                className="h-full text-lg"
+                onClick={() => goToPage(button)}
+              >
+                <HoverCard>
+                  <HoverCardTrigger>{button}</HoverCardTrigger>
+                  <HoverCardContent className="text-sm p-3">
+                    {button}
+                  </HoverCardContent>
+                </HoverCard>
+              </MenubarTrigger>
+            </MenubarMenu>
+          ))}
         </div>
 
         {rightSlot}
