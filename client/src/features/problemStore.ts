@@ -104,6 +104,7 @@ interface Problemdata {
     dateTo?: string | null,
   ) => Promise<void>;
   searchProblems: (query: string) => Promise<void>;
+  getRandomProblem: () => Promise<Pick<Problem, "title" | "difficulty">>;
   getProblemByTitle: (title: string) => Promise<ProblemDetails>;
   setDifficultyFilter: (difficulty: "easy" | "medium" | "hard" | null) => void;
   setStatusFilter: (status: "solved" | "unsolved" | null) => void;
@@ -228,7 +229,6 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
 
   searchProblems: async (query) => {
     set({ isLoading: true, error: null });
-
     try {
       if (query.trim() === "") {
         set({ searchResults: [], isLoading: false });
@@ -243,6 +243,11 @@ export const useProblemStore = create<Problemdata>()((set, get) => ({
         error.response?.data?.message || "Failed to search problems";
       set({ error: errMsg, isLoading: false });
     }
+  },
+
+  getRandomProblem: async () => {
+    const response = await axios.get(`${API_URL}/problem/randomProblem`);
+    return response.data.data;
   },
 
   refreshProblemLikesAndDislikes: async (title: string) => {
