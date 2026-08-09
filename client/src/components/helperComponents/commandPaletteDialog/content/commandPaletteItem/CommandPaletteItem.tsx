@@ -1,79 +1,86 @@
 "use client";
 
-import React, { forwardRef } from "react";
-import { ChevronsRight, ArrowUp, ArrowDown } from "lucide-react";
+import React from "react";
+import { ChevronRight, ArrowRight } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { CommandPaletteEntry } from "../commandPaletteData/commandPaletteTypes";
+import CommandPaletteItemIcon from "./CommandPaletteItemIcon";
+import CommandPaletteKeyboardHint from "./CommandPaletteKeyboardHint";
+import DifficultyBadge from "./DifficultyBadge";
 
 type CommandPaletteItemProps = {
-  title: string;
-  showLink: string;
-  icon: React.ReactNode;
-  onClick?: () => void;
-  isActionItem?: boolean;
-  isSelected?: boolean;
-  onMouseEnter?: () => void;
-  isFirst?: boolean;
-  isLast?: boolean;
+  entry: CommandPaletteEntry;
+  isSelected: boolean;
+  onMouseEnter: () => void;
+  isFirst: boolean;
+  isLast: boolean;
 };
 
-const CommandPaletteItem = forwardRef<HTMLDivElement, CommandPaletteItemProps>(
-  (
-    {
-      title,
-      showLink,
-      icon,
-      onClick,
-      isActionItem,
-      isSelected = false,
-      onMouseEnter,
-      isFirst = false,
-      isLast = false,
-    },
-    ref
-  ) => {
-    return (
-      <div
-        ref={ref}
-        className={`w-full h-auto p-2 my-2 flex flex-row border rounded-md cursor-pointer items-center transition-all duration-150 ${
-          isSelected
-            ? "bg-[var(--brand)] border-[var(--brand)] text-[var(--brand-foreground)] scale-[1.02]"
-            : "bg-transparent border-gray-700 hover:bg-[var(--brand-muted)] hover:border-[var(--brand)]/40"
-        }`}
-        onClick={onClick}
-        onMouseEnter={onMouseEnter}
-      >
-        <div className="flex mr-3 ml-1">{icon}</div>
-        <div className="flex flex-col flex-1">
-          <div className="font-medium">{title}</div>
-          <div
-            className={`flex flex-row items-center text-sm ${
-              isSelected ? "text-[var(--brand-foreground)]/80" : "text-gray-400"
-            }`}
-          >
-            <ChevronsRight />
-            {!isActionItem && "....."}
-            {showLink}
-          </div>
-        </div>
+const CommandPaletteItem: React.FC<CommandPaletteItemProps> = ({
+  entry,
+  isSelected,
+  onMouseEnter,
+  isFirst,
+  isLast,
+}) => {
+  const isProblemLike = entry.kind === "problem" || entry.kind === "recent";
 
-        {/* Keyboard hints */}
-        <div className="flex items-center gap-1 text-sm text-gray-400 ml-2">
-          {isFirst && (
-            <>
-              <div className="mr-2 border px-1 py-0.5 rounded-md">Home</div>
-              <ArrowUp className="border rounded-md" />
-            </>
+  return (
+    <div
+      role="option"
+      aria-selected={isSelected}
+      className={cn(
+        "my-1 flex w-full cursor-pointer flex-row items-center gap-3 rounded-md border px-3 py-2.5 transition-colors duration-150",
+        isSelected
+          ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-foreground)]"
+          : "border-transparent bg-secondary/40 hover:border-border hover:bg-secondary",
+      )}
+      onClick={entry.onSelect}
+      onMouseEnter={onMouseEnter}
+    >
+      <CommandPaletteItemIcon icon={entry.icon} isSelected={isSelected} />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          {entry.title}
+          {isProblemLike && entry.difficulty && (
+            <DifficultyBadge
+              difficulty={entry.difficulty}
+              isSelected={isSelected}
+            />
           )}
-          {isLast && (
-            <>
-              <div className="mr-2 border px-1 py-0.5 rounded-md">End</div>
-              <ArrowDown className="border rounded-md" />
-            </>
+        </div>
+        <div
+          className={cn(
+            "flex items-center gap-1 truncate text-xs",
+            isSelected
+              ? "text-[var(--brand-foreground)]/85"
+              : "text-muted-foreground",
           )}
+        >
+          {!isProblemLike && <ChevronRight size={12} className="shrink-0" />}
+          <span className="truncate">{entry.subtitle}</span>
         </div>
       </div>
-    );
-  }
-);
+
+      <div className="flex shrink-0 items-center gap-1.5">
+        {isFirst && (
+          <CommandPaletteKeyboardHint label="Home" isSelected={isSelected} />
+        )}
+        {isLast && (
+          <CommandPaletteKeyboardHint label="End" isSelected={isSelected} />
+        )}
+        <ArrowRight
+          size={16}
+          className={cn(
+            "shrink-0 transition-opacity duration-150",
+            isSelected ? "opacity-100" : "opacity-0",
+          )}
+        />
+      </div>
+    </div>
+  );
+};
 
 CommandPaletteItem.displayName = "CommandPaletteItem";
 
