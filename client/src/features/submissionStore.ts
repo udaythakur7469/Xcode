@@ -407,12 +407,6 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
           {
             params: { title: problemTitle },
             signal: controller.signal,
-            // Backend caps the queued judge job at 40s (see
-            // enqueueAndWait). 45s gives it a small buffer to return its
-            // own structured timeout error first. If the connection is
-            // hung entirely (dead server, dropped socket) this is what
-            // forces the request to reject instead of leaving
-            // isRunningCode stuck true forever.
             timeout: RUN_SUBMIT_TIMEOUT_MS,
           },
         ),
@@ -428,11 +422,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
           resolve();
         })
         .catch((error: any) => {
-          if (
-            axios.isCancel(error) ||
-            error?.__cancel ||
-            error?.code === "ERR_CANCELED"
-          ) {
+          if (error?.__cancel || error?.code === "ERR_CANCELED") {
             set({ isRunningCode: false });
           } else {
             const responseData = error.response?.data;
@@ -483,7 +473,6 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
           {
             params: { title: problemTitle },
             signal: controller.signal,
-            // See matching comment in runCode above.
             timeout: RUN_SUBMIT_TIMEOUT_MS,
           },
         ),
@@ -499,11 +488,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
           resolve();
         })
         .catch((error: any) => {
-          if (
-            axios.isCancel(error) ||
-            error?.__cancel ||
-            error?.code === "ERR_CANCELED"
-          ) {
+          if (error?.__cancel || error?.code === "ERR_CANCELED") {
             set({ isSubmittingCode: false });
           } else {
             const responseData = error.response?.data;
