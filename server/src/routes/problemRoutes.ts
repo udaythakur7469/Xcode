@@ -111,7 +111,10 @@ router.route("/problemDetail").get(
     ttl: 3600, // 1 hour
     autoCache: {
       tags: (req: any) => ["problems", `problem:${req.query.title}`],
-      keyGenerator: (req: any) => `problem:detail:${req.query.title}`,
+      keyGenerator: (req: any) => {
+        const userId = req.user?.userId || req.user?.id || "guest";
+        return `problem:detail:${req.query.title}:user:${userId}`;
+      },
     },
   }),
   getProblemByTitle,

@@ -21,8 +21,7 @@ const LandingPage: React.FC<LandingPageProps> = () => {
     <div className="bg-background min-h-screen">
       <div className="fixed top-0 inset-x-0 z-50">
         <Navbar
-          firstButton={"Explore Xcode"}
-          secondButton={"Solve Problems"}
+          buttons={["Explore Xcode", "Solve Problems", "Contests"]}
           fixed
           variant="default"
         />

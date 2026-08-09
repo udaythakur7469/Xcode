@@ -1,13 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Menubar, MenubarTrigger, MenubarMenu } from "@/components/ui/menubar";
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import Image from "next/image";
+import { MenubarMenu, MenubarTrigger } from "@/components/ui/menubar";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { useUserStore } from "@/features/userStore";
@@ -23,32 +17,21 @@ import {
 } from "@/components/ui/logout-dropdown-menu";
 import { UserProfileSkeleton } from "@/components/accountPage/UserProfileSkeleton";
 import NavbarShell from "./NavbarShell";
-import { cn } from "@/lib/utils";
-import { useTheme } from "next-themes";
 
 type NavbarProps = {
-  firstButton: string;
-  secondButton: string;
+  buttons: string[];
   fixed?: boolean;
   variant?: "default" | "brand";
 };
 
 const Navbar: React.FC<NavbarProps> = ({
-  firstButton,
-  secondButton,
+  buttons,
   fixed = false,
   variant = "default",
 }) => {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-
-  const { resolvedTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const [isAuthChecked, setIsAuthChecked] = useState<boolean>(false);
 
@@ -106,6 +89,8 @@ const Navbar: React.FC<NavbarProps> = ({
         return router.push("/problems");
       case "Mock Interviews":
         return router.push("/interview");
+      case "Contests":
+        return router.push("/contests");
     }
   };
 
@@ -115,18 +100,40 @@ const Navbar: React.FC<NavbarProps> = ({
 
   const goToHomePage = () => router.push("/");
 
-  const logoSrc =
-    mounted && resolvedTheme === "dark"
-      ? "/logo-dark-bg.svg"
-      : "/logo-light-bg.svg";
+  const rightSlot = (
+    <div className="flex items-center gap-4 px-2">
+      <ThemeToggle />
+      <MenubarMenu>
+        {isUserAuthenticated ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="cursor-pointer">
+                <Avatar>
+                  <AvatarImage src={picture || ""} />
+                  <AvatarFallback>{firstLetter}</AvatarFallback>
+                </Avatar>
+              </div>
+            </DropdownMenuTrigger>
+            <AccountDropDown />
+          </DropdownMenu>
+        ) : (
+          <MenubarTrigger
+            className="h-full text-lg"
+            onClick={() => setIsLoginOpen(true)}
+          >
+            Login
+          </MenubarTrigger>
+        )}
+      </MenubarMenu>
+    </div>
+  );
 
   const isAccountPage = pathname?.includes("/account");
   if (!isAuthChecked && isAccountPage) {
     return (
       <>
         <NavbarShell
-          firstButton={firstButton}
-          secondButton={secondButton}
+          buttons={buttons}
           goToHomePage={goToHomePage}
           goToPage={goToPage}
           rightSlot={<div className="w-8 h-8" />}
@@ -140,93 +147,14 @@ const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <div
-        className={cn(fixed ? "fixed top-0 inset-x-0 z-50 px-6 py-4" : "p-5")}
-      >
-        <Menubar
-          className={cn(
-            "flex w-full items-center justify-between h-[50px]",
-            variant === "brand"
-              ? "border-none shadow-lg bg-gradient-to-r from-brand to-brand-dim"
-              : "border shadow",
-          )}
-          style={
-            variant === "brand"
-              ? { color: "var(--brand-foreground)" }
-              : undefined
-          }
-        >
-          {/* Logo */}
-          <MenubarMenu>
-            <MenubarTrigger className="h-full">
-              <Image
-                src={logoSrc}
-                width={100}
-                height={100}
-                alt="logo"
-                onClick={goToHomePage}
-              />
-            </MenubarTrigger>
-          </MenubarMenu>
-
-          {/* Nav links */}
-          <div className="flex gap-8 h-full">
-            <MenubarMenu>
-              <MenubarTrigger
-                className="h-full text-lg"
-                onClick={() => goToPage(firstButton)}
-              >
-                <HoverCard>
-                  <HoverCardTrigger>{firstButton}</HoverCardTrigger>
-                  <HoverCardContent className="text-sm p-3">
-                    {firstButton}
-                  </HoverCardContent>
-                </HoverCard>
-              </MenubarTrigger>
-            </MenubarMenu>
-            <MenubarMenu>
-              <MenubarTrigger
-                className="h-full text-lg"
-                onClick={() => goToPage(secondButton)}
-              >
-                <HoverCard>
-                  <HoverCardTrigger>{secondButton}</HoverCardTrigger>
-                  <HoverCardContent className="text-sm p-3">
-                    {secondButton}
-                  </HoverCardContent>
-                </HoverCard>
-              </MenubarTrigger>
-            </MenubarMenu>
-          </div>
-
-          {/* Right side */}
-          <div className="flex items-center gap-4 px-2">
-            <ThemeToggle />
-            <MenubarMenu>
-              {isUserAuthenticated ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <div className="cursor-pointer">
-                      <Avatar>
-                        <AvatarImage src={picture || ""} />
-                        <AvatarFallback>{firstLetter}</AvatarFallback>
-                      </Avatar>
-                    </div>
-                  </DropdownMenuTrigger>
-                  <AccountDropDown />
-                </DropdownMenu>
-              ) : (
-                <MenubarTrigger
-                  className="h-full text-lg"
-                  onClick={() => setIsLoginOpen(true)}
-                >
-                  Login
-                </MenubarTrigger>
-              )}
-            </MenubarMenu>
-          </div>
-        </Menubar>
-      </div>
+      <NavbarShell
+        buttons={buttons}
+        goToHomePage={goToHomePage}
+        goToPage={goToPage}
+        rightSlot={rightSlot}
+        fixed={fixed}
+        variant={variant}
+      />
 
       {/* Login dialog */}
       <LoginDialog

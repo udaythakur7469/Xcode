@@ -42,7 +42,7 @@ const ProblemsPageContent: React.FC = () => {
 
   return (
     <>
-      <Navbar firstButton={"Explore Xcode"} secondButton={"Mock Interviews"} />
+      <Navbar buttons={["Explore Xcode", "Mock Interviews", "Contests"]} />
 
       <div className="flex h-[calc(100vh-52px)] w-full flex-row gap-5 overflow-hidden px-[20px] mt-3 mb-5">
         <div className="flex min-w-0 flex-1 flex-row gap-0 overflow-hidden">

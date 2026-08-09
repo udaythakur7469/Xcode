@@ -13,7 +13,7 @@ const InterviewLandingPage: React.FC<InterviewLandingPageProps> = () => {
     <div className="relative bg-background w-screen overflow-hidden">
       <InterviewAmbientBackground />
       <div className="relative z-10">
-        <Navbar firstButton={"Explore Xcode"} secondButton={"Solve Problems"} />
+        <Navbar buttons={["Explore Xcode", "Solve Problems", "Contests"]} />
         <HeroSection />
         <Interviews />
       </div>

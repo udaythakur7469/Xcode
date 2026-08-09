@@ -13,7 +13,7 @@ import {
   generateRefreshTokenAndSetCookie,
 } from "../utils/tokenAndCookie.js";
 import prisma from "../configs/db.js";
-import { MailtrapClient } from "mailtrap";
+import { sendEmail } from "../services/emailService.js";
 import { magicLinkEmail } from "../emails/magicLinkEmail.js";
 import { forgotPasswordEmail } from "../emails/forgotPasswordEmail.js";
 import { passwordResetSuccessEmail } from "../emails/passwordResetSuccessEmail.js";
@@ -28,26 +28,6 @@ interface AuthUserInput {
 interface CreateUserInput extends AuthUserInput {
   name: string;
 }
-
-// ---------- Mailtrap client --------------------------------------------------
-
-const mailtrap = new MailtrapClient({
-  token: process.env.MAILTRAP_TOKEN!,
-  testInboxId: Number(process.env.MAILTRAP_INBOX_ID),
-});
-
-const sendEmail = async (
-  to: string,
-  subject: string,
-  html: string,
-): Promise<void> => {
-  await mailtrap.testing.send({
-    from: { email: "hello@demomailtrap.com", name: "Xcode" },
-    to: [{ email: to }],
-    subject,
-    html,
-  });
-};
 
 
 // ---------- Helper: issue tokens and persist refresh token in DB -------------

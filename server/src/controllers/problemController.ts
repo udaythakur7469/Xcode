@@ -12,6 +12,10 @@ import {
   isLowEffort,
   normalizeCode,
 } from "../services/hintsService.js";
+import {
+  getHiddenContestProblemIdsForUser,
+  isProblemHiddenForUser,
+} from "../services/contestVisibilityService.js";
 
 interface CreateProblemInput {
   title: string;
@@ -59,13 +63,22 @@ export const getProblems = async (req, res, next) => {
       whereClause.tags = { hasSome: tagsArray };
     }
 
-    // If status filter is active and user is logged in, filter by solved IDs
+    const hiddenProblemIds = await getHiddenContestProblemIdsForUser(userId);
+    const andClauses: any[] = [];
+    if (hiddenProblemIds.size > 0) {
+      andClauses.push({ id: { notIn: [...hiddenProblemIds] } });
+    }
+
     if (status && userId) {
       if (status === "solved") {
-        whereClause.id = { in: [...solvedProblemIds] };
+        andClauses.push({ id: { in: [...solvedProblemIds] } });
       } else if (status === "unsolved") {
-        whereClause.id = { notIn: [...solvedProblemIds] };
+        andClauses.push({ id: { notIn: [...solvedProblemIds] } });
       }
+    }
+
+    if (andClauses.length > 0) {
+      whereClause.AND = andClauses;
     }
 
     const dateFrom = req.query.dateFrom as string | undefined;
@@ -179,6 +192,14 @@ export const getProblemByTitle = async (req, res, next) => {
 
     if (!problem) {
       return res.status(404).json({ message: "Problem not found" });
+    }
+
+    const userId = req.user?.userId ?? req.user?.id ?? null;
+    if (await isProblemHiddenForUser(userId, problem.id)) {
+      return res.status(403).json({
+        message:
+          "This problem is part of a contest you're registered for — solve it in the contest workspace instead.",
+      });
     }
 
     res.status(200).json(problem); // Return the problem details

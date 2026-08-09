@@ -266,6 +266,98 @@ p, h1 {
   animation: scroll-right 34s linear infinite;
 }
 
+/* ==========================================================
+   Contest system — brand-green accent + "modern" card styles
+   ========================================================== */
+:root {
+  --brand-green: #22c55e;
+  --brand-green-dim: #16a34a;
+}
+
+.btn-brand {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  font-weight: 600;
+  border: 1px solid #16a34a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.2s, transform 0.15s;
+}
+.btn-brand:hover {
+  box-shadow: 0 4px 20px rgba(34, 197, 94, 0.45);
+  transform: translateY(-1px);
+}
+.btn-brand:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+.text-brand {
+  color: var(--brand-green);
+}
+.border-brand {
+  border-color: var(--brand-green) !important;
+}
+.bg-brand-soft {
+  background: rgba(34, 197, 94, 0.12);
+}
+.hero-mesh {
+  background: radial-gradient(circle at 15% 20%, rgba(34, 197, 94, 0.16), transparent 45%),
+    radial-gradient(circle at 85% 0%, rgba(59, 130, 246, 0.1), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(34, 197, 94, 0.08), transparent 50%);
+}
+.dark .hero-mesh {
+  background: radial-gradient(circle at 15% 20%, rgba(34, 197, 94, 0.2), transparent 45%),
+    radial-gradient(circle at 85% 0%, rgba(59, 130, 246, 0.14), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(34, 197, 94, 0.1), transparent 50%);
+}
+.card-modern {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px -12px rgba(0, 0, 0, 0.15);
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.card-modern-hover:hover {
+  box-shadow: 0 4px 30px -8px rgba(34, 197, 94, 0.25);
+  transform: translateY(-2px);
+  border-color: rgba(34, 197, 94, 0.5);
+}
+.stat-chip {
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.02));
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 0.75rem;
+}
+.podium-1 {
+  background: linear-gradient(160deg, rgba(34, 197, 94, 0.2), transparent 60%);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+}
+.podium-2 {
+  background: linear-gradient(160deg, rgba(148, 163, 184, 0.18), transparent 60%);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+}
+.podium-3 {
+  background: linear-gradient(160deg, rgba(217, 119, 6, 0.16), transparent 60%);
+  border: 1px solid rgba(217, 119, 6, 0.4);
+}
+.rank-badge {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+}
+.row-hover:hover {
+  background: rgba(34, 197, 94, 0.06);
+}
+.live-dot-brand {
+  background: var(--brand-green);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.25);
+}
+@keyframes contestLivePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.5); }
+  50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+}
+.live-pulse {
+  animation: contestLivePulse 1.8s infinite;
+}
+
 
 /* React Calendar Heatmap Styles 
 .react-calendar-heatmap {

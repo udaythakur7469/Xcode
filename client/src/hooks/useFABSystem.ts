@@ -1,5 +1,7 @@
 "use client";
 
+import { useContestStore } from "@/features/contestStore";
+import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 export type FABType = "aiChat" | "commandBar";
@@ -28,9 +30,24 @@ export const useFABSystem = () => {
     useState(false);
 
   // Computed visibility - FAB is visible if not permanently hidden AND dialog is closed
-  const aiChatVisible = !aiChatPermanentlyHidden && !aiChatDialogOpen;
+  const pathname = usePathname();
+  const { workspace, activeContest } = useContestStore();
+  const isContestWorkspaceRoute = /^\/contests\/[^/]+\/workspace/.test(
+    pathname ?? "",
+  );
+  const isLiveRatedContestWorkspace =
+    isContestWorkspaceRoute &&
+    workspace?.contest?.status === "LIVE" &&
+    !!activeContest?.rated;
+
+  const aiChatVisible =
+    !aiChatPermanentlyHidden &&
+    !aiChatDialogOpen &&
+    !isLiveRatedContestWorkspace;
   const commandBarVisible =
-    !commandBarPermanentlyHidden && !commandBarDialogOpen;
+    !commandBarPermanentlyHidden &&
+    !commandBarDialogOpen &&
+    !isContestWorkspaceRoute;
 
   const [isDragging, setIsDragging] = useState<FABType | null>(null);
   const [draggedButton, setDraggedButton] = useState<FABType | null>(null);
@@ -73,7 +90,12 @@ export const useFABSystem = () => {
       const stored = sessionStorage.getItem("fab-positions");
       if (stored) {
         const parsed = JSON.parse(stored);
-        setPositions(parsed.positions);
+        const defaults = getDefaultPositions();
+        setPositions({
+          aiChat: parsed.positions?.aiChat ?? defaults.aiChat,
+          commandBar:
+            parsed.positions?.commandBar ?? defaults.commandBar,
+        });
         setSides(parsed.sides || { aiChat: "right", commandBar: "right" });
       }
     } catch (error) {
@@ -301,7 +323,11 @@ export const useFABSystem = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl/Cmd + Q for AI Chat
-      if (e.key === "q" && (e.metaKey || e.ctrlKey)) {
+      if (
+        e.key === "q" &&
+        (e.metaKey || e.ctrlKey) &&
+        !isLiveRatedContestWorkspace
+      ) {
         e.preventDefault();
         // Close command Bar if open, then open AI chat
         if (commandBarDialogOpen) {
@@ -316,7 +342,11 @@ export const useFABSystem = () => {
       }
 
       // Ctrl + K for Command Bar
-      if (e.key?.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
+      if (
+        e.key.toLowerCase() === "k" &&
+        (e.metaKey || e.ctrlKey) &&
+        !isContestWorkspaceRoute
+      ) {
         e.preventDefault();
         // Close AI chat if open, then open command Bar
         if (aiChatDialogOpen) {
@@ -333,7 +363,12 @@ export const useFABSystem = () => {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [aiChatDialogOpen, commandBarDialogOpen]);
+  }, [
+    aiChatDialogOpen,
+    commandBarDialogOpen,
+    isLiveRatedContestWorkspace,
+    isContestWorkspaceRoute,
+  ]);
 
   // Handle window resize
   useEffect(() => {

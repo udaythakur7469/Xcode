@@ -86,6 +86,18 @@ const registerRoomHandlers = (socket: Socket) => {
     logger.info(`Socket ${socket.id} left room ${room}`);
   });
 
+  socket.on("contest:join", (contestId: string | number) => {
+    const room = `contest:${contestId}`;
+    socket.join(room);
+    logger.info(`Socket ${socket.id} joined room ${room}`);
+  });
+
+  socket.on("contest:leave", (contestId: string | number) => {
+    const room = `contest:${contestId}`;
+    socket.leave(room);
+    logger.info(`Socket ${socket.id} left room ${room}`);
+  });
+
   socket.on("disconnect", () => {
     logger.info(`Socket ${socket.id} disconnected`);
   });

@@ -71,7 +71,7 @@ const page: React.FC<pageProps> = ({ params }) => {
     <div className="relative min-h-screen w-full flex flex-col bg-background overflow-hidden">
       <InterviewAmbientBackground />
       <div className="relative z-10 flex min-h-screen w-full flex-col">
-        <Navbar firstButton={"Explore Xcode"} secondButton={"Solve Problems"} />
+        <Navbar buttons={["Explore Xcode", "Solve Problems", "Contests"]} />
         <FeedbackPage
           feedback={feedback}
           interview={interview}
