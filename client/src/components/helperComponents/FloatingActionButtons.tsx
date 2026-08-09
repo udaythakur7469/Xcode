@@ -184,6 +184,7 @@ const FloatingActionButtons = () => {
           onOpenLogin={() => setIsLoginOpen(true)}
           onOpenSignup={() => setIsSignupOpen(true)}
           onOpenLogout={() => setIsLogoutOpen(true)}
+          onOpenAIChat={() => setAiChatDialogOpen(true)}
           searchQuery={commandPaletteSearchQuery}
         />
       </FloatingDialog>
