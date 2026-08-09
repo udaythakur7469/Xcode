@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
@@ -16,23 +18,30 @@ const CommandPaletteDialogTitle: React.FC<CommandPaletteDialogTitleProps> = ({
   return (
     <div className="relative w-full mr-2">
       {/* Search Icon */}
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white" />
+      <Search
+        size={18}
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--brand)]"
+      />
 
       {/* Input Field */}
       <Input
         autoFocus
-        className="w-full border-white bg-secondary h-[40px] pl-12 pr-10 placeholder-white text-xl focus-visible:ring-2 focus-visible:ring-[var(--brand)] focus-visible:border-[var(--brand)]"
-        placeholder="Type a command or search..."
+        className="h-10 w-full rounded-md border-border bg-secondary pl-10 pr-9 text-sm font-medium placeholder:text-muted-foreground focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand-muted)]"
+        placeholder="Type a command or search problems..."
         value={commandPaletteSearchQuery}
         onChange={handleCommandPaletteSearch}
       />
 
       {/* Clear (X) Icon */}
-      {commandPaletteSearchQuery && ( // Only show the X icon if there is text in the search bar
-        <X
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-white cursor-pointer"
+      {commandPaletteSearchQuery && (
+        <button
+          type="button"
           onClick={handleCommandPaletteClear}
-        />
+          aria-label="Clear search"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <X size={16} />
+        </button>
       )}
     </div>
   );
