@@ -5,8 +5,8 @@ import { MessageSquare, Terminal } from "lucide-react";
 import FAB from "./FAB";
 import { useFABSystem } from "@/hooks/useFABSystem";
 import FloatingDialog from "./FloatingDialog";
-import CommandPaletteDialogTitle from "./commandPaletteDialog/title/CommandPaletteDialogTitle";
-import CommandPaletteDialogContent from "./commandPaletteDialog/content/CommandPaletteDialogContent";
+import CommandBarDialogTitle from "./commandBarDialog/title/CommandBarDialogTitle";
+import CommandBarDialogContent from "./commandBarDialog/content/CommandBarDialogContent";
 import { SignupDialog } from "../auth/signupPage/SignupDialog";
 import { LoginDialog } from "../auth/loginPage/LoginDialog";
 import { useUserStore } from "@/features/userStore";
@@ -26,18 +26,18 @@ const FloatingActionButtons = () => {
   const {
     isMounted,
     aiChatVisible,
-    commandPaletteVisible,
+    commandBarVisible,
     positions,
     sides,
     isDragging,
     draggedButton,
     repelledButton,
     aiChatDialogOpen,
-    commandPaletteDialogOpen,
+    commandBarDialogOpen,
     setAiChatPermanentlyHidden,
-    setCommandPalettePermanentlyHidden,
+    setCommandBarPermanentlyHidden,
     setAiChatDialogOpen,
-    setCommandPaletteDialogOpen,
+    setCommandBarDialogOpen,
     handleDragStart,
     handleFABClick,
   } = useFABSystem();
@@ -46,7 +46,7 @@ const FloatingActionButtons = () => {
   const shareIdFromUrl = searchParams.get("sharedChat");
   const isSharedMode = !!shareIdFromUrl;
 
-  const [commandPaletteSearchQuery, setCommandPaletteSearchQuery] =
+  const [commandBarSearchQuery, setCommandBarSearchQuery] =
     useState("");
   const [isLoginOpen, setIsLoginOpen] = useState<boolean>(false);
   const [isSignupOpen, setIsSignupOpen] = useState<boolean>(false);
@@ -72,20 +72,20 @@ const FloatingActionButtons = () => {
   }, [isUserAuthenticated]);
 
   useEffect(() => {
-    if (!commandPaletteDialogOpen) {
-      setCommandPaletteSearchQuery("");
+    if (!commandBarDialogOpen) {
+      setCommandBarSearchQuery("");
     }
-  }, [commandPaletteDialogOpen]);
+  }, [commandBarDialogOpen]);
 
-  const handleCommandPaletteSearch = (
+  const handleCommandBarSearch = (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const query = e.target.value;
-    setCommandPaletteSearchQuery(query);
+    setCommandBarSearchQuery(query);
   };
 
-  const handleCommandPaletteClear = () => {
-    setCommandPaletteSearchQuery("");
+  const handleCommandBarClear = () => {
+    setCommandBarSearchQuery("");
   };
 
   const openLoginForSharedChat = (currentShareId: string) => {
@@ -124,17 +124,17 @@ const FloatingActionButtons = () => {
         />
       )}
 
-      {commandPaletteVisible && (
+      {commandBarVisible && (
         <FAB
           icon={<Terminal size={24} />}
-          label="Command Palette (⌘/Ctrl+K)"
-          onClick={() => handleFABClick("commandPalette")}
-          onClose={() => setCommandPalettePermanentlyHidden(true)}
-          position={positions.commandPalette}
-          onDragStart={handleDragStart("commandPalette")}
-          isDragging={isDragging === "commandPalette"}
-          side={sides.commandPalette}
-          isBeingRepelled={repelledButton === "commandPalette"}
+          label="Command Bar (⌘/Ctrl+K)"
+          onClick={() => handleFABClick("commandBar")}
+          onClose={() => setCommandBarPermanentlyHidden(true)}
+          position={positions.commandBar}
+          onDragStart={handleDragStart("commandBar")}
+          isDragging={isDragging === "commandBar"}
+          side={sides.commandBar}
+          isBeingRepelled={repelledButton === "commandBar"}
         />
       )}
 
@@ -165,27 +165,27 @@ const FloatingActionButtons = () => {
       </FloatingDialog>
 
       <FloatingDialog
-        open={commandPaletteDialogOpen}
-        onOpenChange={setCommandPaletteDialogOpen}
+        open={commandBarDialogOpen}
+        onOpenChange={setCommandBarDialogOpen}
         title={
-          <CommandPaletteDialogTitle
-            commandPaletteSearchQuery={commandPaletteSearchQuery}
-            handleCommandPaletteSearch={handleCommandPaletteSearch}
-            handleCommandPaletteClear={handleCommandPaletteClear}
+          <CommandBarDialogTitle
+            commandBarSearchQuery={commandBarSearchQuery}
+            handleCommandBarSearch={handleCommandBarSearch}
+            handleCommandBarClear={handleCommandBarClear}
           />
         }
-        dialogType="CommandPalette"
+        dialogType="CommandBar"
         defaultSize={{ width: 600, height: 400 }}
         enableReset={true}
         enableMaximize={false}
       >
-        <CommandPaletteDialogContent
-          onClose={() => setCommandPaletteDialogOpen(false)}
+        <CommandBarDialogContent
+          onClose={() => setCommandBarDialogOpen(false)}
           onOpenLogin={() => setIsLoginOpen(true)}
           onOpenSignup={() => setIsSignupOpen(true)}
           onOpenLogout={() => setIsLogoutOpen(true)}
           onOpenAIChat={() => setAiChatDialogOpen(true)}
-          searchQuery={commandPaletteSearchQuery}
+          searchQuery={commandBarSearchQuery}
         />
       </FloatingDialog>
 

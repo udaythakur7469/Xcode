@@ -48,9 +48,9 @@ const ProblemDetailsPageContent: React.FC = () => {
     setLastActiveProblemTitle(problemTitle);
   }, [problemTitle]);
 
-  // Feeds the command palette's "Recently Viewed" section. Runs once the
+  // Feeds the command Bar's "Recently Viewed" section. Runs once the
   // full problem details (including difficulty) have loaded, so the badge
-  // shown in the palette is accurate rather than guessed from the URL.
+  // shown in the Bar is accurate rather than guessed from the URL.
   const problemDetails = useProblemStore((s) => s.problem);
   useEffect(() => {
     if (problemDetails?.title && problemDetails?.difficulty) {

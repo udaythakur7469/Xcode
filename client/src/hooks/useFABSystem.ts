@@ -2,16 +2,16 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 
-export type FABType = "aiChat" | "commandPalette";
+export type FABType = "aiChat" | "commandBar";
 
 interface Positions {
   aiChat: { x: number; y: number };
-  commandPalette: { x: number; y: number };
+  commandBar: { x: number; y: number };
 }
 
 interface Sides {
   aiChat: "left" | "right";
-  commandPalette: "left" | "right";
+  commandBar: "left" | "right";
 }
 
 export const useFABSystem = () => {
@@ -19,18 +19,18 @@ export const useFABSystem = () => {
 
   // Visibility states - true means visible, false means permanently hidden (via X button)
   const [aiChatPermanentlyHidden, setAiChatPermanentlyHidden] = useState(false);
-  const [commandPalettePermanentlyHidden, setCommandPalettePermanentlyHidden] =
+  const [commandBarPermanentlyHidden, setCommandBarPermanentlyHidden] =
     useState(false);
 
   // Dialog states
   const [aiChatDialogOpen, setAiChatDialogOpen] = useState(false);
-  const [commandPaletteDialogOpen, setCommandPaletteDialogOpen] =
+  const [commandBarDialogOpen, setCommandBarDialogOpen] =
     useState(false);
 
   // Computed visibility - FAB is visible if not permanently hidden AND dialog is closed
   const aiChatVisible = !aiChatPermanentlyHidden && !aiChatDialogOpen;
-  const commandPaletteVisible =
-    !commandPalettePermanentlyHidden && !commandPaletteDialogOpen;
+  const commandBarVisible =
+    !commandBarPermanentlyHidden && !commandBarDialogOpen;
 
   const [isDragging, setIsDragging] = useState<FABType | null>(null);
   const [draggedButton, setDraggedButton] = useState<FABType | null>(null);
@@ -41,13 +41,13 @@ export const useFABSystem = () => {
     if (typeof window === "undefined") {
       return {
         aiChat: { x: 100, y: 100 },
-        commandPalette: { x: 100, y: 170 },
+        commandBar: { x: 100, y: 170 },
       };
     }
 
     return {
       aiChat: { x: window.innerWidth - 80, y: window.innerHeight - 80 },
-      commandPalette: {
+      commandBar: {
         x: window.innerWidth - 80,
         y: window.innerHeight - 150,
       },
@@ -57,7 +57,7 @@ export const useFABSystem = () => {
   const [positions, setPositions] = useState<Positions>(getDefaultPositions);
   const [sides, setSides] = useState<Sides>({
     aiChat: "right",
-    commandPalette: "right",
+    commandBar: "right",
   });
 
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -74,7 +74,7 @@ export const useFABSystem = () => {
       if (stored) {
         const parsed = JSON.parse(stored);
         setPositions(parsed.positions);
-        setSides(parsed.sides || { aiChat: "right", commandPalette: "right" });
+        setSides(parsed.sides || { aiChat: "right", commandBar: "right" });
       }
     } catch (error) {
       console.error("Failed to load FAB positions:", error);
@@ -161,9 +161,9 @@ export const useFABSystem = () => {
 
       let draggedPos = { x: newX, y: newY };
 
-      const otherButton = isDragging === "aiChat" ? "commandPalette" : "aiChat";
+      const otherButton = isDragging === "aiChat" ? "commandBar" : "aiChat";
       const otherButtonVisible =
-        isDragging === "aiChat" ? commandPaletteVisible : aiChatVisible;
+        isDragging === "aiChat" ? commandBarVisible : aiChatVisible;
 
       if (otherButtonVisible) {
         const otherPos = positions[otherButton];
@@ -198,7 +198,7 @@ export const useFABSystem = () => {
         }));
       }
     },
-    [isDragging, positions, aiChatVisible, commandPaletteVisible]
+    [isDragging, positions, aiChatVisible, commandBarVisible]
   );
 
   // Handle mouse up (end drag)
@@ -210,9 +210,9 @@ export const useFABSystem = () => {
     const currentPos = positions[isDragging];
     const windowCenter = window.innerWidth / 2;
 
-    const otherButton = isDragging === "aiChat" ? "commandPalette" : "aiChat";
+    const otherButton = isDragging === "aiChat" ? "commandBar" : "aiChat";
     const otherButtonVisible =
-      isDragging === "aiChat" ? commandPaletteVisible : aiChatVisible;
+      isDragging === "aiChat" ? commandBarVisible : aiChatVisible;
 
     let newSide: "left" | "right" =
       currentPos.x < windowCenter ? "left" : "right";
@@ -282,7 +282,7 @@ export const useFABSystem = () => {
     sides,
     savePositions,
     aiChatVisible,
-    commandPaletteVisible,
+    commandBarVisible,
   ]);
 
   // Add/remove event listeners
@@ -303,9 +303,9 @@ export const useFABSystem = () => {
       // Ctrl/Cmd + Q for AI Chat
       if (e.key === "q" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        // Close command palette if open, then open AI chat
-        if (commandPaletteDialogOpen) {
-          setCommandPaletteDialogOpen(false);
+        // Close command Bar if open, then open AI chat
+        if (commandBarDialogOpen) {
+          setCommandBarDialogOpen(false);
           // Wait for next render cycle
           requestAnimationFrame(() => {
             setAiChatDialogOpen(true);
@@ -315,25 +315,25 @@ export const useFABSystem = () => {
         }
       }
 
-      // Ctrl + K for Command Palette
+      // Ctrl + K for Command Bar
       if (e.key?.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        // Close AI chat if open, then open command palette
+        // Close AI chat if open, then open command Bar
         if (aiChatDialogOpen) {
           setAiChatDialogOpen(false);
           // Wait for next render cycle
           requestAnimationFrame(() => {
-            setCommandPaletteDialogOpen(true);
+            setCommandBarDialogOpen(true);
           });
         } else {
-          setCommandPaletteDialogOpen(true);
+          setCommandBarDialogOpen(true);
         }
       }
     };
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [aiChatDialogOpen, commandPaletteDialogOpen]);
+  }, [aiChatDialogOpen, commandBarDialogOpen]);
 
   // Handle window resize
   useEffect(() => {
@@ -366,7 +366,7 @@ export const useFABSystem = () => {
     if (button === "aiChat") {
       setAiChatDialogOpen(true);
     } else {
-      setCommandPaletteDialogOpen(true);
+      setCommandBarDialogOpen(true);
     }
   };
 
@@ -374,20 +374,20 @@ export const useFABSystem = () => {
     // States
     isMounted,
     aiChatVisible,
-    commandPaletteVisible,
+    commandBarVisible,
     positions,
     sides,
     isDragging,
     draggedButton,
     repelledButton,
     aiChatDialogOpen,
-    commandPaletteDialogOpen,
+    commandBarDialogOpen,
 
     // Setters
     setAiChatPermanentlyHidden,
-    setCommandPalettePermanentlyHidden,
+    setCommandBarPermanentlyHidden,
     setAiChatDialogOpen,
-    setCommandPaletteDialogOpen,
+    setCommandBarDialogOpen,
 
     // Handlers
     handleDragStart,

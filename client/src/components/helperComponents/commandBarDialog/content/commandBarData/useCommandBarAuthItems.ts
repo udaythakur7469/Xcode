@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { UserRoundPen, KeySquare, FilePen, LogOut } from "lucide-react";
 import { useUserStore } from "@/features/userStore";
-import type { CommandPaletteEntry } from "./commandPaletteTypes";
+import type { CommandBarEntry } from "./commandBarTypes";
 
-type CommandPaletteAuthItemsOptions = {
+type CommandBarAuthItemsOptions = {
   onNavigateToAccount: () => void;
   onOpenLogin: () => void;
   onOpenSignup: () => void;
@@ -16,12 +16,12 @@ type CommandPaletteAuthItemsOptions = {
  * Signed in  -> Account, Logout only (Account hides itself while already
  * on the account page, same as before).
  */
-export function useCommandPaletteAuthItems({
+export function useCommandBarAuthItems({
   onNavigateToAccount,
   onOpenLogin,
   onOpenSignup,
   onOpenLogout,
-}: CommandPaletteAuthItemsOptions): CommandPaletteEntry[] {
+}: CommandBarAuthItemsOptions): CommandBarEntry[] {
   const pathname = usePathname();
   const { isUserAuthenticated } = useUserStore();
 
@@ -47,7 +47,7 @@ export function useCommandPaletteAuthItems({
       ];
     }
 
-    const entries: CommandPaletteEntry[] = [];
+    const entries: CommandBarEntry[] = [];
 
     if (!pathname.startsWith("/account")) {
       entries.push({

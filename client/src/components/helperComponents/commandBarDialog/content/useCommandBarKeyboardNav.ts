@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import type { CommandPaletteEntry } from "./commandPaletteData/commandPaletteTypes";
+import type { CommandBarEntry } from "./commandBarData/commandBarTypes";
 
-export function useCommandPaletteKeyboardNav(entries: CommandPaletteEntry[]) {
+export function useCommandBarKeyboardNav(entries: CommandBarEntry[]) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {

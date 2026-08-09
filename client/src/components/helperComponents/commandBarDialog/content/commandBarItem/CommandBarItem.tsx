@@ -3,20 +3,20 @@
 import React from "react";
 import { ChevronRight, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CommandPaletteEntry } from "../commandPaletteData/commandPaletteTypes";
-import CommandPaletteItemIcon from "./CommandPaletteItemIcon";
-import CommandPaletteKeyboardHint from "./CommandPaletteKeyboardHint";
+import type { CommandBarEntry } from "../commandBarData/commandBarTypes";
+import CommandBarItemIcon from "./CommandBarItemIcon";
+import CommandBarKeyboardHint from "./CommandBarKeyboardHint";
 import DifficultyBadge from "./DifficultyBadge";
 
-type CommandPaletteItemProps = {
-  entry: CommandPaletteEntry;
+type CommandBarItemProps = {
+  entry: CommandBarEntry;
   isSelected: boolean;
   onMouseEnter: () => void;
   isFirst: boolean;
   isLast: boolean;
 };
 
-const CommandPaletteItem: React.FC<CommandPaletteItemProps> = ({
+const CommandBarItem: React.FC<CommandBarItemProps> = ({
   entry,
   isSelected,
   onMouseEnter,
@@ -38,7 +38,7 @@ const CommandPaletteItem: React.FC<CommandPaletteItemProps> = ({
       onClick={entry.onSelect}
       onMouseEnter={onMouseEnter}
     >
-      <CommandPaletteItemIcon icon={entry.icon} isSelected={isSelected} />
+      <CommandBarItemIcon icon={entry.icon} isSelected={isSelected} />
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-center gap-2 text-sm font-semibold">
@@ -65,10 +65,10 @@ const CommandPaletteItem: React.FC<CommandPaletteItemProps> = ({
 
       <div className="flex shrink-0 items-center gap-1.5">
         {isFirst && (
-          <CommandPaletteKeyboardHint label="Home" isSelected={isSelected} />
+          <CommandBarKeyboardHint label="Home" isSelected={isSelected} />
         )}
         {isLast && (
-          <CommandPaletteKeyboardHint label="End" isSelected={isSelected} />
+          <CommandBarKeyboardHint label="End" isSelected={isSelected} />
         )}
         <ArrowRight
           size={16}
@@ -82,6 +82,6 @@ const CommandPaletteItem: React.FC<CommandPaletteItemProps> = ({
   );
 };
 
-CommandPaletteItem.displayName = "CommandPaletteItem";
+CommandBarItem.displayName = "CommandBarItem";
 
-export default CommandPaletteItem;
+export default CommandBarItem;

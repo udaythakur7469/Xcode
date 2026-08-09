@@ -90,7 +90,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
     );
     if (saved) return saved;
 
-    if (dialogType === "CommandPalette") {
+    if (dialogType === "CommandBar") {
       return {
         x: Math.max(0, window.innerWidth / 2 - defaultSize.width / 2),
         y: Math.max(0, window.innerHeight / 2 - defaultSize.height / 2 - 100),
@@ -219,7 +219,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
     setSize(newSize);
 
     // Recenter the dialog based on dialogType
-    const yOffset = dialogType === "CommandPalette" ? -100 : 0;
+    const yOffset = dialogType === "CommandBar" ? -100 : 0;
     const centeredPosition = {
       x: Math.max(0, window.innerWidth / 2 - newSize.width / 2),
       y: Math.max(0, window.innerHeight / 2 - newSize.height / 2 + yOffset),
@@ -345,7 +345,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
     clear(dialogType, "isMaximized");
 
     if (typeof window !== "undefined") {
-      const yOffset = dialogType === "CommandPalette" ? -100 : 0;
+      const yOffset = dialogType === "CommandBar" ? -100 : 0;
 
       const centeredPosition = {
         x: Math.max(0, window.innerWidth / 2 - defaultSize.width / 2),
@@ -684,7 +684,7 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                 <div
                   className="flex-1 min-w-0"
                   onMouseDown={(e) => {
-                    if (dialogType === "CommandPalette") {
+                    if (dialogType === "CommandBar") {
                       e.stopPropagation();
                     }
                   }}

@@ -5,9 +5,9 @@ import { toast } from "sonner";
 import { Dices, Sparkles, CalendarDays, SunMoon, Link2 } from "lucide-react";
 import { useProblemStore } from "@/features/problemStore";
 import { useCalendarStore } from "@/features/calenderStore";
-import type { CommandPaletteEntry } from "./commandPaletteTypes";
+import type { CommandBarEntry } from "./commandBarTypes";
 
-type CommandPaletteQuickActionsOptions = {
+type CommandBarQuickActionsOptions = {
   onNavigate: () => void;
   onOpenAIChat: () => void;
 };
@@ -18,10 +18,10 @@ type CommandPaletteQuickActionsOptions = {
  * whatever page happens to be loaded client-side) via a random OFFSET over
  * a COUNT query.
  */
-export function useCommandPaletteQuickActions({
+export function useCommandBarQuickActions({
   onNavigate,
   onOpenAIChat,
-}: CommandPaletteQuickActionsOptions): CommandPaletteEntry[] {
+}: CommandBarQuickActionsOptions): CommandBarEntry[] {
   const router = useRouter();
   const { setTheme, resolvedTheme } = useTheme();
   const { getRandomProblem } = useProblemStore();
@@ -74,11 +74,6 @@ export function useCommandPaletteQuickActions({
     onOpenAIChat();
     onNavigate();
   }, [onOpenAIChat, onNavigate]);
-
-  const handleGoToContests = useCallback(() => {
-    router.push("/contests");
-    onNavigate();
-  }, [router, onNavigate]);
 
   return useMemo(
     () => [

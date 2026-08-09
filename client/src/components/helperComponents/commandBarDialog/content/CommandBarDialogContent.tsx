@@ -3,17 +3,17 @@
 import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/features/userStore";
-import type { CommandPaletteGroup } from "./commandPaletteData/commandPaletteTypes";
-import { useCommandPaletteNavItems } from "./commandPaletteData/useCommandPaletteNavItems";
-import { useCommandPaletteAuthItems } from "./commandPaletteData/useCommandPaletteAuthItems";
-import { useCommandPaletteQuickActions } from "./commandPaletteData/useCommandPaletteQuickActions";
-import { useCommandPaletteProblemSearch } from "./commandPaletteData/useCommandPaletteProblemSearch";
-import { useCommandPaletteRecentlyViewed } from "./commandPaletteData/useCommandPaletteRecentlyViewed";
-import { useCommandPaletteKeyboardNav } from "./useCommandPaletteKeyboardNav";
-import CommandPaletteSection from "./commandPaletteSection/CommandPaletteSection";
-import CommandPaletteEmptyState from "./commandPaletteSection/CommandPaletteEmptyState";
+import type { CommandBarGroup } from "./commandBarData/commandBarTypes";
+import { useCommandBarNavItems } from "./commandBarData/useCommandBarNavItems";
+import { useCommandBarAuthItems } from "./commandBarData/useCommandBarAuthItems";
+import { useCommandBarQuickActions } from "./commandBarData/useCommandBarQuickActions";
+import { useCommandBarProblemSearch } from "./commandBarData/useCommandBarProblemSearch";
+import { useCommandBarRecentlyViewed } from "./commandBarData/useCommandBarRecentlyViewed";
+import { useCommandBarKeyboardNav } from "./useCommandBarKeyboardNav";
+import CommandBarSection from "./commandBarSection/CommandBarSection";
+import CommandBarEmptyState from "./commandBarSection/CommandBarEmptyState";
 
-type CommandPaletteDialogContentProps = {
+type CommandBarDialogContentProps = {
   onClose: () => void;
   onOpenLogin: () => void;
   onOpenSignup: () => void;
@@ -30,7 +30,7 @@ function matchesSearch(searchQuery: string, title: string, subtitle: string) {
   );
 }
 
-const CommandPaletteDialogContent: React.FC<CommandPaletteDialogContentProps> = ({
+const CommandBarDialogContent: React.FC<CommandBarDialogContentProps> = ({
   onClose,
   onOpenLogin,
   onOpenSignup,
@@ -41,9 +41,9 @@ const CommandPaletteDialogContent: React.FC<CommandPaletteDialogContentProps> = 
   const router = useRouter();
   const { userData } = useUserStore();
 
-  const navItems = useCommandPaletteNavItems(onClose);
+  const navItems = useCommandBarNavItems(onClose);
 
-  const authItems = useCommandPaletteAuthItems({
+  const authItems = useCommandBarAuthItems({
     onNavigateToAccount: () => {
       const accountLink = userData?.name
         ? `/account/${userData.name}`
@@ -65,7 +65,7 @@ const CommandPaletteDialogContent: React.FC<CommandPaletteDialogContentProps> = 
     },
   });
 
-  const quickActionItems = useCommandPaletteQuickActions({
+  const quickActionItems = useCommandBarQuickActions({
     onNavigate: onClose,
     onOpenAIChat: () => {
       onClose();
@@ -73,12 +73,12 @@ const CommandPaletteDialogContent: React.FC<CommandPaletteDialogContentProps> = 
     },
   });
 
-  const problemResults = useCommandPaletteProblemSearch(searchQuery, onClose);
-  const recentlyViewedItems = useCommandPaletteRecentlyViewed(onClose);
+  const problemResults = useCommandBarProblemSearch(searchQuery, onClose);
+  const recentlyViewedItems = useCommandBarRecentlyViewed(onClose);
 
   const isSearching = searchQuery.trim().length > 0;
 
-  const groups: CommandPaletteGroup[] = useMemo(() => {
+  const groups: CommandBarGroup[] = useMemo(() => {
     const filteredNav = navItems.filter((e) =>
       matchesSearch(searchQuery, e.title, e.subtitle),
     );
@@ -89,7 +89,7 @@ const CommandPaletteDialogContent: React.FC<CommandPaletteDialogContentProps> = 
       matchesSearch(searchQuery, e.title, e.subtitle),
     );
 
-    const result: CommandPaletteGroup[] = [
+    const result: CommandBarGroup[] = [
       { label: "Navigate", items: filteredNav },
       { label: "Account", items: filteredAuth },
       { label: "Quick Actions", items: filteredQuick },
@@ -117,10 +117,10 @@ const CommandPaletteDialogContent: React.FC<CommandPaletteDialogContentProps> = 
 
   const flatEntries = useMemo(() => groups.flatMap((g) => g.items), [groups]);
   const { selectedIndex, setSelectedIndex } =
-    useCommandPaletteKeyboardNav(flatEntries);
+    useCommandBarKeyboardNav(flatEntries);
 
   if (flatEntries.length === 0) {
-    return <CommandPaletteEmptyState searchQuery={searchQuery} />;
+    return <CommandBarEmptyState searchQuery={searchQuery} />;
   }
 
   let runningIndex = 0;
@@ -131,7 +131,7 @@ const CommandPaletteDialogContent: React.FC<CommandPaletteDialogContentProps> = 
         const startIndex = runningIndex;
         runningIndex += group.items.length;
         return (
-          <CommandPaletteSection
+          <CommandBarSection
             key={group.label}
             group={group}
             startIndex={startIndex}
@@ -145,4 +145,4 @@ const CommandPaletteDialogContent: React.FC<CommandPaletteDialogContentProps> = 
   );
 };
 
-export default CommandPaletteDialogContent;
+export default CommandBarDialogContent;

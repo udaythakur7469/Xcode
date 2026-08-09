@@ -1,16 +1,16 @@
 import React from "react";
-import type { CommandPaletteGroup } from "../commandPaletteData/commandPaletteTypes";
-import CommandPaletteItem from "../commandPaletteItem/CommandPaletteItem";
+import type { CommandBarGroup } from "../commandBarData/commandBarTypes";
+import CommandBarItem from "../commandBarItem/CommandBarItem";
 
-type CommandPaletteSectionProps = {
-  group: CommandPaletteGroup;
+type CommandBarSectionProps = {
+  group: CommandBarGroup;
   startIndex: number;
   totalCount: number;
   selectedIndex: number;
   setSelectedIndex: (index: number) => void;
 };
 
-const CommandPaletteSection: React.FC<CommandPaletteSectionProps> = ({
+const CommandBarSection: React.FC<CommandBarSectionProps> = ({
   group,
   startIndex,
   totalCount,
@@ -27,7 +27,7 @@ const CommandPaletteSection: React.FC<CommandPaletteSectionProps> = ({
       {group.items.map((entry, indexInGroup) => {
         const flatIndex = startIndex + indexInGroup;
         return (
-          <CommandPaletteItem
+          <CommandBarItem
             key={entry.id}
             entry={entry}
             isSelected={flatIndex === selectedIndex}
@@ -41,4 +41,4 @@ const CommandPaletteSection: React.FC<CommandPaletteSectionProps> = ({
   );
 };
 
-export default CommandPaletteSection;
+export default CommandBarSection;

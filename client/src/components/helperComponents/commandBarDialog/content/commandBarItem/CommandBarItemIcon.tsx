@@ -2,12 +2,12 @@ import React from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type CommandPaletteItemIconProps = {
+type CommandBarItemIconProps = {
   icon: LucideIcon;
   isSelected: boolean;
 };
 
-const CommandPaletteItemIcon: React.FC<CommandPaletteItemIconProps> = ({
+const CommandBarItemIcon: React.FC<CommandBarItemIconProps> = ({
   icon: Icon,
   isSelected,
 }) => {
@@ -25,4 +25,4 @@ const CommandPaletteItemIcon: React.FC<CommandPaletteItemIconProps> = ({
   );
 };
 
-export default CommandPaletteItemIcon;
+export default CommandBarItemIcon;

@@ -1,22 +1,22 @@
 import { useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { House, ListChecks, MessagesSquare, Trophy } from "lucide-react";
-import type { CommandPaletteEntry } from "./commandPaletteTypes";
+import type { CommandBarEntry } from "./commandBarTypes";
 
 /**
  * The four static navigation rows. Behavior is unchanged from the original
- * CommandPaletteData.tsx: each link hides itself when the user is already
- * on that page, so the palette never suggests navigating somewhere you
+ * CommandBarData.tsx: each link hides itself when the user is already
+ * on that page, so the Bar never suggests navigating somewhere you
  * already are.
  */
-export function useCommandPaletteNavItems(
+export function useCommandBarNavItems(
   onNavigate: () => void,
-): CommandPaletteEntry[] {
+): CommandBarEntry[] {
   const router = useRouter();
   const pathname = usePathname();
 
   return useMemo(() => {
-    const entries: CommandPaletteEntry[] = [];
+    const entries: CommandBarEntry[] = [];
 
     if (pathname !== "/") {
       entries.push({

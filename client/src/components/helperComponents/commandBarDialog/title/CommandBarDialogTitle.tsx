@@ -4,16 +4,16 @@ import React from "react";
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
 
-type CommandPaletteDialogTitleProps = {
-  commandPaletteSearchQuery: string;
-  handleCommandPaletteSearch: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleCommandPaletteClear: () => void;
+type CommandBarDialogTitleProps = {
+  commandBarSearchQuery: string;
+  handleCommandBarSearch: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleCommandBarClear: () => void;
 };
 
-const CommandPaletteDialogTitle: React.FC<CommandPaletteDialogTitleProps> = ({
-  commandPaletteSearchQuery,
-  handleCommandPaletteSearch,
-  handleCommandPaletteClear,
+const CommandBarDialogTitle: React.FC<CommandBarDialogTitleProps> = ({
+  commandBarSearchQuery,
+  handleCommandBarSearch,
+  handleCommandBarClear,
 }) => {
   return (
     <div className="relative w-full mr-2">
@@ -28,15 +28,15 @@ const CommandPaletteDialogTitle: React.FC<CommandPaletteDialogTitleProps> = ({
         autoFocus
         className="h-10 w-full rounded-md border-border bg-secondary pl-10 pr-9 text-sm font-medium placeholder:text-muted-foreground focus-visible:border-[var(--brand)] focus-visible:ring-2 focus-visible:ring-[var(--brand-muted)]"
         placeholder="Type a command or search problems..."
-        value={commandPaletteSearchQuery}
-        onChange={handleCommandPaletteSearch}
+        value={commandBarSearchQuery}
+        onChange={handleCommandBarSearch}
       />
 
       {/* Clear (X) Icon */}
-      {commandPaletteSearchQuery && (
+      {commandBarSearchQuery && (
         <button
           type="button"
-          onClick={handleCommandPaletteClear}
+          onClick={handleCommandBarClear}
           aria-label="Clear search"
           className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
         >
@@ -46,4 +46,4 @@ const CommandPaletteDialogTitle: React.FC<CommandPaletteDialogTitleProps> = ({
     </div>
   );
 };
-export default CommandPaletteDialogTitle;
+export default CommandBarDialogTitle;

@@ -1,12 +1,12 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-type CommandPaletteKeyboardHintProps = {
+type CommandBarKeyboardHintProps = {
   label: "Home" | "End";
   isSelected: boolean;
 };
 
-const CommandPaletteKeyboardHint: React.FC<CommandPaletteKeyboardHintProps> = ({
+const CommandBarKeyboardHint: React.FC<CommandBarKeyboardHintProps> = ({
   label,
   isSelected,
 }) => {
@@ -24,4 +24,4 @@ const CommandPaletteKeyboardHint: React.FC<CommandPaletteKeyboardHintProps> = ({
   );
 };
 
-export default CommandPaletteKeyboardHint;
+export default CommandBarKeyboardHint;
