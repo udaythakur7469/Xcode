@@ -90,7 +90,12 @@ export const useFABSystem = () => {
       const stored = sessionStorage.getItem("fab-positions");
       if (stored) {
         const parsed = JSON.parse(stored);
-        setPositions(parsed.positions);
+        const defaults = getDefaultPositions();
+        setPositions({
+          aiChat: parsed.positions?.aiChat ?? defaults.aiChat,
+          commandPalette:
+            parsed.positions?.commandPalette ?? defaults.commandPalette,
+        });
         setSides(parsed.sides || { aiChat: "right", commandPalette: "right" });
       }
     } catch (error) {
