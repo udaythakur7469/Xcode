@@ -4,6 +4,16 @@ import { User } from "./authStore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// runCode/submitCode wait on a queued judge job. The backend's own
+// enqueueAndWait caps that wait at 40s and returns a structured 500 if it
+// times out, so this is set to 45s - just past the backend's cap - so the
+// backend's own error response wins first when the server is alive. If the
+// connection is hung entirely (server down, dropped socket, unresponsive
+// EC2 instance) this is what forces the request to reject instead of
+// leaving isRunningCode/isSubmittingCode stuck true and the loader
+// spinning forever.
+const RUN_SUBMIT_TIMEOUT_MS = 45000;
+
 export interface Submission {
   id: number;
   problemId: number;
@@ -98,12 +108,12 @@ export interface SubmitCodeSuccess {
   testCasesPassed: number;
   totalTestCases: number;
   totalTestCasesEvaluated: number;
-  passRate: string; 
+  passRate: string;
   avgRuntimeInMilliseconds: number;
   submittedAt: string;
   testCaseResults: TestCaseResult[];
-  percentile: number; 
-  runtimeDistribution: RuntimeBucket[]; 
+  percentile: number;
+  runtimeDistribution: RuntimeBucket[];
 }
 
 export interface FailedTestCase {
@@ -394,7 +404,17 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
         axios.post(
           `${API_URL}/submission/runCode`,
           { language, code },
-          { params: { title: problemTitle }, signal: controller.signal },
+          {
+            params: { title: problemTitle },
+            signal: controller.signal,
+            // Backend caps the queued judge job at 40s (see
+            // enqueueAndWait). 45s gives it a small buffer to return its
+            // own structured timeout error first. If the connection is
+            // hung entirely (dead server, dropped socket) this is what
+            // forces the request to reject instead of leaving
+            // isRunningCode stuck true forever.
+            timeout: RUN_SUBMIT_TIMEOUT_MS,
+          },
         ),
         abortPromise,
       ])
@@ -460,7 +480,12 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
         axios.post(
           `${API_URL}/submission/submitCode`,
           { language, code },
-          { params: { title: problemTitle }, signal: controller.signal },
+          {
+            params: { title: problemTitle },
+            signal: controller.signal,
+            // See matching comment in runCode above.
+            timeout: RUN_SUBMIT_TIMEOUT_MS,
+          },
         ),
         abortPromise,
       ])

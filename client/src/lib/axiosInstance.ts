@@ -3,9 +3,18 @@ import { toast } from "sonner";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
+// Default request timeout for all instance calls. Individual requests
+// (like runCode/submitCode, which wait on a queued judge job that can
+// legitimately take longer) override this per-call. This default exists
+// so that a hung connection - dead backend, dropped socket, unresponsive
+// EC2 instance - always rejects instead of leaving the UI's loading
+// state stuck forever.
+const DEFAULT_TIMEOUT_MS = 20000;
+
 const axiosInstance = axios.create({
   baseURL: API_URL,
   withCredentials: true,
+  timeout: DEFAULT_TIMEOUT_MS,
 });
 
 // ─────────────────────────────────────────────────────────────────
