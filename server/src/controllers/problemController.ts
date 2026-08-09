@@ -1079,3 +1079,36 @@ export const createProblem = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getRandomProblem = async (req, res, next) => {
+  try {
+    const totalProblems = await prisma.problem.count();
+
+    if (totalProblems === 0) {
+      throw createHttpError(404, "No problems available");
+    }
+
+    const randomSkip = Math.floor(Math.random() * totalProblems);
+
+    const [randomProblem] = await prisma.problem.findMany({
+      skip: randomSkip,
+      take: 1,
+      select: {
+        title: true,
+        difficulty: true,
+      },
+    });
+
+    if (!randomProblem) {
+      throw createHttpError(404, "No problems available");
+    }
+
+    res.status(200).json({
+      message: "Random problem fetched successfully",
+      data: randomProblem,
+    });
+  } catch (error) {
+    logger.error("Error fetching random problem:", error);
+    next(error);
+  }
+};
