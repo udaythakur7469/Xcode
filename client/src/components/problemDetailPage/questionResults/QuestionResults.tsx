@@ -25,6 +25,8 @@ import { SubmissionMetadata } from "./SubmissionMetadata";
 import { SubmittedCode } from "./SubmittedCode";
 import { RiseIn } from "../helperComponents/codeSubmission/StatusHeader";
 import { Divider } from "../helperComponents/codeSubmission/ResultAtoms";
+import { useSearchParams } from "next/navigation";
+import { ConnectionErrorCard } from "../helperComponents/codeSubmission/ConnectionErrorCard";
 
 SyntaxHighlighter.registerLanguage("cpp", cpp);
 SyntaxHighlighter.registerLanguage("java", java);
@@ -186,8 +188,10 @@ function SubmitResultCard({
 // ─── QuestionResults ──────────────────────────────────────────────────────────
 
 const QuestionResults: React.FC = () => {
-  const { submitCodeResult, isSubmittingCode, submittingLanguage } =
+  const { submitCodeResult, isSubmittingCode, submittingLanguage, submitCode } =
     useSubmissionStore();
+  const searchParams = useSearchParams();
+  const problemTitle = searchParams.get("title");
 
   return (
     <div className="absolute inset-0 overflow-y-auto scrollbar-white">
@@ -203,12 +207,22 @@ const QuestionResults: React.FC = () => {
       {!isSubmittingCode &&
         submitCodeResult &&
         isNetworkError(submitCodeResult) && (
-          <div className="h-full w-full flex flex-col items-center justify-center gap-3 py-14 text-destructive select-none">
-            <p className="text-sm font-medium">Connection Error</p>
-            <p className="text-xs opacity-70 text-center max-w-[220px]">
-              {submitCodeResult.message}
-            </p>
-          </div>
+          <ConnectionErrorCard
+            error={submitCodeResult}
+            langLabel={
+              getLanguageConfig(submitCodeResult.language)?.label ??
+              submitCodeResult.language
+            }
+            onRetry={() => {
+              if (problemTitle) {
+                submitCode(
+                  submitCodeResult.language,
+                  submitCodeResult.code,
+                  problemTitle,
+                );
+              }
+            }}
+          />
         )}
       {!isSubmittingCode &&
         submitCodeResult &&

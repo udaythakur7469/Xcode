@@ -154,3 +154,13 @@ export function getStatusCfg(
     "alertTriangle",
   );
 }
+
+export function getConnectionErrorCfg(message: string): StatusCfg {
+  return cfgFor(
+    "connection_error",
+    STATUS_COLORS.networkError,
+    "Connection Error",
+    message,
+    "wifiOff",
+  );
+}

@@ -20,6 +20,7 @@ import { RunMetadata } from "./RunMetadata";
 import { RunSubmittedCode } from "./RunSubmittedCode";
 import { RiseIn } from "../../helperComponents/codeSubmission/StatusHeader";
 import { Divider } from "../../helperComponents/codeSubmission/ResultAtoms";
+import { ConnectionErrorCard } from "../../helperComponents/codeSubmission/ConnectionErrorCard";
 
 SyntaxHighlighter.registerLanguage("cpp", cpp);
 SyntaxHighlighter.registerLanguage("java", java);
@@ -107,6 +108,7 @@ const ResultsPanel: React.FC = () => {
     isRunningCode,
     hydrateRunCodeResult,
     runningLanguage,
+    runCode,
   } = useSubmissionStore();
   const searchParams = useSearchParams();
   const problemTitle = searchParams.get("title");
@@ -132,12 +134,19 @@ const ResultsPanel: React.FC = () => {
       )}
       {!isRunningCode && !runCodeResult && <EmptyState />}
       {!isRunningCode && runCodeResult && isNetworkError(runCodeResult) && (
-        <div className="h-full w-full flex flex-col items-center justify-center gap-3 py-14 text-destructive select-none">
-          <p className="text-sm font-medium">Connection Error</p>
-          <p className="text-xs opacity-70 text-center max-w-[220px]">
-            {runCodeResult.message}
-          </p>
-        </div>
+        <ConnectionErrorCard
+          error={runCodeResult}
+          langLabel={
+            getLanguageConfig(runCodeResult.language)?.label ??
+            runCodeResult.language
+          }
+          compact
+          onRetry={() => {
+            if (problemTitle) {
+              runCode(runCodeResult.language, runCodeResult.code, problemTitle);
+            }
+          }}
+        />
       )}
       {!isRunningCode && runCodeResult && !isNetworkError(runCodeResult) && (
         <RunResultCard result={runCodeResult} />

@@ -171,6 +171,11 @@ export interface ErrorInfo {
 export interface NetworkError {
   _networkError: true;
   message: string;
+  action: "Run Code" | "Submit Code";
+  language: string;
+  code: string;
+  attemptedAt: string; 
+  waitedSeconds: number; 
 }
 
 // ─── sessionStorage persistence (per problem) ─────────────────────────────────
@@ -388,6 +393,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     runCodeAbortController = new AbortController();
     previousRunController?.abort();
 
+    const attemptStartedAt = Date.now();
     set({
       isRunningCode: true,
       error: null,
@@ -448,6 +454,13 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
                     responseData?.error ??
                     responseData?.message ??
                     "Could not reach the server. Check your connection and try again.",
+                  action: "Run Code",
+                  language,
+                  code,
+                  attemptedAt: new Date().toISOString(),
+                  waitedSeconds: Math.round(
+                    (Date.now() - attemptStartedAt) / 1000,
+                  ),
                 }
               : (responseData as RunCodeResponse);
             set({ runCodeResult: payload, isRunningCode: false });
@@ -463,6 +476,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     submitCodeAbortController = new AbortController();
     previousSubmitController?.abort();
 
+    const attemptStartedAt = Date.now();
     set({
       isSubmittingCode: true,
       error: null,
@@ -523,6 +537,13 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
                     responseData?.error ??
                     responseData?.message ??
                     "Could not reach the server. Check your connection and try again.",
+                  action: "Submit Code",
+                  language,
+                  code,
+                  attemptedAt: new Date().toISOString(),
+                  waitedSeconds: Math.round(
+                    (Date.now() - attemptStartedAt) / 1000,
+                  ),
                 }
               : (responseData as SubmitCodeResponse);
             set({ submitCodeResult: payload, isSubmittingCode: false });
