@@ -280,7 +280,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
 
   // AI Analysis panel fullscreen toggle. Distinct from the regular
   // Maximize/Minimize button (handleRightMaximize/isRightMaximized), which
-  // resizes the real ResizablePanels to a 5/95 split. This toggles a
+  // resizes the real ResizablePanels to a 0/100 split. This toggles a
   // purely visual overlay state instead — see the `animate` values in 7i
   // — and never calls setHorizontalSizes, never touches isLeftMaximized/
   // isRightMaximized, and never resizes any ResizablePanel. Completely
@@ -583,7 +583,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       setIsRightMaximized(false);
     } else {
       // Maximize: left panel to max, right panel to min
-      setHorizontalSizes([95, 5]);
+      setHorizontalSizes([100, 0]);
       setIsRightMaximized(false);
     }
     setIsLeftMaximized(!isLeftMaximized);
@@ -598,7 +598,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
       setIsLeftMaximized(false);
     } else {
       // Maximize: right panel to max, left panel to min
-      setHorizontalSizes([5, 95]);
+      setHorizontalSizes([0, 100]);
       setIsLeftMaximized(false);
     }
     setIsRightMaximized(!isRightMaximized);
@@ -609,7 +609,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     if (isTestCasesMaximized) {
       setVerticalSizes([93, 7]);
     } else {
-      setVerticalSizes([7, 93]);
+      setVerticalSizes([0, 100]);
     }
     setIsTestCasesMaximized(!isTestCasesMaximized);
     setShouldMaximizeVertical(true);
@@ -720,8 +720,8 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         <ResizablePanel
           ref={leftPanelRef}
           defaultSize={50}
-          minSize={5}
-          maxSize={95}
+          minSize={0}
+          maxSize={100}
           className="mr-1 rounded-lg border"
         >
           <div className="flex h-full items-center justify-center">
@@ -746,8 +746,8 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         <ResizablePanel
           ref={rightPanelRef}
           defaultSize={50}
-          minSize={5}
-          maxSize={95}
+          minSize={0}
+          maxSize={100}
         >
           {/* Plain measurement wrapper — no styling of its own, exists only
               so rightPanelDomRef can be measured with getBoundingClientRect.
@@ -761,7 +761,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
               <ResizablePanel
                 ref={codeEditorPanelRef}
                 defaultSize={93}
-                minSize={7}
+                minSize={0}
                 maxSize={93}
                 className="ml-1 mb-1 rounded-lg border"
               >
@@ -788,7 +788,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
               <ResizablePanel
                 ref={testCasesPanelRef}
                 defaultSize={7}
-                maxSize={93}
+                maxSize={100}
                 minSize={7}
                 className="ml-1 mt-1 rounded-lg border"
               >
