@@ -34,7 +34,7 @@ export interface ContestWorkspaceProblem {
     tags: string[];
     examples: unknown;
     constraints: unknown;
-    baseCodes: unknown;
+    baseCodes: { language: string; baseClassCode: string | null }[];
   };
 }
 
@@ -82,7 +82,12 @@ interface ContestStoreState {
   workspace: {
     contest: ContestListItem;
     problems: ContestWorkspaceProblem[];
-    participant: { userId: number; rank: number | null; solvedCount: number; penaltyMins: number };
+    participant: {
+      userId: number;
+      rank: number | null;
+      solvedCount: number;
+      penaltyMins: number;
+    };
   } | null;
   loadingWorkspace: boolean;
 
@@ -95,14 +100,26 @@ interface ContestStoreState {
   // Profile / journey
   profile: ContestProfile | null;
   journey: JourneyMilestone[];
+  loadingProfile: boolean;
+  loadingJourney: boolean;
 
   error: string | null;
 
-  fetchContests: (status: "upcoming" | "past", page: number, q?: string, append?: boolean) => Promise<void>;
+  fetchContests: (
+    status: "upcoming" | "past",
+    page: number,
+    q?: string,
+    append?: boolean,
+  ) => Promise<void>;
   fetchContestBySlug: (slug: string) => Promise<void>;
   registerForContest: (contestId: number) => Promise<boolean>;
   fetchWorkspace: (contestId: number) => Promise<void>;
-  fetchLeaderboard: (contestId: number, page: number, q?: string, append?: boolean) => Promise<void>;
+  fetchLeaderboard: (
+    contestId: number,
+    page: number,
+    q?: string,
+    append?: boolean,
+  ) => Promise<void>;
   fetchProfile: (userId: number) => Promise<void>;
   fetchJourney: (userId: number) => Promise<void>;
 }
@@ -127,6 +144,8 @@ export const useContestStore = create<ContestStoreState>((set, get) => ({
 
   profile: null,
   journey: [],
+  loadingProfile: false,
+  loadingJourney: false,
 
   error: null,
 
@@ -188,7 +207,10 @@ export const useContestStore = create<ContestStoreState>((set, get) => ({
       set({ workspace: res.data, loadingWorkspace: false });
     } catch (err) {
       console.error("Failed to fetch contest workspace:", err);
-      set({ error: "Failed to load contest workspace", loadingWorkspace: false });
+      set({
+        error: "Failed to load contest workspace",
+        loadingWorkspace: false,
+      });
     }
   },
 
@@ -200,7 +222,9 @@ export const useContestStore = create<ContestStoreState>((set, get) => ({
       });
       const { leaderboard, hasMore, frozen } = res.data;
       set((state) => ({
-        leaderboard: append ? [...state.leaderboard, ...leaderboard] : leaderboard,
+        leaderboard: append
+          ? [...state.leaderboard, ...leaderboard]
+          : leaderboard,
         leaderboardHasMore: hasMore,
         leaderboardFrozen: !!frozen,
         loadingLeaderboard: false,
@@ -212,20 +236,24 @@ export const useContestStore = create<ContestStoreState>((set, get) => ({
   },
 
   fetchProfile: async (userId) => {
+    set({ loadingProfile: true });
     try {
       const res = await axios.get(`/contest/profile/${userId}`);
-      set({ profile: res.data });
+      set({ profile: res.data, loadingProfile: false });
     } catch (err) {
       console.error("Failed to fetch contest profile:", err);
+      set({ loadingProfile: false });
     }
   },
 
   fetchJourney: async (userId) => {
+    set({ loadingJourney: true });
     try {
       const res = await axios.get(`/contest/journey/${userId}`);
-      set({ journey: res.data.milestones });
+      set({ journey: res.data.milestones, loadingJourney: false });
     } catch (err) {
       console.error("Failed to fetch contest journey:", err);
+      set({ loadingJourney: false });
     }
   },
 }));
