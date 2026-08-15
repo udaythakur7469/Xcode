@@ -5,9 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { useContestStore } from "@/features/contestStore";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { useLiveLeaderboard } from "@/hooks/useLiveLeaderboard";
+import Navbar from "@/components/landingPage/navbar/Navbar";
 import LeaderboardHeader from "./LeaderboardHeader";
 import LeaderboardPodium from "./LeaderboardPodium";
 import LeaderboardTable from "./LeaderboardTable";
+import { ContestLeaderboardSkeleton } from "./ContestLeaderboardSkeleton";
 
 export default function ContestLeaderboard() {
   const { slug } = useParams<{ slug: string }>();
@@ -18,6 +20,7 @@ export default function ContestLeaderboard() {
     leaderboard,
     leaderboardHasMore,
     leaderboardFrozen,
+    loadingLeaderboard,
     fetchLeaderboard,
   } = useContestStore();
 
@@ -48,26 +51,49 @@ export default function ContestLeaderboard() {
     if (activeContest?.id) fetchLeaderboard(activeContest.id, 1, q);
   });
 
-  return (
-    <div className="w-full px-5 pb-24">
-      <button
-        onClick={() => router.push(activeContest ? `/contests/${slug}` : "/contests")}
-        className="mt-6 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
-      >
-        ← Back
-      </button>
+  if (loadingLeaderboard && liveRows.length === 0) {
+    return (
+      <>
+        <Navbar
+          buttons={["Explore Xcode", "Solve Problems", "Mock Interviews"]}
+        />
+        <ContestLeaderboardSkeleton />
+      </>
+    );
+  }
 
-      <LeaderboardHeader
-        contest={activeContest}
-        rowCount={liveRows.length}
-        frozen={leaderboardFrozen}
-        query={q}
-        onQueryChange={setQ}
+  return (
+    <>
+      <Navbar
+        buttons={["Explore Xcode", "Solve Problems", "Mock Interviews"]}
       />
 
-      <LeaderboardPodium top3={liveRows.slice(0, 3)} />
+      <div className="w-full px-5 pb-24">
+        <button
+          onClick={() =>
+            router.push(activeContest ? `/contests/${slug}` : "/contests")
+          }
+          className="mt-6 text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+        >
+          ← Back
+        </button>
 
-      <LeaderboardTable rows={liveRows} hasMore={leaderboardHasMore} sentinelRef={sentinelRef} />
-    </div>
+        <LeaderboardHeader
+          contest={activeContest}
+          rowCount={liveRows.length}
+          frozen={leaderboardFrozen}
+          query={q}
+          onQueryChange={setQ}
+        />
+
+        <LeaderboardPodium top3={liveRows.slice(0, 3)} />
+
+        <LeaderboardTable
+          rows={liveRows}
+          hasMore={leaderboardHasMore}
+          sentinelRef={sentinelRef}
+        />
+      </div>
+    </>
   );
 }
