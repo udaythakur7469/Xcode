@@ -22,11 +22,19 @@ import EditorPanel from "./EditorPanel";
 import TestcasePanel from "./TestcasePanel";
 import ShortcutsDialog from "./ShortcutsDialog";
 import ContestEndedOverlay from "./ContestEndedOverlay";
+import { ContestWorkspaceSkeleton } from "./ContestWorkspaceSkeleton";
+import { useDisabledShortcutsToast } from "@/hooks/useDisabledShortcutsToast";
 
 export default function ContestWorkspace() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
-  const { activeContest, fetchContestBySlug, workspace, loadingWorkspace, fetchWorkspace } = useContestStore();
+  const {
+    activeContest,
+    fetchContestBySlug,
+    workspace,
+    loadingWorkspace,
+    fetchWorkspace,
+  } = useContestStore();
   const {
     runCode: storeRunCode,
     submitCode: storeSubmitCode,
@@ -47,9 +55,12 @@ export default function ContestWorkspace() {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  const { code, saveIndicator, loadDraft, updateCode, resetDraft } = useCodeDraftAutosave();
+  const { code, saveIndicator, loadDraft, updateCode, resetDraft } =
+    useCodeDraftAutosave();
   const layout = useResizableWorkspaceLayout();
-  const { timerLabel, contestJustEnded, markEnded } = useWorkspaceTimer(workspace?.contest.endTime);
+  const { timerLabel, contestJustEnded, markEnded } = useWorkspaceTimer(
+    workspace?.contest.endTime,
+  );
 
   useEffect(() => {
     if (slug) fetchContestBySlug(slug);
@@ -60,7 +71,9 @@ export default function ContestWorkspace() {
   }, [activeContest?.id, fetchWorkspace]);
 
   const selectedProblem = useMemo(
-    () => workspace?.problems.find((p) => p.label === selectedLabel) ?? workspace?.problems[0],
+    () =>
+      workspace?.problems.find((p) => p.label === selectedLabel) ??
+      workspace?.problems[0],
     [workspace, selectedLabel],
   );
 
@@ -74,7 +87,11 @@ export default function ContestWorkspace() {
     activeContest?.id,
     workspace?.participant.userId,
     workspace?.participant
-      ? { rank: workspace.participant.rank, solvedCount: workspace.participant.solvedCount, penaltyMins: workspace.participant.penaltyMins }
+      ? {
+          rank: workspace.participant.rank,
+          solvedCount: workspace.participant.solvedCount,
+          penaltyMins: workspace.participant.penaltyMins,
+        }
       : { rank: null, solvedCount: 0, penaltyMins: 0 },
     markEnded,
   );
@@ -91,9 +108,16 @@ export default function ContestWorkspace() {
     (label: string) => {
       setSelectedLabel(label);
       const problem = workspace?.problems.find((p) => p.label === label);
-      const baseCodes = problem?.problem.baseCodes as Record<string, string> | undefined;
+      // baseCodes is an array of BaseCode rows (one per problemId+language pair,
+      // per the Prisma relation) — not a flat { language: code } object. Find the
+      // row matching the currently selected language, then read its baseClassCode.
+      const baseCodes = problem?.problem.baseCodes as
+        | { language: string; baseClassCode: string | null }[]
+        | undefined;
+      const matchingBaseCode =
+        baseCodes?.find((bc) => bc.language === language)?.baseClassCode ?? "";
       const draftKey = problem ? `${problem.problem.title}:${language}` : "";
-      loadDraft(draftKey, baseCodes?.[language] ?? "");
+      loadDraft(draftKey, matchingBaseCode);
       clearRunCodeResult();
       clearSubmitCodeResult();
       setLastAction(null);
@@ -115,8 +139,13 @@ export default function ContestWorkspace() {
   const confirmReset = () => {
     setIsResetConfirmOpen(false);
     if (!selectedProblem) return;
-    const baseCodes = selectedProblem.problem.baseCodes as Record<string, string> | undefined;
-    resetDraft(`${selectedProblem.problem.title}:${language}`, baseCodes?.[language] ?? "");
+    const baseCodes = selectedProblem.problem.baseCodes as
+      | Record<string, string>
+      | undefined;
+    resetDraft(
+      `${selectedProblem.problem.title}:${language}`,
+      baseCodes?.[language] ?? "",
+    );
     toast.success("Reset to starter code");
   };
 
@@ -148,11 +177,20 @@ export default function ContestWorkspace() {
     setAttempted((prev) => new Set(prev).add(selectedProblem.label));
   };
 
+  // Ctrl+K / Ctrl+Q would otherwise open the command palette / AI chat FAB —
+  // now excluded from this route in ClientFABWrapper — mid-contest. This is
+  // the only thing listening for those two shortcuts here, same as
+  // InterviewPageShell does on the two distraction-free interview routes.
+  useDisabledShortcutsToast();
+
   useWorkspaceKeyboardShortcuts({
     onRun: runCode,
     onSubmit: submitCode,
     onOpenResetConfirm: () => setIsResetConfirmOpen(true),
-    onCloseDialogs: () => { setIsResetConfirmOpen(false); setShortcutsOpen(false); },
+    onCloseDialogs: () => {
+      setIsResetConfirmOpen(false);
+      setShortcutsOpen(false);
+    },
     onToggleLeftMaximize: layout.toggleLeftMaximize,
     onToggleRightMaximize: layout.toggleRightMaximize,
     onToggleTestcaseMaximize: layout.toggleTestcaseMaximize,
@@ -167,7 +205,7 @@ export default function ContestWorkspace() {
   });
 
   if (loadingWorkspace || !workspace) {
-    return <div className="w-full px-5 pt-10 text-muted-foreground">Loading workspace…</div>;
+    return <ContestWorkspaceSkeleton />;
   }
 
   return (
@@ -182,7 +220,9 @@ export default function ContestWorkspace() {
         isRunningCode={isRunningCode}
         isSubmittingCode={isSubmittingCode}
         onExit={() => {
-          toast.success("Your progress is saved — come back anytime before the contest ends");
+          toast.success(
+            "Your progress is saved — come back anytime before the contest ends",
+          );
           router.push(`/contests/${slug}`);
         }}
         onRun={runCode}
@@ -201,62 +241,99 @@ export default function ContestWorkspace() {
           onSelect={selectProblem}
         />
 
-        <ResizablePanelGroup direction="horizontal" className="flex-1 p-2">
-          <ResizablePanel ref={layout.leftPanelRef} defaultSize={50} minSize={5} className="flex flex-col border rounded-lg overflow-hidden">
-            <QuestionPanel
-              selectedProblem={selectedProblem}
-              isMaximized={layout.isLeftMaximized}
-              onToggleMaximize={layout.toggleLeftMaximize}
-            />
-          </ResizablePanel>
+        <div className="relative flex-1 h-[calc(100vh-3rem)] overflow-auto m-4 rounded-lg">
+          <ResizablePanelGroup direction="horizontal" className="min-h-0">
+            <ResizablePanel
+              ref={layout.leftPanelRef}
+              defaultSize={50}
+              minSize={0}
+              maxSize={100}
+              className="mr-1 flex flex-col border rounded-lg overflow-hidden"
+            >
+              <QuestionPanel
+                selectedProblem={selectedProblem}
+                isMaximized={layout.isLeftMaximized}
+                onToggleMaximize={layout.toggleLeftMaximize}
+              />
+            </ResizablePanel>
 
-          <ResizableHandle withHandle />
-
-          <ResizablePanel ref={layout.rightPanelRef} defaultSize={50} minSize={5}>
-            <ResizablePanelGroup direction="vertical">
-              <ResizablePanel ref={layout.editorPanelRef} defaultSize={88} minSize={7} className="flex flex-col border rounded-lg overflow-hidden">
-                <EditorPanel
-                  code={code}
-                  onCodeChange={handleCodeChange}
-                  language={language}
-                  onLanguageChange={setLanguage}
-                  theme={theme}
-                  onThemeChange={setTheme}
-                  onFontSizeChange={setFontSize}
-                  fontSize={fontSize}
-                  onRun={runCode}
-                  onSubmit={submitCode}
-                  isRunningCode={isRunningCode}
-                  isSubmittingCode={isSubmittingCode}
-                  contestJustEnded={contestJustEnded}
-                  saveIndicator={saveIndicator}
-                  isResetConfirmOpen={isResetConfirmOpen}
-                  onOpenResetConfirm={() => setIsResetConfirmOpen(true)}
-                  onResetConfirmOpenChange={setIsResetConfirmOpen}
-                  onConfirmReset={confirmReset}
-                  isMaximized={layout.isRightMaximized}
-                  onToggleMaximize={layout.toggleRightMaximize}
-                />
-              </ResizablePanel>
-
+            {/* Same hover-highlight wrapper as problem-detail's ResizablePanels.tsx —
+              the whole strip glows green on hover, not just the grip itself. */}
+            <div className="flex justify-center items-center w-1 hover:bg-green-600 rounded-md">
               <ResizableHandle withHandle />
+            </div>
 
-              <ResizablePanel ref={layout.testcasePanelRef} defaultSize={12} minSize={7} className="flex flex-col border rounded-lg overflow-hidden">
-                <TestcasePanel
-                  bottomTab={bottomTab}
-                  onTabChange={setBottomTab}
-                  selectedProblem={selectedProblem}
-                  lastAction={lastAction}
-                  isMaximized={layout.isTestcaseMaximized}
-                  onToggleMaximize={layout.toggleTestcaseMaximize}
-                />
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+            <ResizablePanel
+              ref={layout.rightPanelRef}
+              defaultSize={50}
+              minSize={0}
+              maxSize={100}
+            >
+              <div className="h-full w-full">
+                <ResizablePanelGroup direction="vertical">
+                  <ResizablePanel
+                    ref={layout.editorPanelRef}
+                    defaultSize={88}
+                    minSize={0}
+                    maxSize={93}
+                    className="ml-1 mb-1 flex flex-col border rounded-lg overflow-hidden"
+                  >
+                    <EditorPanel
+                      code={code}
+                      onCodeChange={handleCodeChange}
+                      language={language}
+                      onLanguageChange={setLanguage}
+                      theme={theme}
+                      onThemeChange={setTheme}
+                      onFontSizeChange={setFontSize}
+                      fontSize={fontSize}
+                      onRun={runCode}
+                      onSubmit={submitCode}
+                      isRunningCode={isRunningCode}
+                      isSubmittingCode={isSubmittingCode}
+                      contestJustEnded={contestJustEnded}
+                      saveIndicator={saveIndicator}
+                      isResetConfirmOpen={isResetConfirmOpen}
+                      onOpenResetConfirm={() => setIsResetConfirmOpen(true)}
+                      onResetConfirmOpenChange={setIsResetConfirmOpen}
+                      onConfirmReset={confirmReset}
+                      isMaximized={layout.isRightMaximized}
+                      onToggleMaximize={layout.toggleRightMaximize}
+                    />
+                  </ResizablePanel>
+
+                  <div className="h-1 hover:bg-green-600 rounded-md ml-1">
+                    <ResizableHandle withHandle />
+                  </div>
+
+                  <ResizablePanel
+                    ref={layout.testcasePanelRef}
+                    defaultSize={12}
+                    minSize={7}
+                    maxSize={100}
+                    className="ml-1 mt-1 flex flex-col border rounded-lg overflow-hidden"
+                  >
+                    <TestcasePanel
+                      bottomTab={bottomTab}
+                      onTabChange={setBottomTab}
+                      selectedProblem={selectedProblem}
+                      lastAction={lastAction}
+                      isMaximized={layout.isTestcaseMaximized}
+                      onToggleMaximize={layout.toggleTestcaseMaximize}
+                    />
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </div>
       </div>
 
-      <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <ShortcutsDialog
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
+        onClose={() => setShortcutsOpen(false)}
+      />
 
       {/* Server already rejects late submissions on its own; this just
           makes sure the user isn't left guessing why Submit stopped
