@@ -3,6 +3,10 @@ import logger from "../configs/loggerConfig.js";
 import { Readable } from "stream";
 import cloudinary from "../services/uploadService.js";
 
+// Must match the `picture` field's @default(...) in prisma/schema.prisma
+const DEFAULT_PROFILE_PICTURE =
+  "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM3FwFWSj9qohGE7FhrwJ-PlcK4-tLdWSlGg&s";
+
 export const authenticatedUser = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -136,7 +140,7 @@ export const authenticatedUser = async (req, res) => {
 
 export const updateProfilePicture = async (req, res) => {
   try {
-    const userId = req.user.userId; 
+    const userId = req.user.userId;
 
     // Check if file exists
     if (!req.file) {
@@ -153,27 +157,29 @@ export const updateProfilePicture = async (req, res) => {
     });
 
     // Upload to Cloudinary
-    const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: "profile_pictures",
-          resource_type: "image",
-          transformation: [
-            { width: 500, height: 500, crop: "fill", gravity: "face" },
-            { quality: "auto" },
-            { fetch_format: "auto" },
-          ],
-        },
-        (error, result) => {
-          if (error) reject(error);
-          else resolve(result);
-        },
-      );
+    const uploadResult = await new Promise<{ secure_url: string }>(
+      (resolve, reject) => {
+        const uploadStream = cloudinary.uploader.upload_stream(
+          {
+            folder: "profile_pictures",
+            resource_type: "image",
+            transformation: [
+              { width: 500, height: 500, crop: "fill", gravity: "face" },
+              { quality: "auto" },
+              { fetch_format: "auto" },
+            ],
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          },
+        );
 
-      // Convert buffer to stream and pipe to Cloudinary
-      const bufferStream = Readable.from(req.file.buffer);
-      bufferStream.pipe(uploadStream);
-    });
+        // Convert buffer to stream and pipe to Cloudinary
+        const bufferStream = Readable.from(req.file.buffer);
+        bufferStream.pipe(uploadStream);
+      },
+    );
 
     // Optional: Delete old image from Cloudinary if it exists and is not the default
     if (
@@ -229,6 +235,72 @@ export const updateProfilePicture = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || "Failed to upload profile picture",
+    });
+  }
+};
+
+export const deleteProfilePicture = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { picture: true },
+    });
+
+    // Delete the current image from Cloudinary if it exists and isn't
+    // already the default — mirrors the same check in updateProfilePicture.
+    if (
+      currentUser?.picture &&
+      !currentUser.picture.includes("encrypted-tbn0")
+    ) {
+      try {
+        const urlParts = currentUser.picture.split("/");
+        const publicIdWithExtension = urlParts[urlParts.length - 1];
+        const publicId = `profile_pictures/${publicIdWithExtension.split(".")[0]}`;
+        await cloudinary.uploader.destroy(publicId);
+      } catch (deleteError) {
+        console.error("Error deleting old image:", deleteError);
+        // Don't fail the request if old image deletion fails
+      }
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { picture: DEFAULT_PROFILE_PICTURE },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        picture: true,
+        description: true,
+        institution: true,
+        links: true,
+      },
+    });
+
+    try {
+      if (req.cache) {
+        await req.cache.invalidateByTags(["user:profile"]);
+      }
+    } catch (cacheErr) {
+      console.error(
+        "Cache invalidation error in deleteProfilePicture",
+        cacheErr,
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Profile picture removed successfully",
+      user: updatedUser,
+      imageUrl: DEFAULT_PROFILE_PICTURE,
+    });
+  } catch (error) {
+    console.error("Error deleting profile picture:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to delete profile picture",
     });
   }
 };

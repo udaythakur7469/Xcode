@@ -38,6 +38,7 @@ import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import ShortcutDialog from "./shortcuts/ShortcutDialog";
 import NotesButton from "./stickyNotesSystem/StickyNotesButton";
 import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/ForgotPasswordDialog";
+import { useProblemStore } from "@/features/problemStore";
 
 type ProblemNavbarProps = {
   onResetLayout?: () => void;
@@ -70,6 +71,29 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   const { checkAuth, userData, isUserAuthenticated } = useUserStore();
   const { runCode, isRunningCode, submitCode, isSubmittingCode } =
     useSubmissionStore();
+  const { refreshProblemLikesAndDislikes } = useProblemStore();
+
+  // Refetch problem reactions the moment checkUser resolves to
+  // "authenticated" — not just when the Login/Signup dialogs' own
+  // onSuccessfulAuth fires. Reacting to isUserAuthenticated itself (rather
+  // than to a specific dialog's callback) means this fires uniformly no
+  // matter HOW the user became authenticated: the email/password form,
+  // an OAuth redirect back to this page, or a magic-link landing — none
+  // of which necessarily go through the same explicit callback.
+  //
+  // wasAuthenticatedRef tracks the PREVIOUS render's value so this only
+  // fires on the false -> true transition, not on every render while
+  // already logged in, and not on initial mount if the user was already
+  // authenticated when the page loaded (getProblemByTitle's own fetch
+  // already gets the correct reaction data in that case).
+  const wasAuthenticatedRef = useRef(isUserAuthenticated);
+  useEffect(() => {
+    const justLoggedIn = !wasAuthenticatedRef.current && isUserAuthenticated;
+    wasAuthenticatedRef.current = isUserAuthenticated;
+    if (justLoggedIn && problemTitle) {
+      refreshProblemLikesAndDislikes(problemTitle);
+    }
+  }, [isUserAuthenticated, problemTitle, refreshProblemLikesAndDislikes]);
 
   useEffect(() => {
     const keyboardShortcut = (e: KeyboardEvent) => {
@@ -115,6 +139,15 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
     if (isRunningCode || isSubmittingCode) {
       return;
     }
+    // The button is styled as disabled when logged out (see the JSX
+    // below) but deliberately kept clickable rather than given a native
+    // `disabled` attribute, specifically so this toast can fire. A truly
+    // disabled button swallows the click silently, which would just look
+    // broken to a logged-out user instead of telling them what to do.
+    if (!isUserAuthenticated) {
+      toast.error("Please log in to run your code.");
+      return;
+    }
     if (!problemTitle) {
       toast.error("Problem title not found");
       return;
@@ -140,6 +173,11 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   // Update the Submit button click handler
   const handleSubmitClick = async () => {
     if (isRunningCode || isSubmittingCode) {
+      return;
+    }
+    // See matching comment in handleRunClick above.
+    if (!isUserAuthenticated) {
+      toast.error("Please log in to submit your code.");
       return;
     }
     if (!problemTitle) {
@@ -216,14 +254,23 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                     className={`flex justify-center items-center rounded-md px-2 bg-secondary h-8 w-[90px] ${
                       isRunningCode || isSubmittingCode
                         ? "cursor-not-allowed opacity-75 pointer-events-none"
-                        : "cursor-pointer hover:bg-secondary/80"
+                        : !isUserAuthenticated
+                          ? // Styled as disabled, but deliberately NOT
+                            // pointer-events-none — the div must stay
+                            // clickable so handleRunClick's auth check can
+                            // fire the "please log in" toast. A truly inert
+                            // div would silently do nothing on click.
+                            "cursor-not-allowed opacity-50 hover:bg-secondary"
+                          : "cursor-pointer hover:bg-secondary/80"
                     }`}
                     onClick={handleRunClick}
                   >
                     <Play className="mr-2 h-4 w-4" />
                     <p
                       className={`text-white ${
-                        isRunningCode || isSubmittingCode
+                        isRunningCode ||
+                        isSubmittingCode ||
+                        !isUserAuthenticated
                           ? "cursor-not-allowed"
                           : "cursor-pointer"
                       }`}
@@ -233,7 +280,11 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                   </div>
                 </HoverCardTrigger>
                 <HoverCardContent className="mr-5 p-1">
-                  {isRunningCode ? "Running..." : "Run Code"}
+                  {!isUserAuthenticated
+                    ? "Log in to run code"
+                    : isRunningCode
+                      ? "Running..."
+                      : "Run Code"}
                 </HoverCardContent>
               </HoverCard>
 
@@ -243,14 +294,19 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                     className={`flex justify-center items-center rounded-md px-2 bg-secondary h-8 ${
                       isRunningCode || isSubmittingCode
                         ? "cursor-not-allowed opacity-75 pointer-events-none"
-                        : "cursor-pointer hover:bg-secondary/80"
+                        : !isUserAuthenticated
+                          ? // See matching comment on the Run button above.
+                            "cursor-not-allowed opacity-50 hover:bg-secondary"
+                          : "cursor-pointer hover:bg-secondary/80"
                     }`}
                     onClick={handleSubmitClick}
                   >
                     <CloudUpload className="mr-2 h-4 w-4 text-green-400" />
                     <p
                       className={`text-green-400 ${
-                        isRunningCode || isSubmittingCode
+                        isRunningCode ||
+                        isSubmittingCode ||
+                        !isUserAuthenticated
                           ? "cursor-not-allowed"
                           : "cursor-pointer"
                       }`}
@@ -260,7 +316,11 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                   </div>
                 </HoverCardTrigger>
                 <HoverCardContent className="mr-5 p-1">
-                  {isSubmittingCode ? "Submitting..." : "Submit Code"}
+                  {!isUserAuthenticated
+                    ? "Log in to submit code"
+                    : isSubmittingCode
+                      ? "Submitting..."
+                      : "Submit Code"}
                 </HoverCardContent>
               </HoverCard>
               <div className="flex justify-center items-center rounded-md p-1 bg-secondary h-8 w-auto cursor-pointer">

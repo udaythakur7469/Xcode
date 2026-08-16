@@ -13,9 +13,9 @@ const SubmissionTabs: React.FC<SubmissionTabsProps> = () => {
     <div className="h-full w-full overflow-hidden">
       <Tabs
         defaultValue="your-submissions"
-        className="h-full w-full rounded-md "
+        className="flex h-full w-full flex-col rounded-md "
       >
-        <TabsList className="w-full flex">
+        <TabsList className="w-full flex shrink-0">
           <TabsTrigger
             value="your-submissions"
             className="hover:bg-gray-100 hover:text-black flex-1 text-center"
@@ -29,11 +29,11 @@ const SubmissionTabs: React.FC<SubmissionTabsProps> = () => {
             <p className="text-md">All Submissions</p>
           </TabsTrigger>
         </TabsList>
-        <div className="w-full h-full">
-          <TabsContent value="your-submissions">
+        <div className="w-full flex-1 min-h-0">
+          <TabsContent value="your-submissions" className="h-full">
             <UserSubmissionsTable problemTitle={problemTitle} />
           </TabsContent>
-          <TabsContent value="all-submissions">
+          <TabsContent value="all-submissions" className="h-full">
             <AllSubmissionsTable problemTitle={problemTitle} />
           </TabsContent>
         </div>

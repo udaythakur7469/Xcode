@@ -2,6 +2,7 @@ import express from "express";
 import { cacheMiddleware } from "@periodic/osmium";
 import {
   authenticatedUser,
+  deleteProfilePicture,
   getUserHeatmapData,
   getUserSolvedLanguages,
   updateProfile,
@@ -33,6 +34,12 @@ router
     upload.single("picture"),
     cacheMiddleware(redis, { strategy: "none" }),
     updateProfilePicture,
+  )
+  .delete(
+    authMiddleware,
+    uploadLimiter,
+    cacheMiddleware(redis, { strategy: "none" }),
+    deleteProfilePicture,
   );
 
 // ── Reads (cached) ───────────────────────────────────────────────

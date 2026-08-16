@@ -14,10 +14,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, LogIn, UserPlus } from "lucide-react";
 import { useSubmissionStore } from "@/features/submissionStore";
 import CodeDialog from "../dialogBoxes/CodeDialog";
 import { UserSubmissionsTableSkeleton } from "./SubmissionTableSkeleton";
+import { useUserStore } from "@/features/userStore";
+import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
+import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
+import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/ForgotPasswordDialog";
 
 const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
   problemTitle,
@@ -29,11 +33,25 @@ const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
     submissionPagination,
     getUserSubmissions,
   } = useSubmissionStore();
+  const { isUserAuthenticated, checkAuth } = useUserStore();
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
-  // Fetch user submissions when the component mounts or when page changes
+  // Fetch user submissions when the component mounts or when page changes.
+  // Only fetches while logged in — "Your Submissions" is inherently
+  // per-user data, so there's nothing to fetch (and no point hitting a
+  // 401) while logged out. The gated view below handles that state
+  // instead of falling through to the loading/error/table branches.
   useEffect(() => {
+    if (!isUserAuthenticated) return;
     getUserSubmissions(submissionPagination.currentPage, problemTitle);
-  }, [submissionPagination.currentPage, getUserSubmissions, problemTitle]);
+  }, [
+    submissionPagination.currentPage,
+    getUserSubmissions,
+    problemTitle,
+    isUserAuthenticated,
+  ]);
 
   // Create the table instance
   const table = useReactTable({
@@ -53,8 +71,49 @@ const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
 
   return (
     <>
-      <div className="h-full w-full overflow-y-auto">
-        {isLoading ? (
+      <div className="relative h-full w-full overflow-y-auto">
+        {!isUserAuthenticated ? (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background/60 px-6 pb-[152px] text-center">
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-full"
+              style={{ background: "#818CF81F", color: "#818CF8" }}
+            >
+              <LogIn size={19} strokeWidth={2.3} />
+            </div>
+            <p className="text-sm font-semibold text-foreground">
+              Log in to view your submissions
+            </p>
+            <p className="max-w-[240px] text-xs leading-relaxed text-muted-foreground">
+              Your submission history is tied to your account. Log in or sign up
+              to see it here.
+            </p>
+            <div className="mt-1 flex items-center gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsLoginOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[12.5px] font-medium text-white transition-colors"
+                style={{ background: "#818CF8" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "#6366F1";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "#818CF8";
+                }}
+              >
+                <LogIn size={13} strokeWidth={2.3} />
+                Log In
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsSignupOpen(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-border/10 bg-secondary px-3.5 py-1.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-secondary/70"
+              >
+                <UserPlus size={13} strokeWidth={2.3} />
+                Sign Up
+              </button>
+            </div>
+          </div>
+        ) : isLoading ? (
           <UserSubmissionsTableSkeleton />
         ) : error ? (
           <div className="text-red-500 text-center">Error: {error}</div>
@@ -164,6 +223,37 @@ const UserSubmissionsTable: React.FC<{ problemTitle?: string }> = ({
         isOpen={isCodeDialogOpen}
         onClose={() => setIsCodeDialogOpen(false)}
         submission={selectedSubmission}
+      />
+      {/* Auth dialogs — opened from the logged-out gate above */}
+      <LoginDialog
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        openSignup={() => {
+          setIsLoginOpen(false);
+          setIsSignupOpen(true);
+        }}
+        openForgotPassword={() => {
+          setIsLoginOpen(false);
+          setIsForgotPasswordOpen(true);
+        }}
+        onSuccessfulAuth={checkAuth}
+      />
+      <SignupDialog
+        isOpen={isSignupOpen}
+        onClose={() => setIsSignupOpen(false)}
+        openLogin={() => {
+          setIsSignupOpen(false);
+          setIsLoginOpen(true);
+        }}
+        onSuccessfulAuth={checkAuth}
+      />
+      <ForgotPasswordDialog
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+        openLogin={() => {
+          setIsForgotPasswordOpen(false);
+          setIsLoginOpen(true);
+        }}
       />
     </>
   );

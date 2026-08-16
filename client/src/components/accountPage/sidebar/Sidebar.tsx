@@ -14,16 +14,27 @@ import LinksDialogBox from "../helperComponents/dialogBoxes/LinksDialogBox";
 import { Separator } from "@/components/ui/separator";
 import SkillsBar from "../skillsBar/SkillsBar";
 import { useToast } from "@/hooks/use-toast";
+import ProfilePictureOptionsDialog from "../helperComponents/dialogBoxes/ProfilePictureOptionsDialog";
+
+const DEFAULT_PROFILE_PICTURE =
+  "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM3FwFWSj9qohGE7FhrwJ-PlcK4-tLdWSlGg&s";
 
 type SidebarProps = {};
 
 const Sidebar: React.FC<SidebarProps> = () => {
-  const { userData, updateProfilePicture, isDataUpdating } =
-    useUserStore();
+  const {
+    userData,
+    updateProfilePicture,
+    deleteProfilePicture,
+    isDataUpdating,
+  } = useUserStore();
   const [showDescriptionDialogBox, setShowDescriptionDialogBox] =
     useState(false);
   const [showLinksDialogBox, setShowLinksDialogBox] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isDeletingImage, setIsDeletingImage] = useState(false);
+  const [showPictureOptionsDialog, setShowPictureOptionsDialog] =
+    useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -88,7 +99,40 @@ const Sidebar: React.FC<SidebarProps> = () => {
   };
 
   const handleEditPictureClick = () => {
+    if (picture && picture !== DEFAULT_PROFILE_PICTURE) {
+      setShowPictureOptionsDialog(true);
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
+  const handleChangeImageClick = () => {
+    setShowPictureOptionsDialog(false);
     fileInputRef.current?.click();
+  };
+
+  const handleDeleteImage = async () => {
+    setIsDeletingImage(true);
+    try {
+      await deleteProfilePicture();
+      toast({
+        title: "Success",
+        description: "Profile picture removed successfully!",
+        variant: "default",
+      });
+      setShowPictureOptionsDialog(false);
+    } catch (error: any) {
+      console.error("Error deleting image:", error);
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message ||
+          "Failed to delete image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeletingImage(false);
+    }
   };
 
   const name = userData?.name;
@@ -129,7 +173,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
             )}
             <button
               onClick={handleEditPictureClick}
-              disabled={isUploadingImage || isDataUpdating}
+              disabled={isUploadingImage || isDeletingImage || isDataUpdating}
               className={`absolute bottom-0 right-0 bg-green-500 text-primary-foreground rounded-full p-1.5 hover:bg-primary/90 transition-all duration-200 shadow-lg border-2 border-accent disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110 ${
                 isUploadingImage ? "hidden" : ""
               }`}
@@ -278,6 +322,13 @@ const Sidebar: React.FC<SidebarProps> = () => {
       <LinksDialogBox
         isOpen={showLinksDialogBox}
         onClose={setShowLinksDialogBox}
+      />
+      <ProfilePictureOptionsDialog
+        isOpen={showPictureOptionsDialog}
+        onClose={setShowPictureOptionsDialog}
+        onChangeImage={handleChangeImageClick}
+        onDeleteImage={handleDeleteImage}
+        isDeletingImage={isDeletingImage}
       />
     </div>
   );

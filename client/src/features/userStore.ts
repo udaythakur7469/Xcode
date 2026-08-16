@@ -30,6 +30,7 @@ interface authData {
   heatmapData: Record<string, number> | null;
   fetchHeatmapData: () => Promise<void>;
   updateProfilePicture: (file: File) => Promise<void>;
+  deleteProfilePicture: () => Promise<void>;
 }
 
 let checkAuthRequestId = 0;
@@ -220,7 +221,7 @@ export const useUserStore = create<authData>()((set) => ({
       throw error;
     }
   },
-  
+
   updateProfilePicture: async (file: File) => {
     try {
       set({ isDataUpdating: true });
@@ -251,6 +252,29 @@ export const useUserStore = create<authData>()((set) => ({
       set({
         error:
           error.response?.data?.message || "Failed to update profile picture",
+        isDataUpdating: false,
+      });
+      throw error;
+    }
+  },
+
+  deleteProfilePicture: async () => {
+    try {
+      set({ isDataUpdating: true });
+
+      const response = await axios.delete(`${API_URL}/user/profile/picture`);
+
+      // Update local state with the default picture URL the server reset to
+      set((state) => ({
+        userData: state.userData
+          ? { ...state.userData, picture: response.data.imageUrl }
+          : null,
+        isDataUpdating: false,
+      }));
+    } catch (error: any) {
+      set({
+        error:
+          error.response?.data?.message || "Failed to delete profile picture",
         isDataUpdating: false,
       });
       throw error;

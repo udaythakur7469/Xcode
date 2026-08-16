@@ -18,6 +18,12 @@ import PostComments from "../questionDiscussion/bottomSection/postCard/fullPostP
 import { useAiAnalysisPanel } from "@/context/aiAnalysisPanelContext";
 import AIAnalysisPanel from "../questionResults/aiAnalysisPanel/AIAnalysisPanel";
 import { motion } from "framer-motion";
+import { useUserStore } from "@/features/userStore";
+import { useCalendarStore } from "@/features/calenderStore";
+import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
+import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
+import { LogIn, UserPlus } from "lucide-react";
+import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/ForgotPasswordDialog";
 
 type ResizablePanelsProps = {
   resetLayoutTrigger?: number;
@@ -46,6 +52,40 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     clearRunCodeResult,
     clearSubmitCodeResult,
   } = useSubmissionStore();
+
+  // ─── Logged-out overlay on the right panel ────────────────────────────
+  // isUserAuthenticated drives both this overlay and the disabled state of
+  // the Run/Submit buttons in ProblemNavbar (see ProblemNavbar.tsx) - the
+  // two are kept in sync by both reading the same useUserStore field
+  // rather than one telling the other what to do.
+  const { isUserAuthenticated, checkAuth } = useUserStore();
+  const { checkIfProblemInRevisionQueue } = useCalendarStore();
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isSignupOpen, setIsSignupOpen] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
+
+  // Called after a successful login or signup from the overlay's dialogs.
+  // checkAuth() refreshing isUserAuthenticated to true is what actually
+  // removes the overlay (it's a plain `{!isUserAuthenticated && ...}`
+  // condition below, not a separate dismiss flag) - everything else here
+  // is refetching data that's specific to this problem and depends on who
+  // the now-logged-in user is.
+  //
+  // This list is intentionally explicit rather than a generic "refetch
+  // everything" loop: most auth-dependent fetches elsewhere on this page
+  // (e.g. submissionStore.getUserSubmissions, which needs a page number
+  // the Submissions tab owns internally) take arguments this component
+  // doesn't have and shouldn't guess at. checkIfProblemInRevisionQueue is
+  // included because it's the one auth-dependent fetch directly reachable
+  // from here (CodeEditor.tsx already calls it with just problemTitle).
+  // If you add more auth-dependent data fetches to this page later, add
+  // the call here too.
+  const refetchAuthDependentData = async () => {
+    await checkAuth();
+    if (problemTitle) {
+      checkIfProblemInRevisionQueue(problemTitle);
+    }
+  };
 
   const { isOpen: isCommentPanelOpen, setIsOpen: setIsCommentPanelOpen } =
     useCommentPanel();
@@ -751,8 +791,10 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
         >
           {/* Plain measurement wrapper — no styling of its own, exists only
               so rightPanelDomRef can be measured with getBoundingClientRect.
-              Always exactly matches the right panel's real rendered box. */}
-          <div ref={rightPanelDomRef} className="h-full w-full">
+              Always exactly matches the right panel's real rendered box.
+              `relative` added so the logged-out overlay below can cover it
+              with `absolute inset-0` without affecting layout/measurement. */}
+          <div ref={rightPanelDomRef} className="h-full w-full relative">
             <ResizablePanelGroup
               direction="vertical"
               onLayout={handleVerticalLayoutChange}
@@ -803,6 +845,86 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>
+            {/* ── Logged-out overlay ──────────────────────────────────────
+                Sits above both the code editor and test cases panels
+                (z-index wise) via `absolute inset-0` on this `relative`
+                parent - covers the entire right panel regardless of how
+                the user has resized the code editor / test cases split. */}
+            {!isUserAuthenticated && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center rounded-lg bg-background/60 backdrop-blur-sm ml-1">
+                <div className="mx-6 flex max-w-[280px] flex-col items-center gap-3 text-center">
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-full"
+                    style={{ background: "#818CF81F", color: "#818CF8" }}
+                  >
+                    <LogIn size={19} strokeWidth={2.3} />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">
+                    Sign in to run or submit code
+                  </p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Log in or create a free account to run your code against the
+                    test cases and submit solutions.
+                  </p>
+                  <div className="mt-1 flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsLoginOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-[12.5px] font-medium text-white transition-colors"
+                      style={{ background: "#818CF8" }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#6366F1";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#818CF8";
+                      }}
+                    >
+                      <LogIn size={13} strokeWidth={2.3} />
+                      Log In
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsSignupOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border/10 bg-secondary px-3.5 py-1.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-secondary/70"
+                    >
+                      <UserPlus size={13} strokeWidth={2.3} />
+                      Sign Up
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <LoginDialog
+              isOpen={isLoginOpen}
+              onClose={() => setIsLoginOpen(false)}
+              openSignup={() => {
+                setIsLoginOpen(false);
+                setIsSignupOpen(true);
+              }}
+              openForgotPassword={() => {
+                setIsLoginOpen(false);
+                setIsForgotPasswordOpen(true);
+              }}
+              onSuccessfulAuth={refetchAuthDependentData}
+            />
+            <SignupDialog
+              isOpen={isSignupOpen}
+              onClose={() => setIsSignupOpen(false)}
+              openLogin={() => {
+                setIsSignupOpen(false);
+                setIsLoginOpen(true);
+              }}
+              onSuccessfulAuth={refetchAuthDependentData}
+            />
+            <ForgotPasswordDialog
+              isOpen={isForgotPasswordOpen}
+              onClose={() => setIsForgotPasswordOpen(false)}
+              openLogin={() => {
+                setIsForgotPasswordOpen(false);
+                setIsLoginOpen(true);
+              }}
+            />
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
