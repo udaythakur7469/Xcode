@@ -1,7 +1,5 @@
 "use client";
 
-import { useContestStore } from "@/features/contestStore";
-import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect, useCallback } from "react";
 
 export type FABType = "aiChat" | "commandBar";
@@ -26,28 +24,13 @@ export const useFABSystem = () => {
 
   // Dialog states
   const [aiChatDialogOpen, setAiChatDialogOpen] = useState(false);
-  const [commandBarDialogOpen, setCommandBarDialogOpen] =
-    useState(false);
+  const [commandBarDialogOpen, setCommandBarDialogOpen] = useState(false);
 
   // Computed visibility - FAB is visible if not permanently hidden AND dialog is closed
-  const pathname = usePathname();
-  const { workspace, activeContest } = useContestStore();
-  const isContestWorkspaceRoute = /^\/contests\/[^/]+\/workspace/.test(
-    pathname ?? "",
-  );
-  const isLiveRatedContestWorkspace =
-    isContestWorkspaceRoute &&
-    workspace?.contest?.status === "LIVE" &&
-    !!activeContest?.rated;
 
-  const aiChatVisible =
-    !aiChatPermanentlyHidden &&
-    !aiChatDialogOpen &&
-    !isLiveRatedContestWorkspace;
+  const aiChatVisible = !aiChatPermanentlyHidden && !aiChatDialogOpen;
   const commandBarVisible =
-    !commandBarPermanentlyHidden &&
-    !commandBarDialogOpen &&
-    !isContestWorkspaceRoute;
+    !commandBarPermanentlyHidden && !commandBarDialogOpen;
 
   const [isDragging, setIsDragging] = useState<FABType | null>(null);
   const [draggedButton, setDraggedButton] = useState<FABType | null>(null);
@@ -93,8 +76,7 @@ export const useFABSystem = () => {
         const defaults = getDefaultPositions();
         setPositions({
           aiChat: parsed.positions?.aiChat ?? defaults.aiChat,
-          commandBar:
-            parsed.positions?.commandBar ?? defaults.commandBar,
+          commandBar: parsed.positions?.commandBar ?? defaults.commandBar,
         });
         setSides(parsed.sides || { aiChat: "right", commandBar: "right" });
       }
@@ -112,20 +94,20 @@ export const useFABSystem = () => {
           JSON.stringify({
             positions: newPositions,
             sides: newSides,
-          })
+          }),
         );
       } catch (error) {
         console.error("Failed to save FAB positions:", error);
       }
     },
-    []
+    [],
   );
 
   // Calculate repulsion force - magnet-like behavior
   const calculateRepulsion = (
     draggedPos: { x: number; y: number },
     otherPos: { x: number; y: number },
-    minDistance: number = 70
+    minDistance: number = 70,
   ): { x: number; y: number } | null => {
     const dx = draggedPos.x - otherPos.x;
     const dy = draggedPos.y - otherPos.y;
@@ -220,7 +202,7 @@ export const useFABSystem = () => {
         }));
       }
     },
-    [isDragging, positions, aiChatVisible, commandBarVisible]
+    [isDragging, positions, aiChatVisible, commandBarVisible],
   );
 
   // Handle mouse up (end drag)
@@ -323,11 +305,7 @@ export const useFABSystem = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ctrl/Cmd + Q for AI Chat
-      if (
-        e.key === "q" &&
-        (e.metaKey || e.ctrlKey) &&
-        !isLiveRatedContestWorkspace
-      ) {
+      if (e.key === "q" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         // Close command Bar if open, then open AI chat
         if (commandBarDialogOpen) {
@@ -342,11 +320,7 @@ export const useFABSystem = () => {
       }
 
       // Ctrl + K for Command Bar
-      if (
-        e.key.toLowerCase() === "k" &&
-        (e.metaKey || e.ctrlKey) &&
-        !isContestWorkspaceRoute
-      ) {
+      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         // Close AI chat if open, then open command Bar
         if (aiChatDialogOpen) {
@@ -363,12 +337,7 @@ export const useFABSystem = () => {
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [
-    aiChatDialogOpen,
-    commandBarDialogOpen,
-    isLiveRatedContestWorkspace,
-    isContestWorkspaceRoute,
-  ]);
+  }, [aiChatDialogOpen, commandBarDialogOpen]);
 
   // Handle window resize
   useEffect(() => {

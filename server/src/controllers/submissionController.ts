@@ -15,7 +15,6 @@ import {
 } from "../configs/languageConfig.js";
 import { CacheService } from "@periodic/osmium";
 import redis from "../configs/redisConfig.js";
-import { recordContestSubmission } from "../services/contestSubmissionService.js";
 
 const cache = new CacheService(redis);
 
@@ -315,7 +314,7 @@ export const submitCode = async (req, res) => {
       .status(401)
       .json({ error: "Unauthorized: User not authenticated" });
   }
-  const { language, code, contestId, contestProblemId } = req.body;
+  const { language, code } = req.body;
   const { title } = req.query;
   if (!title || typeof title !== "string") {
     return res
@@ -327,37 +326,6 @@ export const submitCode = async (req, res) => {
     return res.status(400).json({
       error: `Unsupported language: "${language}". Supported languages: ${SUPPORTED_LANGUAGES.join(", ")}`,
     });
-  }
-
-  let contestContext:
-    | { contestId: number; contestProblemId: number }
-    | undefined;
-  if (contestId && contestProblemId) {
-    const userId = req.user.id ?? req.user.userId;
-    const [contest, participant, contestProblem] = await Promise.all([
-      prisma.contest.findUnique({ where: { id: contestId } }),
-      prisma.contestParticipant.findUnique({
-        where: { contestId_userId: { contestId, userId } },
-      }),
-      prisma.contestProblem.findUnique({ where: { id: contestProblemId } }),
-    ]);
-
-    if (!contest || contest.status !== "LIVE") {
-      return res
-        .status(400)
-        .json({ error: "This contest is not currently live" });
-    }
-    if (!participant) {
-      return res
-        .status(403)
-        .json({ error: "You are not registered for this contest" });
-    }
-    if (!contestProblem || contestProblem.contestId !== contestId) {
-      return res
-        .status(400)
-        .json({ error: "This problem is not part of the given contest" });
-    }
-    contestContext = { contestId, contestProblemId };
   }
 
   let fullCode = "";
@@ -755,8 +723,6 @@ export const submitCode = async (req, res) => {
         memoryInMegabytes,
         testCasesPassed,
         totalTestCases,
-        contestId: contestContext?.contestId,
-        contestProblemId: contestContext?.contestProblemId,
       }).catch((err) => {
         logger.error("Failed to enqueue statistics update (background):", err);
       });
@@ -780,8 +746,6 @@ export const submitCode = async (req, res) => {
       memoryInMegabytes,
       testCasesPassed,
       totalTestCases,
-      contestId: contestContext?.contestId,
-      contestProblemId: contestContext?.contestProblemId,
     }).catch((err) => {
       logger.error("Failed to enqueue statistics update (background):", err);
     });
@@ -841,10 +805,8 @@ export const updateStatistics = async (
   memory: number,
   testCasesPassed: number,
   totalTestCases: number,
-  contestContext?: { contestId: number; contestProblemId: number },
 ) => {
-  if (!contestContext) {
-    await prisma.stats.upsert({
+  await prisma.stats.upsert({
       where: { userId },
       update: {
         totalSolved:
@@ -873,7 +835,6 @@ export const updateStatistics = async (
           submissionStatus === "accepted" && difficulty === "hard" ? 1 : 0,
       },
     });
-  }
 
   const problemStats = await prisma.problemStats.findUnique({
     where: { problemId },
@@ -951,18 +912,6 @@ export const updateStatistics = async (
       updatedAt: new Date(),
     },
   });
-
-  if (contestContext) {
-    await recordContestSubmission({
-      contestId: contestContext.contestId,
-      contestProblemId: contestContext.contestProblemId,
-      userId,
-      submissionId: submission.id,
-      accepted: submissionStatus === "accepted",
-    }).catch((err) => {
-      logger.error("Failed to record contest submission (background):", err);
-    });
-  }
 };
 
 export const getUserSubmissions = async (req, res, next) => {
@@ -990,13 +939,6 @@ export const getUserSubmissions = async (req, res, next) => {
       take: limit,
       include: {
         problem: { select: { title: true, difficulty: true } },
-        contestSubmission: {
-          select: {
-            contest: {
-              select: { id: true, title: true, slug: true, type: true },
-            },
-          },
-        },
       },
     });
 

@@ -30,8 +30,6 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   password?: string;
-  contestRating?: number;
-  peakRating?: number;
 }
 
 interface AuthData {

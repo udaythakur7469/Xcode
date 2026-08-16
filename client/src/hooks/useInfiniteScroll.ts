@@ -5,7 +5,6 @@ import { useEffect, useRef, useCallback } from "react";
 /**
  * Wires an IntersectionObserver to a sentinel div and calls `onLoadMore`
  * whenever it scrolls into view (and `hasMore` is true). Shared by
- * ContestsList and ContestLeaderboard, which both paginate this way.
  * Attach the returned ref to a div placed at the end of the list.
  */
 export function useInfiniteScroll(hasMore: boolean, onLoadMore: () => void) {

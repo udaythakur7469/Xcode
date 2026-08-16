@@ -7,7 +7,6 @@ import { useRef, useState } from "react";
  * "saving" indicator (debounced 400ms after the last keystroke, same
  * feel as the real CodeEditor.tsx toolbar), and lets the caller load or
  * clear a draft when the selected problem/language changes. Used by
- * ContestWorkspace.
  */
 export function useCodeDraftAutosave() {
   const [code, setCode] = useState("");

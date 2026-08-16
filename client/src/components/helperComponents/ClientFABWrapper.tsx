@@ -11,15 +11,14 @@ import FloatingActionButtons from "./FloatingActionButtons";
 const DISTRACTION_FREE_ROUTES = [
   "/interview/practice-interview",
   "/interview/generate-interview",
-  "/contests/",
 ];
 
 export default function ClientFABWrapper() {
   const pathname = usePathname();
 
-  const isDistractionFreeRoute =
-    DISTRACTION_FREE_ROUTES.some((route) => pathname?.startsWith(route)) ||
-    pathname?.endsWith("/workspace");
+  const isDistractionFreeRoute = DISTRACTION_FREE_ROUTES.some((route) =>
+    pathname?.startsWith(route),
+  );
 
   if (isDistractionFreeRoute) {
     return null;

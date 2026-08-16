@@ -7,18 +7,12 @@ const { default: http } = await import("http");
 const { default: app } = await import("./app.js");
 const { default: logger } = await import("./configs/loggerConfig.js");
 const { initSocket } = await import("./configs/socketConfig.js");
-const { scheduleContestSchedulerJob } =
-  await import("./queues/contestSchedulerQueue.js");
 
 const PORT = process.env.PORT || 8000;
 
 const httpServer = http.createServer(app);
 
 initSocket(httpServer);
-
-scheduleContestSchedulerJob().catch((err) =>
-  logger.error("Failed to register contest scheduler job:", err),
-);
 
 let server: Server;
 

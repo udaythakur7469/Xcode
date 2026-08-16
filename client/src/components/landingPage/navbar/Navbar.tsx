@@ -89,8 +89,6 @@ const Navbar: React.FC<NavbarProps> = ({
         return router.push("/problems");
       case "Mock Interviews":
         return router.push("/interview");
-      case "Contests":
-        return router.push("/contests");
     }
   };
 

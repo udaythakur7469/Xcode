@@ -174,8 +174,8 @@ export interface NetworkError {
   action: "Run Code" | "Submit Code";
   language: string;
   code: string;
-  attemptedAt: string; 
-  waitedSeconds: number; 
+  attemptedAt: string;
+  waitedSeconds: number;
 }
 
 // ─── sessionStorage persistence (per problem) ─────────────────────────────────
@@ -279,13 +279,11 @@ interface SubmissionStore {
     language: string,
     code: string,
     problemTitle: string,
-    contestContext?: { contestId: number; contestProblemId: number },
   ) => Promise<void>;
   submitCode: (
     language: string,
     code: string,
     problemTitle: string,
-    contestContext?: { contestId: number; contestProblemId: number },
   ) => Promise<void>;
   clearRunCodeResult: (problemTitle?: string) => void;
   clearSubmitCodeResult: (problemTitle?: string) => void;
@@ -388,7 +386,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     }
   },
 
-  runCode: (language, code, problemTitle, contestContext) => {
+  runCode: (language, code, problemTitle) => {
     const previousRunController = runCodeAbortController;
     runCodeAbortController = new AbortController();
     previousRunController?.abort();
@@ -414,12 +412,6 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
           {
             language,
             code,
-            ...(contestContext
-              ? {
-                  contestId: contestContext.contestId,
-                  contestProblemId: contestContext.contestProblemId,
-                }
-              : {}),
           },
           {
             params: { title: problemTitle },
@@ -471,7 +463,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     });
   },
 
-  submitCode: (language, code, problemTitle, contestContext) => {
+  submitCode: (language, code, problemTitle) => {
     const previousSubmitController = submitCodeAbortController;
     submitCodeAbortController = new AbortController();
     previousSubmitController?.abort();
@@ -497,12 +489,6 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
           {
             language,
             code,
-            ...(contestContext
-              ? {
-                  contestId: contestContext.contestId,
-                  contestProblemId: contestContext.contestProblemId,
-                }
-              : {}),
           },
           {
             params: { title: problemTitle },

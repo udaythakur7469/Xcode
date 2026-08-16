@@ -8,9 +8,6 @@ import cookieParser from "cookie-parser";
 import routes from "./routes/mergedRoutes.js";
 import "./workers/statsWorker.js";
 import "./workers/executionWorker.js";
-import "./workers/contestSchedulerWorker.js";
-import "./workers/contestLifecycleWorker.js";
-import "./workers/contestReminderWorker.js";
 
 interface CustomError extends Error {
   status?: number;

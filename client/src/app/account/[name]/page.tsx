@@ -28,7 +28,7 @@ const Page: React.FC<pageProps> = ({ params }) => {
 
   return (
     <>
-      <Navbar buttons={["Solve Problems", "Mock Interviews", "Contests"]} />
+      <Navbar buttons={["Solve Problems", "Mock Interviews"]} />
       <AccountAuthGate>
         {userData ? <UserProfile /> : <UserProfileSkeleton />}
       </AccountAuthGate>

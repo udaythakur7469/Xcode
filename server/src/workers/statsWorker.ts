@@ -18,8 +18,6 @@ const statsWorker = new Worker<StatsJobData>(
       memoryInMegabytes,
       testCasesPassed,
       totalTestCases,
-      contestId,
-      contestProblemId,
     } = job.data;
 
     logger.info(
@@ -37,9 +35,6 @@ const statsWorker = new Worker<StatsJobData>(
       memoryInMegabytes,
       testCasesPassed,
       totalTestCases,
-      contestId && contestProblemId
-        ? { contestId, contestProblemId }
-        : undefined,
     );
 
     logger.info(`[statsWorker] Job ${job.id} completed successfully`);

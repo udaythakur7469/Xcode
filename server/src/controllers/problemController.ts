@@ -12,10 +12,6 @@ import {
   isLowEffort,
   normalizeCode,
 } from "../services/hintsService.js";
-import {
-  getHiddenContestProblemIdsForUser,
-  isProblemHiddenForUser,
-} from "../services/contestVisibilityService.js";
 
 interface CreateProblemInput {
   title: string;
@@ -37,7 +33,11 @@ export const getProblems = async (req, res, next) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 20;
     const skip = (page - 1) * limit;
-    const difficulty = req.query.difficulty as "easy" | "medium" | "hard" | undefined;
+    const difficulty = req.query.difficulty as
+      | "easy"
+      | "medium"
+      | "hard"
+      | undefined;
     const status = req.query.status as "solved" | "unsolved" | undefined;
     const tags = req.query.tags as string | undefined;
 
@@ -63,11 +63,7 @@ export const getProblems = async (req, res, next) => {
       whereClause.tags = { hasSome: tagsArray };
     }
 
-    const hiddenProblemIds = await getHiddenContestProblemIdsForUser(userId);
     const andClauses: any[] = [];
-    if (hiddenProblemIds.size > 0) {
-      andClauses.push({ id: { notIn: [...hiddenProblemIds] } });
-    }
 
     if (status && userId) {
       if (status === "solved") {
@@ -192,14 +188,6 @@ export const getProblemByTitle = async (req, res, next) => {
 
     if (!problem) {
       return res.status(404).json({ message: "Problem not found" });
-    }
-
-    const userId = req.user?.userId ?? req.user?.id ?? null;
-    if (await isProblemHiddenForUser(userId, problem.id)) {
-      return res.status(403).json({
-        message:
-          "This problem is part of a contest you're registered for — solve it in the contest workspace instead.",
-      });
     }
 
     res.status(200).json(problem); // Return the problem details
@@ -681,11 +669,9 @@ export const generateHints = async (req: any, res: any, next: any) => {
   // ── Input validation ───────────────────────────────────────────────────────
 
   if (!problemTitle || !problemDescription || !language) {
-    return res
-      .status(400)
-      .json({
-        message: "problemTitle, problemDescription, and language are required.",
-      });
+    return res.status(400).json({
+      message: "problemTitle, problemDescription, and language are required.",
+    });
   }
 
   const code = (userCode ?? "").trim();
@@ -763,12 +749,9 @@ export const generateHints = async (req: any, res: any, next: any) => {
       parsedHints = parsed.hints;
     } catch (aiError) {
       logger.error("AI hint generation failed", aiError);
-      return res
-        .status(503)
-        .json({
-          message:
-            "Hints are temporarily unavailable. Please try again shortly.",
-        });
+      return res.status(503).json({
+        message: "Hints are temporarily unavailable. Please try again shortly.",
+      });
     }
 
     // ── Upsert cache row ───────────────────────────────────────────────────
@@ -812,11 +795,9 @@ export const updateHintUnlock = async (req: any, res: any, next: any) => {
   const userId: number = req.user.userId;
 
   if (!problemTitle || !language || typeof unlockedLevel !== "number") {
-    return res
-      .status(400)
-      .json({
-        message: "problemTitle, language, and unlockedLevel are required.",
-      });
+    return res.status(400).json({
+      message: "problemTitle, language, and unlockedLevel are required.",
+    });
   }
 
   if (unlockedLevel < 1 || unlockedLevel > 3) {
@@ -888,9 +869,9 @@ interface EditorialInput {
 }
 
 interface BaseCodeInput {
-  language: string; 
-  baseClassCode?: string; 
-  headerFiles?: string; 
+  language: string;
+  baseClassCode?: string;
+  headerFiles?: string;
   mainClassCode?: string;
 }
 

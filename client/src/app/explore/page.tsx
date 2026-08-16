@@ -21,7 +21,7 @@ const page: React.FC<pageProps> = () => {
       <div className="bg-background min-h-screen">
         <div className="fixed top-0 inset-x-0 z-50">
           <Navbar
-            buttons={["Solve Problems", "Mock Interviews", "Contests"]}
+            buttons={["Solve Problems", "Mock Interviews"]}
             fixed
             variant="default"
           />

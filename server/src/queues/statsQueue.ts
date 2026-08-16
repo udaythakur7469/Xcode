@@ -13,8 +13,6 @@ export interface StatsJobData {
   memoryInMegabytes: number;
   testCasesPassed: number;
   totalTestCases: number;
-  contestId?: number;
-  contestProblemId?: number;
 }
 
 export const statsQueue = new Queue<StatsJobData>("stats-updates", {

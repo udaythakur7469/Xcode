@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { House, ListChecks, MessagesSquare, Trophy } from "lucide-react";
+import { House, ListChecks, MessagesSquare } from "lucide-react";
 import type { CommandBarEntry } from "./commandBarTypes";
 
 /**
@@ -55,20 +55,6 @@ export function useCommandBarNavItems(
         kind: "navigation",
         onSelect: () => {
           router.push("/interview");
-          onNavigate();
-        },
-      });
-    }
-
-    if (pathname !== "/contests") {
-      entries.push({
-        id: "nav-contests",
-        title: "Contests",
-        subtitle: "/contests",
-        icon: Trophy,
-        kind: "navigation",
-        onSelect: () => {
-          router.push("/contests");
           onNavigate();
         },
       });
