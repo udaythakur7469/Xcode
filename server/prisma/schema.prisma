@@ -693,8 +693,15 @@ model Message {
   parent   Message?  @relation("MessageTree", fields: [parentId], references: [id], onDelete: SetNull)
   children Message[] @relation("MessageTree")
 
-  // User feedback on AI messages
+    // User feedback on AI messages
   feedback MessageFeedback?
+
+  // Full-text search vector, generated from `text` via raw SQL (see
+  // server/prisma/sql/add_message_search_vector.sql) — Prisma can't create
+  // a GENERATED ALWAYS AS column itself, so this field only lets Prisma
+  // Client reference the column in raw queries; run the SQL script once
+  // after `prisma db push` to actually create it.
+  searchVector Unsupported("tsvector")?
 
   // Timestamps
   createdAt DateTime          @default(now())
