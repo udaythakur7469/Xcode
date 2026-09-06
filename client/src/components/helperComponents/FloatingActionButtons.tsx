@@ -17,6 +17,8 @@ import {
   ChatContainerSidebar,
   ChatContainerWindow,
 } from "./aiChatDialog/ChatContainer";
+import SearchOverlays from "./aiChatDialog/search/SearchOverlays";
+import { useChatStore } from "@/features/chatStore";
 import { ForgotPasswordDialog } from "../auth/forgotPasswordPage/ForgotPasswordDialog";
 import { useSearchParams } from "next/navigation";
 
@@ -54,13 +56,27 @@ const FloatingActionButtons = () => {
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] =
     useState<boolean>(false);
 
-  const { checkAuth, isUserAuthenticated } = useUserStore();
+    const { checkAuth, isUserAuthenticated } = useUserStore();
+    const searchPanelOpen = useChatStore((s) => s.activePanel !== null);
+    const closeSearchPanel = useChatStore((s) => s.closeSearchPanel);
 
-  useEffect(() => {
-    if (shareIdFromUrl && !aiChatDialogOpen) {
-      setAiChatDialogOpen(true);
-    }
-  }, [shareIdFromUrl]);
+    // Closing the AI chat dialog itself must also close any open search
+    // panel immediately and deterministically — not rely on the unrelated
+    // resetStore() cleanup effect in ChatContainer, which only runs on a
+    // 300ms delay and exists for a different reason (clearing chat state on
+    // close). The search panel's own "back to chat" button only calls
+    // closeSearchPanel() — it must NOT close the dialog itself, just return
+    // to the chat under it.
+    const handleAiChatDialogOpenChange = (open: boolean) => {
+      if (!open) closeSearchPanel();
+      setAiChatDialogOpen(open);
+    };
+
+    useEffect(() => {
+      if (shareIdFromUrl && !aiChatDialogOpen) {
+        setAiChatDialogOpen(true);
+      }
+    }, [shareIdFromUrl]);
 
   useEffect(() => {
     if (!isUserAuthenticated) return;
@@ -88,21 +104,24 @@ const FloatingActionButtons = () => {
     setCommandBarSearchQuery("");
   };
 
-  const openLoginForSharedChat = (currentShareId: string) => {
-    sessionStorage.setItem(PENDING_SHARE_KEY, currentShareId);
-    setAiChatDialogOpen(false);
-    setIsLoginOpen(true);
-  };
+    const openLoginForSharedChat = (currentShareId: string) => {
+      sessionStorage.setItem(PENDING_SHARE_KEY, currentShareId);
+      closeSearchPanel();
+      setAiChatDialogOpen(false);
+      setIsLoginOpen(true);
+    };
 
-  const openLoginDialogForGuestUsers = () => {
-    setAiChatDialogOpen(false);
-    setIsLoginOpen(true);
-  };
+    const openLoginDialogForGuestUsers = () => {
+      closeSearchPanel();
+      setAiChatDialogOpen(false);
+      setIsLoginOpen(true);
+    };
 
-  const openSignupDialogForGuestUsers = () => {
-    setAiChatDialogOpen(false);
-    setIsSignupOpen(true);
-  };
+    const openSignupDialogForGuestUsers = () => {
+      closeSearchPanel();
+      setAiChatDialogOpen(false);
+      setIsSignupOpen(true);
+    };
 
   if (!isMounted) {
     return null;
@@ -155,6 +174,10 @@ const FloatingActionButtons = () => {
             onOpenLoginForSharedChat={openLoginForSharedChat}
           />
         }
+        overlayContent={(controls) => (
+          <SearchOverlays dialogControls={controls} />
+        )}
+        overlayVisible={searchPanelOpen}
       >
         <ChatContainerWindow
           key={aiChatDialogOpen ? "open" : "closed"}
