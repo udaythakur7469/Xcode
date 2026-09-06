@@ -32,7 +32,8 @@ model User {
   password String?
 
   // Optional profile picture with a default image.
-  picture String? @default("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM3FwFWSj9qohGE7FhrwJ-PlcK4-tLdWSlGg&s")
+  // Must match DEFAULT_PROFILE_PICTURE in server/src/constants/avatar.ts
+  picture String? @default("/avatars/default-male.png")
 
   // User's token
   refreshToken String?
