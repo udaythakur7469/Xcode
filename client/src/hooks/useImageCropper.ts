@@ -1,16 +1,24 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CropTransform } from "@/lib/cropImage";
 
 export const CROP_STAGE_SIZE = 320;
 export const CROP_ZOOM_MIN = 100;
 export const CROP_ZOOM_MAX = 300;
-export const CROP_ZOOM_STEP = 20;
 
 /**
- * Drives the LeetCode-style "drag to reposition, slider to zoom" crop
- * interaction. The stage is always a `CROP_STAGE_SIZE`-square viewport with
- * a circular mask; this hook only tracks the underlying image's transform
- * (origin + scale) relative to that viewport.
+ * Drives the "drag to reposition, slider to zoom" crop interaction. The
+ * stage is always a `CROP_STAGE_SIZE`-square viewport with a circular mask;
+ * this hook only tracks the underlying image's transform (origin + scale)
+ * relative to that viewport.
+ *
+ * Dragging is driven by window-level pointermove/pointerup listeners
+ * (attached only while a drag is in progress) rather than relying on the
+ * stage element's own pointer capture. This is deliberate: the crop stage
+ * lives inside a Radix Dialog portal, and pointer capture set on an element
+ * inside a portal can be unreliable across browsers once the pointer moves
+ * fast or briefly leaves the element's bounds. Listening on `window`
+ * sidesteps that entirely and is the more robust pattern for drag-anywhere
+ * interactions like this one.
  */
 export function useImageCropper() {
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
@@ -28,6 +36,11 @@ export function useImageCropper() {
     originStartX: 0,
     originStartY: 0,
   });
+  // Mirrors `transform`/`naturalSize` for use inside the window listener
+  // effect below, without needing to re-subscribe that effect on every
+  // transform change (which would tear down/rebuild it mid-drag).
+  const latestRef = useRef({ transform, naturalSize });
+  latestRef.current = { transform, naturalSize };
 
   const baseScaleFor = useCallback((width: number, height: number) => {
     const minDimension = Math.min(width, height);
@@ -35,7 +48,13 @@ export function useImageCropper() {
   }, []);
 
   const clampOrigin = useCallback(
-    (originX: number, originY: number, scale: number, width: number, height: number) => {
+    (
+      originX: number,
+      originY: number,
+      scale: number,
+      width: number,
+      height: number,
+    ) => {
       const scaledWidth = width * scale;
       const scaledHeight = height * scale;
       const minX = Math.min(0, CROP_STAGE_SIZE - scaledWidth);
@@ -65,7 +84,8 @@ export function useImageCropper() {
     (nextZoom: number) => {
       setZoom(nextZoom);
       setTransform((prev) => {
-        const baseScale = baseScaleFor(naturalSize.width, naturalSize.height);
+        const { naturalSize: size } = latestRef.current;
+        const baseScale = baseScaleFor(size.width, size.height);
         const factor = nextZoom / 100;
         const nextScale = baseScale * factor;
 
@@ -81,56 +101,73 @@ export function useImageCropper() {
           rawOriginX,
           rawOriginY,
           nextScale,
-          naturalSize.width,
-          naturalSize.height,
+          size.width,
+          size.height,
         );
         return { ...clamped, scale: nextScale };
       });
     },
-    [baseScaleFor, clampOrigin, naturalSize],
+    [baseScaleFor, clampOrigin],
   );
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      // Only the primary button/touch/pen starts a drag.
+      if (event.button !== undefined && event.button !== 0) return;
+      event.preventDefault();
       setIsDragging(true);
       dragStateRef.current = {
         pointerStartX: event.clientX,
         pointerStartY: event.clientY,
-        originStartX: transform.originX,
-        originStartY: transform.originY,
+        originStartX: latestRef.current.transform.originX,
+        originStartY: latestRef.current.transform.originY,
       };
-      event.currentTarget.setPointerCapture(event.pointerId);
     },
-    [transform],
+    [],
   );
 
-  const handlePointerMove = useCallback(
-    (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!isDragging) return;
+  // Window-level listeners, active only while dragging. This is what
+  // actually moves the image — see the note in the JSDoc above for why
+  // window listeners are used instead of per-element pointer capture.
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const onPointerMove = (event: PointerEvent) => {
       const { pointerStartX, pointerStartY, originStartX, originStartY } =
         dragStateRef.current;
+      const { transform: t, naturalSize: size } = latestRef.current;
       const rawOriginX = originStartX + (event.clientX - pointerStartX);
       const rawOriginY = originStartY + (event.clientY - pointerStartY);
       const clamped = clampOrigin(
         rawOriginX,
         rawOriginY,
-        transform.scale,
-        naturalSize.width,
-        naturalSize.height,
+        t.scale,
+        size.width,
+        size.height,
       );
       setTransform((prev) => ({ ...prev, ...clamped }));
-    },
-    [isDragging, clampOrigin, transform.scale, naturalSize],
-  );
+    };
 
-  const handlePointerUp = useCallback(() => {
-    setIsDragging(false);
-  }, []);
+    const onPointerUp = () => setIsDragging(false);
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+  }, [isDragging, clampOrigin]);
 
   const handleWheelZoom = useCallback(
     (deltaY: number) => {
       const step = deltaY < 0 ? 5 : -5;
-      const nextZoom = Math.max(CROP_ZOOM_MIN, Math.min(CROP_ZOOM_MAX, zoom + step));
+      const nextZoom = Math.max(
+        CROP_ZOOM_MIN,
+        Math.min(CROP_ZOOM_MAX, zoom + step),
+      );
       handleZoomChange(nextZoom);
     },
     [zoom, handleZoomChange],
@@ -143,8 +180,6 @@ export function useImageCropper() {
     initializeImage,
     handleZoomChange,
     handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
     handleWheelZoom,
   };
 }
