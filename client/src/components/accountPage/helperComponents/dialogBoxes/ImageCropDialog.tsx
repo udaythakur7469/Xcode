@@ -26,6 +26,12 @@ type ImageCropDialogProps = {
   onSave: (blob: Blob) => Promise<void>;
 };
 
+// Diameter of the visible circular crop hole, in the same pixel space as
+// CROP_STAGE_SIZE (320). Kept as a plain constant (not a percentage) so the
+// CSS mask-image radial-gradient below and the on-screen ring line up with
+// pixel precision regardless of stage size.
+const CROP_HOLE_DIAMETER = 220;
+
 const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
   isOpen,
   imageSrc,
@@ -42,8 +48,6 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
     initializeImage,
     handleZoomChange,
     handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
     handleWheelZoom,
   } = useImageCropper();
 
@@ -73,6 +77,7 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
         imageSrc,
         transform,
         CROP_STAGE_SIZE,
+        CROP_HOLE_DIAMETER,
       );
       await onSave(blob);
     } finally {
@@ -95,16 +100,13 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
           CROP_STAGE_SIZE, i.e. h-80 w-80 = 320x320px) and centered — never
           w-full. useImageCropper's drag-clamping and zoom math assume a
           square viewport; a non-square stage both stretches the circular
-          mask into an ellipse and desyncs the drag bounds from what's
+          crop hole into an ellipse and desyncs the drag bounds from what's
           visually shown.
         */}
         <div
-          className="relative mx-auto h-80 w-80 select-none overflow-hidden rounded-lg bg-black"
-          style={{ cursor: isDragging ? "grabbing" : "grab", touchAction: "none" }}
+          className="relative mx-auto h-80 w-80 touch-none select-none overflow-hidden rounded-lg bg-black"
+          style={{ cursor: isDragging ? "grabbing" : "grab" }}
           onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
           onWheel={(e) => {
             e.preventDefault();
             handleWheelZoom(e.deltaY);
@@ -116,7 +118,7 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
               src={imageSrc}
               alt="Crop preview"
               draggable={false}
-              className="pointer-events-none absolute left-0 top-0 max-w-none origin-top-left"
+              className="pointer-events-none absolute left-0 top-0 max-w-none origin-top-left select-none"
               style={{
                 transform: `translate(${transform.originX}px, ${transform.originY}px) scale(${transform.scale})`,
               }}
@@ -164,29 +166,37 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
   );
 };
 
-/** SVG mask that darkens everything outside the circular crop area. */
+/**
+ * Darkens everything outside the circular crop area using a plain CSS
+ * mask-image (radial-gradient) rather than an SVG <mask id="..."> element.
+ *
+ * Deliberately avoiding the id-referenced SVG mask: Radix Dialog keeps
+ * DialogContent mounted in a portal during its close animation, so more
+ * than one copy of this component's markup can briefly coexist in the DOM.
+ * Two elements sharing the same mask id causes the browser to resolve
+ * `url(#id)` unpredictably (sometimes against the wrong/stale instance),
+ * which can silently break the circular clip and show a plain rectangle
+ * instead. A CSS mask-image needs no id, so this can't happen.
+ */
 const CropMaskOverlay: React.FC = () => (
-  <svg
-    className="pointer-events-none absolute inset-0 h-full w-full"
-    viewBox="0 0 100 100"
-    preserveAspectRatio="none"
-  >
-    <defs>
-      <mask id="avatarCropHoleMask">
-        <rect x="0" y="0" width="100" height="100" fill="white" />
-        <circle cx="50" cy="50" r="34" fill="black" />
-      </mask>
-    </defs>
-    <rect
-      x="0"
-      y="0"
-      width="100"
-      height="100"
-      fill="rgba(0,0,0,0.6)"
-      mask="url(#avatarCropHoleMask)"
+  <>
+    <div
+      className="pointer-events-none absolute inset-0"
+      style={{
+        background: "rgba(0,0,0,0.6)",
+        WebkitMaskImage: `radial-gradient(circle ${CROP_HOLE_DIAMETER / 2}px at center, transparent 0, transparent ${CROP_HOLE_DIAMETER / 2}px, black ${CROP_HOLE_DIAMETER / 2 + 1}px, black 100%)`,
+        maskImage: `radial-gradient(circle ${CROP_HOLE_DIAMETER / 2}px at center, transparent 0, transparent ${CROP_HOLE_DIAMETER / 2}px, black ${CROP_HOLE_DIAMETER / 2 + 1}px, black 100%)`,
+      }}
     />
-    <circle cx="50" cy="50" r="34" fill="none" stroke="white" strokeWidth="0.6" />
-  </svg>
+    <div
+      className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border border-white/70"
+      style={{
+        width: CROP_HOLE_DIAMETER,
+        height: CROP_HOLE_DIAMETER,
+        transform: "translate(-50%, -50%)",
+      }}
+    />
+  </>
 );
 
 export default ImageCropDialog;
