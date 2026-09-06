@@ -2,7 +2,7 @@ import express from "express";
 import { cacheMiddleware } from "@periodic/osmium";
 import {
   authenticatedUser,
-  deleteProfilePicture,
+  setDefaultAvatar,
   getUserHeatmapData,
   getUserSolvedLanguages,
   updateProfile,
@@ -34,12 +34,17 @@ router
     upload.single("picture"),
     cacheMiddleware(redis, { strategy: "none" }),
     updateProfilePicture,
-  )
-  .delete(
+  );
+
+// Reset the user's picture to one of the two bundled default avatars
+// (male/female), chosen by the user in the "Delete image" flow.
+router
+  .route("/profile/picture/default")
+  .patch(
     authMiddleware,
     uploadLimiter,
     cacheMiddleware(redis, { strategy: "none" }),
-    deleteProfilePicture,
+    setDefaultAvatar,
   );
 
 // ── Reads (cached) ───────────────────────────────────────────────

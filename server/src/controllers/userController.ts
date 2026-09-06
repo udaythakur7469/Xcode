@@ -2,10 +2,12 @@ import prisma from "../configs/db.js";
 import logger from "../configs/loggerConfig.js";
 import { Readable } from "stream";
 import cloudinary from "../services/uploadService.js";
-
-// Must match the `picture` field's @default(...) in prisma/schema.prisma
-const DEFAULT_PROFILE_PICTURE =
-  "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM3FwFWSj9qohGE7FhrwJ-PlcK4-tLdWSlGg&s";
+import {
+  DEFAULT_PROFILE_PICTURE,
+  isDefaultAvatar,
+  resolveDefaultAvatar,
+  type AvatarGender,
+} from "../constants/avatar.js";
 
 export const authenticatedUser = async (req, res) => {
   try {
@@ -164,7 +166,10 @@ export const updateProfilePicture = async (req, res) => {
             folder: "profile_pictures",
             resource_type: "image",
             transformation: [
-              { width: 500, height: 500, crop: "fill", gravity: "face" },
+              // The client already crops the image to a precise square
+              // before uploading (drag-to-reposition + zoom), so we only
+              // need to normalize size/format here — no face-gravity crop.
+              { width: 500, height: 500, crop: "fill" },
               { quality: "auto" },
               { fetch_format: "auto" },
             ],
@@ -181,10 +186,13 @@ export const updateProfilePicture = async (req, res) => {
       },
     );
 
-    // Optional: Delete old image from Cloudinary if it exists and is not the default
+    // Optional: Delete old image from Cloudinary if it exists, isn't one of
+    // our default avatars, and actually lives on Cloudinary (an OAuth
+    // provider photo, for instance, wouldn't).
     if (
       currentUser?.picture &&
-      !currentUser.picture.includes("encrypted-tbn0")
+      !isDefaultAvatar(currentUser.picture) &&
+      currentUser.picture.includes("res.cloudinary.com")
     ) {
       try {
         // Extract public_id from the old Cloudinary URL
@@ -239,20 +247,29 @@ export const updateProfilePicture = async (req, res) => {
   }
 };
 
-export const deleteProfilePicture = async (req, res) => {
+export const setDefaultAvatar = async (req, res) => {
   try {
     const userId = req.user.userId;
+    const { gender } = req.body as { gender?: AvatarGender };
+
+    if (gender !== "male" && gender !== "female") {
+      return res.status(400).json({
+        success: false,
+        message: "gender must be either 'male' or 'female'",
+      });
+    }
 
     const currentUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { picture: true },
     });
 
-    // Delete the current image from Cloudinary if it exists and isn't
-    // already the default — mirrors the same check in updateProfilePicture.
+    // Delete the current image from Cloudinary if it exists, isn't already
+    // one of our default avatars, and actually lives on Cloudinary.
     if (
       currentUser?.picture &&
-      !currentUser.picture.includes("encrypted-tbn0")
+      !isDefaultAvatar(currentUser.picture) &&
+      currentUser.picture.includes("res.cloudinary.com")
     ) {
       try {
         const urlParts = currentUser.picture.split("/");
@@ -265,9 +282,11 @@ export const deleteProfilePicture = async (req, res) => {
       }
     }
 
+    const newPicture = resolveDefaultAvatar(gender);
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: { picture: DEFAULT_PROFILE_PICTURE },
+      data: { picture: newPicture },
       select: {
         id: true,
         name: true,
@@ -284,23 +303,20 @@ export const deleteProfilePicture = async (req, res) => {
         await req.cache.invalidateByTags(["user:profile"]);
       }
     } catch (cacheErr) {
-      console.error(
-        "Cache invalidation error in deleteProfilePicture",
-        cacheErr,
-      );
+      console.error("Cache invalidation error in setDefaultAvatar", cacheErr);
     }
 
     res.status(200).json({
       success: true,
-      message: "Profile picture removed successfully",
+      message: "Profile picture reset to default avatar",
       user: updatedUser,
-      imageUrl: DEFAULT_PROFILE_PICTURE,
+      imageUrl: newPicture,
     });
   } catch (error) {
-    console.error("Error deleting profile picture:", error);
+    console.error("Error setting default avatar:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Failed to delete profile picture",
+      message: error.message || "Failed to set default avatar",
     });
   }
 };
