@@ -6,6 +6,7 @@ import axios from "axios";
 import { Strategy as DiscordStrategy } from "passport-discord";
 import prisma from "../configs/db.js";
 import logger from "../configs/loggerConfig.js";
+import { DEFAULT_PROFILE_PICTURE } from "../constants/avatar.js";
 
 const BACKEND_URL = process.env.BACKEND_URL;
 
@@ -30,7 +31,7 @@ passport.use(
             data: {
               email,
               name: profile.displayName,
-              picture: profile.photos?.[0]?.value ?? null,
+              picture: profile.photos?.[0]?.value ?? DEFAULT_PROFILE_PICTURE,
               provider: "google",
               providerId: profile.id,
             },
@@ -68,7 +69,7 @@ passport.use(
             data: {
               email,
               name: profile.displayName || profile.username,
-              picture: profile.photos?.[0]?.value ?? null,
+              picture: profile.photos?.[0]?.value ?? DEFAULT_PROFILE_PICTURE,
               provider: "github",
               providerId: profile.id,
             },
@@ -125,7 +126,7 @@ passport.use(
           data: {
             email,
             name: name ?? null,
-            picture: picture ?? null,
+            picture: picture ?? DEFAULT_PROFILE_PICTURE,
             provider: "linkedin",
             providerId: sub,
           },
@@ -165,7 +166,7 @@ passport.use(
               name: profile.username,
               picture: profile.avatar
                 ? `https://cdn.discordapp.com/avatars/${profile.id}/${profile.avatar}.png`
-                : null,
+                : DEFAULT_PROFILE_PICTURE,
               provider: "discord",
               providerId: profile.id,
             },
