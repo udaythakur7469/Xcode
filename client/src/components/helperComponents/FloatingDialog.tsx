@@ -49,6 +49,34 @@ interface FloatingDialogProps {
   sidebarContent?: React.ReactNode;
   defaultSidebarWidth?: number;
   forceSidebarClosed?: boolean;
+  // Renders as a full-cover layer over the ENTIRE dialog body — sidebar
+  // and main content together, same size/position as the dialog itself.
+  // Used by Text Search / Node Search, which need to take over the whole
+  // AI chat dialog rather than just its content pane. A render-prop
+  // (rather than a plain node) since Maximize/Reset are private state
+  // inside this component — this is the only way for the overlay's own
+  // header buttons to actually trigger the dialog's real
+  // maximize/restore/reset behavior instead of being decorative.
+  overlayContent?: (controls: FloatingDialogOverlayControls) => React.ReactNode;
+  // overlayContent is a function reference, which is always truthy
+  // regardless of what it currently renders, so its mere presence can't
+  // be used to decide whether to mount the (pointer-event-capturing)
+  // overlay wrapper — that would silently block clicks to the chat
+  // underneath whenever no panel is open. This must be explicit.
+  overlayVisible?: boolean;
+}
+
+export interface FloatingDialogOverlayControls {
+  isMaximized: boolean;
+  onMaximize: () => void;
+  onReset: () => void;
+  // Closes the whole AI chat dialog — identical to the dialog's own header
+  // X (both are literally () => onOpenChange(false)). Exposed because the
+  // search panels cover the entire dialog including its real header while
+  // open, making the real X physically unreachable — this gives the
+  // search panel header a distinct "close everything" control alongside
+  // its own "back to chat" one.
+  onCloseDialog: () => void;
 }
 
 const FloatingDialog: React.FC<FloatingDialogProps> = ({
@@ -64,6 +92,8 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
   enableSidebar,
   sidebarContent,
   forceSidebarClosed = false,
+  overlayContent,
+  overlayVisible = false,
 }) => {
   const [size, setSize] = useState(() => load(dialogType, "size", defaultSize));
   const [isResizing, setIsResizing] = useState(false);
@@ -806,6 +836,22 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
                 {children}
               </div>
             </div>
+
+            {/* Full-dialog overlay (Text Search / Node Search) — sits above
+                the header, sidebar, and content together, sized to match
+                the dialog exactly since it's a sibling inside the same
+                relative dialogRef container. Above resize handles (z-10/
+                z-20) so it's fully interactive while open. */}
+            {overlayVisible && overlayContent && (
+              <div className="absolute inset-0 z-30 rounded-lg overflow-hidden">
+                {overlayContent({
+                  isMaximized,
+                  onMaximize: handleMaximize,
+                  onReset: handleReset,
+                  onCloseDialog: () => onOpenChange(false),
+                })}
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}
