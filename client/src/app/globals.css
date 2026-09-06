@@ -230,6 +230,13 @@ p, h1 {
   animation: blink-cursor 1s step-end infinite;
 }
 
+/* ── Node Search: pulse on the current in-graph search match (amber) ── */
+@keyframes matchJump {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+  50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0.35); }
+  100% { box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.3); }
+}
+
 /* ── FAB: green glow pulse (matches ui-refactor-demo.html) ── */
 @keyframes fab-pulse-glow {
   0%, 100% { box-shadow: 0 4px 18px var(--brand-glow), 0 2px 6px rgba(0,0,0,.15); }
