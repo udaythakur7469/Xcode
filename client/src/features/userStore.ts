@@ -1,6 +1,7 @@
 import axios from "@/lib/axiosInstance";
 import { create } from "zustand";
 import { User } from "./authStore";
+import type { AvatarGender } from "@/constants/avatar";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -29,8 +30,8 @@ interface authData {
   updateInstitution: (institution: string) => Promise<void>;
   heatmapData: Record<string, number> | null;
   fetchHeatmapData: () => Promise<void>;
-  updateProfilePicture: (file: File) => Promise<void>;
-  deleteProfilePicture: () => Promise<void>;
+  updateProfilePicture: (file: File | Blob) => Promise<void>;
+  setDefaultAvatar: (gender: AvatarGender) => Promise<void>;
 }
 
 let checkAuthRequestId = 0;
@@ -222,13 +223,14 @@ export const useUserStore = create<authData>()((set) => ({
     }
   },
 
-  updateProfilePicture: async (file: File) => {
+  updateProfilePicture: async (file: File | Blob) => {
     try {
       set({ isDataUpdating: true });
 
-      // Create FormData
+      // Create FormData — the cropped Blob is uploaded the same way a
+      // raw File would be, under the same "picture" field.
       const formData = new FormData();
-      formData.append("picture", file);
+      formData.append("picture", file, "profile-picture.png");
 
       // Upload to backend
       const response = await axios.patch(
@@ -258,13 +260,16 @@ export const useUserStore = create<authData>()((set) => ({
     }
   },
 
-  deleteProfilePicture: async () => {
+  setDefaultAvatar: async (gender: AvatarGender) => {
     try {
       set({ isDataUpdating: true });
 
-      const response = await axios.delete(`${API_URL}/user/profile/picture`);
+      const response = await axios.patch(
+        `${API_URL}/user/profile/picture/default`,
+        { gender },
+      );
 
-      // Update local state with the default picture URL the server reset to
+      // Update local state with the default picture URL the server set
       set((state) => ({
         userData: state.userData
           ? { ...state.userData, picture: response.data.imageUrl }
@@ -273,8 +278,7 @@ export const useUserStore = create<authData>()((set) => ({
       }));
     } catch (error: any) {
       set({
-        error:
-          error.response?.data?.message || "Failed to delete profile picture",
+        error: error.response?.data?.message || "Failed to set default avatar",
         isDataUpdating: false,
       });
       throw error;
