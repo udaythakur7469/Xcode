@@ -68,6 +68,22 @@ export interface EditingState {
   messageId: string;
 }
 
+// ── Chat Search (Text Search + Node Search) ─────────────────────────────────
+
+export type SearchScope = "chat" | "all";
+export type SearchPanelType = "text" | "node" | null;
+
+export interface SearchResult {
+  messageId: string;
+  chatId: string;
+  chatTitle: string;
+  role: MessageRole;
+  snippet: string;
+  matchStart: number | null;
+  matchEnd: number | null;
+  createdAt: string;
+}
+
 // Per-chat cached tree data
 interface ChatTreeCache {
   nodeMap: Record<string, MessageNode>;
@@ -179,6 +195,55 @@ interface ChatState {
 
   navigateBranch: (chatId: string, targetMessageId: string) => Promise<void>;
 
+  // Shared reveal primitive for Text Search and Node Search: given a
+  // messageId (possibly off the current activePath, possibly in a
+  // different chat entirely), loads that chat's data if not already
+  // cached, switches to it if needed, and rebuilds activePath through
+  // the target node via the existing navigateBranch logic. Returns the
+  // messageId on success so the UI can scroll to and flash-highlight it,
+  // or null if the message couldn't be resolved.
+  revealMessage: (chatId: string, messageId: string) => Promise<string | null>;
+
+  // ── Chat Search state (Text Search + Node Search panels) ──────────────────
+  activePanel: SearchPanelType;
+
+  textQuery: string;
+  textScope: SearchScope;
+  textResults: SearchResult[];
+  textNextCursor: string | null;
+  isSearchingText: boolean;
+  textSearchError: string | null;
+
+  nodeScope: SearchScope;
+  // The chat that was active when Node Search was opened — the "My Chats"
+  // root reveals this chat, and it's always ordered as the first child in
+  // All Chats mode.
+  nodeGraphOpenedFromChatId: string | null;
+  // Which chat IDs have had their tree fetched for All Chats mode (lazy,
+  // loaded only once each chat's node scrolls into view).
+  loadedChatTreeIds: Set<string>;
+  graphZoom: number;
+
+  // In-graph text search (Ctrl+F while Node Search is open)
+  graphSearchOpen: boolean;
+  graphSearchQuery: string;
+
+  openTextSearch: (scope?: SearchScope) => void;
+  openNodeSearch: (activeChatId: string | null) => void;
+  closeSearchPanel: () => void;
+
+  setTextQuery: (query: string) => void;
+  setTextScope: (scope: SearchScope) => void;
+  runTextSearch: (opts?: { append?: boolean }) => Promise<void>;
+
+  setNodeScope: (scope: SearchScope) => void;
+  markChatTreeLoaded: (chatId: string) => void;
+  setGraphZoom: (zoom: number) => void;
+
+  openGraphSearch: () => void;
+  closeGraphSearch: () => void;
+  setGraphSearchQuery: (query: string) => void;
+
   setFeedback: (messageId: string, feedback: MessageFeedback) => Promise<void>;
 
   getChatMessages: (chatId: string) => Promise<void>;
@@ -205,6 +270,10 @@ interface ChatState {
 // Store
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Debounce timer for live text search — module-level since it must survive
+// across individual setTextQuery calls, not be reset per-call.
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
 export const useChatStore = create<ChatState>()((set, get) => ({
   activeChatId: null,
   aiModel: "chatgpt",
@@ -229,6 +298,22 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   inputDrafts: {},
   editingState: null,
   problemTitle: null,
+
+  // ── Chat Search defaults ──────────────────────────────────────────────────
+  activePanel: null,
+  textQuery: "",
+  textScope: "chat",
+  textResults: [],
+  textNextCursor: null,
+  isSearchingText: false,
+  textSearchError: null,
+  nodeScope: "chat",
+  nodeGraphOpenedFromChatId: null,
+  loadedChatTreeIds: new Set<string>(),
+  graphZoom: 1,
+  graphSearchOpen: false,
+  graphSearchQuery: "",
+
   sharedChatData: null,
   isSharingChat: false,
   isLoadingSharedChat: false,
@@ -762,6 +847,142 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       .catch((err) => console.error("Failed to persist activePath:", err));
   },
 
+  // ── Reveal Message ───────────────────────────────────────────────────────
+  // Shared by Text Search and Node Search. Ensures the target chat's full
+  // tree is cached, makes it the active chat if it isn't already, then
+  // delegates to navigateBranch to rebuild activePath through the target
+  // node — so the reveal logic itself is never duplicated.
+
+  revealMessage: async (chatId, messageId) => {
+    const {
+      chatCache,
+      activeChatId,
+      getChatMessages,
+      setActiveChatId,
+      navigateBranch,
+    } = get();
+
+    if (!chatCache[chatId]) {
+      try {
+        await getChatMessages(chatId);
+      } catch (err) {
+        console.error("Failed to load chat for reveal:", err);
+        return null;
+      }
+    }
+
+    if (!get().chatCache[chatId]?.nodeMap[messageId]) {
+      console.error(
+        `revealMessage: message ${messageId} not found in chat ${chatId}`,
+      );
+      return null;
+    }
+
+    if (activeChatId !== chatId) {
+      setActiveChatId(chatId);
+    }
+
+    await navigateBranch(chatId, messageId);
+    return messageId;
+  },
+
+  // ── Chat Search (Text Search + Node Search) ──────────────────────────────
+  // Note: runTextSearch reads activeChatId directly via get() — no
+  // cross-store lookup needed since this lives in the same store as the
+  // chat data itself.
+
+  openTextSearch: (scope) => {
+    set({
+      activePanel: "text",
+      textScope: scope ?? get().textScope,
+      graphSearchOpen: false,
+      graphSearchQuery: "",
+    });
+    get().runTextSearch();
+  },
+
+  openNodeSearch: (activeChatId) => {
+    set({
+      activePanel: "node",
+      nodeScope: "chat",
+      nodeGraphOpenedFromChatId: activeChatId,
+      loadedChatTreeIds: new Set(activeChatId ? [activeChatId] : []),
+      graphZoom: 1,
+      graphSearchOpen: false,
+      graphSearchQuery: "",
+    });
+  },
+
+  closeSearchPanel: () => set({ activePanel: null }),
+
+  setTextQuery: (textQuery) => {
+    set({ textQuery });
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      get().runTextSearch();
+    }, 250);
+  },
+
+  setTextScope: (textScope) => {
+    set({ textScope });
+    get().runTextSearch();
+  },
+
+  runTextSearch: async (opts = {}) => {
+    const { textQuery, textScope, activeChatId } = get();
+    if (!textQuery.trim()) {
+      set({ textResults: [], textNextCursor: null, isSearchingText: false });
+      return;
+    }
+    if (textScope === "chat" && !activeChatId) {
+      set({ textResults: [], textNextCursor: null, isSearchingText: false });
+      return;
+    }
+
+    set({ isSearchingText: true, textSearchError: null });
+    try {
+      const res = await axios.get(`${API_URL}/chat/searchMessages`, {
+        params: {
+          q: textQuery,
+          scope: textScope,
+          chatId: textScope === "chat" ? activeChatId : undefined,
+          cursor: opts.append ? get().textNextCursor : undefined,
+        },
+      });
+      const { results, nextCursor } = res.data as {
+        results: SearchResult[];
+        nextCursor: string | null;
+      };
+      set((state) => ({
+        textResults: opts.append ? [...state.textResults, ...results] : results,
+        textNextCursor: nextCursor,
+        isSearchingText: false,
+      }));
+    } catch (err: any) {
+      const msg = err.response?.data?.message ?? "Search failed";
+      set({ isSearchingText: false, textSearchError: msg });
+    }
+  },
+
+  setNodeScope: (nodeScope) =>
+    set({
+      nodeScope,
+      graphZoom: 1,
+      graphSearchOpen: false,
+      graphSearchQuery: "",
+    }),
+
+  markChatTreeLoaded: (chatId) =>
+    set((state) => ({
+      loadedChatTreeIds: new Set(state.loadedChatTreeIds).add(chatId),
+    })),
+
+  setGraphZoom: (graphZoom) => set({ graphZoom }),
+
+  openGraphSearch: () => set({ graphSearchOpen: true }),
+  closeGraphSearch: () => set({ graphSearchOpen: false, graphSearchQuery: "" }),
+  setGraphSearchQuery: (graphSearchQuery) => set({ graphSearchQuery }),
+
   // ── Set Feedback ──────────────────────────────────────────────────────────
 
   setFeedback: async (messageId, feedback) => {
@@ -1041,6 +1262,20 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       chatMessagesError: null,
       editingState: null,
       problemTitle: null,
+      // Chat Search state also clears when the dialog closes
+      activePanel: null,
+      textQuery: "",
+      textScope: "chat",
+      textResults: [],
+      textNextCursor: null,
+      isSearchingText: false,
+      textSearchError: null,
+      nodeScope: "chat",
+      nodeGraphOpenedFromChatId: null,
+      loadedChatTreeIds: new Set<string>(),
+      graphZoom: 1,
+      graphSearchOpen: false,
+      graphSearchQuery: "",
       // inputDrafts preserved intentionally
     });
   },
