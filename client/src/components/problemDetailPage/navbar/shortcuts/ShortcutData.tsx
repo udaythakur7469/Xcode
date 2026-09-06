@@ -30,6 +30,8 @@ import {
   PanelRightClose,
   Lightbulb,
   Keyboard,
+  Search,
+  GitBranch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -240,6 +242,46 @@ export const shortcuts: Shortcut[] = [
     keys: ["Ctrl", "Shift", "Spacebar"],
     category: "ai",
     icon: Ban,
+  },
+  {
+    id: "open-chat-text-search",
+    name: "Search chat messages",
+    keys: ["Alt", "F"],
+    category: "ai",
+    icon: Search,
+    note: "While the AI chat dialog is open. Press again while Node Search is open to switch to this instead.",
+  },
+  {
+    id: "open-chat-node-search",
+    name: "Open chat message tree",
+    keys: ["Alt", "G"],
+    category: "ai",
+    icon: GitBranch,
+    note: "While the AI chat dialog is open. Press again while Text Search is open to switch to this instead.",
+  },
+  {
+    id: "chat-search-scope-all",
+    name: "Switch search scope to All Chats",
+    keys: ["Alt", "A"],
+    category: "ai",
+    icon: PanelRightOpen,
+    note: "Only while Text Search or Node Search is open",
+  },
+  {
+    id: "chat-search-scope-this-chat",
+    name: "Switch search scope to This Chat",
+    keys: ["Alt", "C"],
+    category: "ai",
+    icon: PanelRightClose,
+    note: "Only while Text Search or Node Search is open",
+  },
+  {
+    id: "chat-node-search-find",
+    name: "Search within the message tree",
+    keys: ["Ctrl", "F"],
+    category: "ai",
+    icon: Search,
+    note: "Only while Node Search is open — overrides the browser's find-in-page for that panel only",
   },
 
   // ── Productivity ───────────────────────────────────────────────────
