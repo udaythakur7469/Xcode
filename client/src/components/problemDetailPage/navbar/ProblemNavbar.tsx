@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/logout-dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DEFAULT_PROFILE_PICTURE } from "@/constants/avatar";
 import AccountDropDown from "@/components/landingPage/helperComponents/AccountDropDown";
 import { useUserStore } from "@/features/userStore";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
@@ -362,7 +363,9 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
                     <DropdownMenuTrigger asChild>
                       <div className="cursor-pointer">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={picture || ""} />
+                          <AvatarImage
+                            src={(picture as string) || DEFAULT_PROFILE_PICTURE}
+                          />
                           <AvatarFallback>{firstLetter}</AvatarFallback>
                         </Avatar>
                       </div>

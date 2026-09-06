@@ -8,6 +8,7 @@ import {
   AvatarImage,
 } from "@/components/ui/accountAvatar";
 import PostDataContent from "./PostDataContent";
+import { DEFAULT_PROFILE_PICTURE } from "@/constants/avatar";
 
 type PostDataProps = { fullPostData: FullPostData };
 
@@ -24,8 +25,7 @@ const PostData: React.FC<PostDataProps> = ({ fullPostData }) => {
   const name = fullPostData.author.name;
   const firstLetter = name ? name[0] : null;
   const picture = fullPostData.author.picture;
-  const defaultPicture =
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM3FwFWSj9qohGE7FhrwJ-PlcK4-tLdWSlGg&s";
+  const defaultPicture = DEFAULT_PROFILE_PICTURE;
 
   return (
     /*
