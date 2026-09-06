@@ -1,11 +1,14 @@
 /**
- * Renders the visible portion of an image inside a square crop "stage" as a
- * circular PNG, given the same origin/scale values the crop dialog's drag +
- * zoom interaction produces.
+ * Renders the visible portion of an image inside the crop dialog's circular
+ * "hole" as a circular PNG, given the same origin/scale values the crop
+ * dialog's drag + zoom interaction produces.
  *
  * `stageSize` is the on-screen pixel size of the square crop stage the user
- * was dragging/zooming inside (e.g. 320). `outputSize` is the resolution of
- * the final circular PNG we upload (e.g. 400x400).
+ * was dragging/zooming inside (e.g. 320). `holeDiameter` is the diameter of
+ * the visible circular hole inside that stage (e.g. 220) — this must match
+ * ImageCropDialog's CROP_HOLE_DIAMETER exactly, or the exported image will
+ * include stage area the user never actually saw through the hole.
+ * `outputSize` is the resolution of the final circular PNG we upload.
  */
 export type CropTransform = {
   originX: number;
@@ -17,6 +20,7 @@ export async function renderCircularCrop(
   imageSrc: string,
   transform: CropTransform,
   stageSize: number,
+  holeDiameter: number,
   outputSize = 400,
 ): Promise<Blob> {
   const image = await loadImage(imageSrc);
@@ -27,7 +31,11 @@ export async function renderCircularCrop(
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D context is not available");
 
-  const outputScale = outputSize / stageSize;
+  // Only the `holeDiameter`-wide square centered in the stage is ever
+  // visible to the user, so that's the region we scale up to fill the
+  // entire output canvas — not the full stage.
+  const holeInset = (stageSize - holeDiameter) / 2;
+  const outputScale = outputSize / holeDiameter;
 
   ctx.save();
   ctx.beginPath();
@@ -40,8 +48,8 @@ export async function renderCircularCrop(
     0,
     image.naturalWidth,
     image.naturalHeight,
-    transform.originX * outputScale,
-    transform.originY * outputScale,
+    (transform.originX - holeInset) * outputScale,
+    (transform.originY - holeInset) * outputScale,
     image.naturalWidth * transform.scale * outputScale,
     image.naturalHeight * transform.scale * outputScale,
   );
