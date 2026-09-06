@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Search, GitBranch } from "lucide-react";
 import { useChatStore, AiModel } from "@/features/chatStore";
 import {
   DropdownMenu,
@@ -21,6 +21,11 @@ const MODEL_OPTIONS: AiModel[] = ["chatgpt", "claude", "gemini"];
 const ChatTitle: React.FC = () => {
   const aiModel = useChatStore((s) => s.aiModel);
   const setAiModel = useChatStore((s) => s.setAiModel);
+  const activeChatId = useChatStore((s) => s.activeChatId);
+
+  const activePanel = useChatStore((s) => s.activePanel);
+  const openTextSearch = useChatStore((s) => s.openTextSearch);
+  const openNodeSearch = useChatStore((s) => s.openNodeSearch);
 
   return (
     <div className="flex items-center gap-3 ml-2">
@@ -65,6 +70,31 @@ const ChatTitle: React.FC = () => {
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* Text Search / Node Search entry points — also reachable via
+          Alt+F / Alt+G (see chatSearch/shared/useKeyboardShortcuts.ts) */}
+      <button
+        onClick={() => openTextSearch()}
+        title="Search this chat (Alt+F)"
+        className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
+          activePanel === "text"
+            ? "bg-[var(--brand-muted)] text-[var(--brand)]"
+            : "text-zinc-400 hover:bg-zinc-800"
+        }`}
+      >
+        <Search size={17} />
+      </button>
+      <button
+        onClick={() => openNodeSearch(activeChatId)}
+        title="Message tree (Alt+G)"
+        className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors ${
+          activePanel === "node"
+            ? "bg-[var(--brand-muted)] text-[var(--brand)]"
+            : "text-zinc-400 hover:bg-zinc-800"
+        }`}
+      >
+        <GitBranch size={17} />
+      </button>
     </div>
   );
 };
