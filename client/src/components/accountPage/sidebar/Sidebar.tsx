@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useRef, useState } from "react";
 import { useUserStore } from "@/features/userStore";
 import {
   Avatar,
@@ -15,28 +15,48 @@ import { Separator } from "@/components/ui/separator";
 import SkillsBar from "../skillsBar/SkillsBar";
 import { useToast } from "@/hooks/use-toast";
 import ProfilePictureOptionsDialog from "../helperComponents/dialogBoxes/ProfilePictureOptionsDialog";
-
-const DEFAULT_PROFILE_PICTURE =
-  "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTM3FwFWSj9qohGE7FhrwJ-PlcK4-tLdWSlGg&s";
+import DefaultAvatarDialog from "../helperComponents/dialogBoxes/DefaultAvatarDialog";
+import ImageSourceDialog from "../helperComponents/dialogBoxes/ImageSourceDialog";
+import CameraCaptureDialog from "../helperComponents/dialogBoxes/CameraCaptureDialog";
+import ImageCropDialog from "../helperComponents/dialogBoxes/ImageCropDialog";
+import { DEFAULT_PROFILE_PICTURE, type AvatarGender } from "@/constants/avatar";
 
 type SidebarProps = {};
+
+// Which dialog in the avatar-editing flow is currently open. Only one is
+// ever open at a time — this is the single source of truth for that state
+// machine instead of five separate booleans that could drift out of sync.
+type AvatarDialogStep =
+  | "none"
+  | "options"
+  | "defaultAvatar"
+  | "source"
+  | "camera"
+  | "crop";
 
 const Sidebar: React.FC<SidebarProps> = () => {
   const {
     userData,
     updateProfilePicture,
-    deleteProfilePicture,
+    setDefaultAvatar,
+    fetchSolvedLanguages,
     isDataUpdating,
   } = useUserStore();
   const [showDescriptionDialogBox, setShowDescriptionDialogBox] =
     useState(false);
   const [showLinksDialogBox, setShowLinksDialogBox] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-  const [isDeletingImage, setIsDeletingImage] = useState(false);
-  const [showPictureOptionsDialog, setShowPictureOptionsDialog] =
-    useState(false);
+
+  const [avatarStep, setAvatarStep] = useState<AvatarDialogStep>("none");
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  React.useEffect(() => {
+    fetchSolvedLanguages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const validateImageFile = (
     file: File,
@@ -58,9 +78,47 @@ const Sidebar: React.FC<SidebarProps> = () => {
     return { valid: true };
   };
 
-  const handleImageSelect = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  // ── Entry point ────────────────────────────────────────────────────
+  const handleEditPictureClick = () => {
+    setAvatarStep("options");
+  };
+
+  // ── Step: Options (Change / Delete) ──────────────────────────────────
+  const handleChangeImageClick = () => {
+    setAvatarStep("source");
+  };
+
+  const handleDeleteImageClick = () => {
+    setAvatarStep("defaultAvatar");
+  };
+
+  // ── Step: Default avatar (gender) picker ──────────────────────────────
+  const handleConfirmDefaultAvatar = async (gender: AvatarGender) => {
+    try {
+      await setDefaultAvatar(gender);
+      toast({
+        title: "Success",
+        description: "Profile picture updated successfully!",
+        variant: "default",
+      });
+      setAvatarStep("none");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description:
+          error.response?.data?.message ||
+          "Failed to update profile picture. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // ── Step: Source picker (choose file / take photo) ────────────────────
+  const handleChooseFile = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -75,16 +133,38 @@ const Sidebar: React.FC<SidebarProps> = () => {
       return;
     }
 
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCropImageSrc(e.target?.result as string);
+      setAvatarStep("crop");
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleTakePhoto = () => {
+    setAvatarStep("camera");
+  };
+
+  // ── Step: Camera capture ───────────────────────────────────────────
+  const handleCameraCapture = (dataUrl: string) => {
+    setCropImageSrc(dataUrl);
+    setAvatarStep("crop");
+  };
+
+  // ── Step: Crop ────────────────────────────────────────────────────
+  const handleCropSave = async (blob: Blob) => {
     setIsUploadingImage(true);
     try {
-      await updateProfilePicture(file);
+      await updateProfilePicture(blob);
       toast({
         title: "Success",
         description: "Profile picture updated successfully!",
         variant: "default",
       });
+      setAvatarStep("none");
+      setCropImageSrc(null);
     } catch (error: any) {
-      console.error("Error uploading image:", error);
       toast({
         title: "Error",
         description:
@@ -94,50 +174,12 @@ const Sidebar: React.FC<SidebarProps> = () => {
       });
     } finally {
       setIsUploadingImage(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    }
-  };
-
-  const handleEditPictureClick = () => {
-    if (picture && picture !== DEFAULT_PROFILE_PICTURE) {
-      setShowPictureOptionsDialog(true);
-    } else {
-      fileInputRef.current?.click();
-    }
-  };
-
-  const handleChangeImageClick = () => {
-    setShowPictureOptionsDialog(false);
-    fileInputRef.current?.click();
-  };
-
-  const handleDeleteImage = async () => {
-    setIsDeletingImage(true);
-    try {
-      await deleteProfilePicture();
-      toast({
-        title: "Success",
-        description: "Profile picture removed successfully!",
-        variant: "default",
-      });
-      setShowPictureOptionsDialog(false);
-    } catch (error: any) {
-      console.error("Error deleting image:", error);
-      toast({
-        title: "Error",
-        description:
-          error.response?.data?.message ||
-          "Failed to delete image. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeletingImage(false);
     }
   };
 
   const name = userData?.name;
   const capitalizedName = capitalizeFirstLetter(name);
-  const picture = userData?.picture;
+  const picture = userData?.picture || DEFAULT_PROFILE_PICTURE;
   const email = userData?.email;
   const description = userData?.description;
   const links = userData?.links;
@@ -173,7 +215,7 @@ const Sidebar: React.FC<SidebarProps> = () => {
             )}
             <button
               onClick={handleEditPictureClick}
-              disabled={isUploadingImage || isDeletingImage || isDataUpdating}
+              disabled={isUploadingImage || isDataUpdating}
               className={`absolute bottom-0 right-0 bg-green-500 text-primary-foreground rounded-full p-1.5 hover:bg-primary/90 transition-all duration-200 shadow-lg border-2 border-accent disabled:opacity-50 disabled:cursor-not-allowed hover:scale-110 ${
                 isUploadingImage ? "hidden" : ""
               }`}
@@ -323,12 +365,38 @@ const Sidebar: React.FC<SidebarProps> = () => {
         isOpen={showLinksDialogBox}
         onClose={setShowLinksDialogBox}
       />
+
+      {/* Avatar-editing flow — one step open at a time */}
       <ProfilePictureOptionsDialog
-        isOpen={showPictureOptionsDialog}
-        onClose={setShowPictureOptionsDialog}
+        isOpen={avatarStep === "options"}
+        onClose={(open) => setAvatarStep(open ? "options" : "none")}
         onChangeImage={handleChangeImageClick}
-        onDeleteImage={handleDeleteImage}
-        isDeletingImage={isDeletingImage}
+        onDeleteImage={handleDeleteImageClick}
+        isDeletingImage={false}
+      />
+      <DefaultAvatarDialog
+        isOpen={avatarStep === "defaultAvatar"}
+        onClose={(open) => setAvatarStep(open ? "defaultAvatar" : "none")}
+        onConfirm={handleConfirmDefaultAvatar}
+      />
+      <ImageSourceDialog
+        isOpen={avatarStep === "source"}
+        onClose={(open) => setAvatarStep(open ? "source" : "none")}
+        onChooseFile={handleChooseFile}
+        onTakePhoto={handleTakePhoto}
+      />
+      <CameraCaptureDialog
+        isOpen={avatarStep === "camera"}
+        onClose={(open) => setAvatarStep(open ? "camera" : "none")}
+        onBack={() => setAvatarStep("source")}
+        onCapture={handleCameraCapture}
+      />
+      <ImageCropDialog
+        isOpen={avatarStep === "crop"}
+        imageSrc={cropImageSrc}
+        onClose={(open) => setAvatarStep(open ? "crop" : "none")}
+        onBack={() => setAvatarStep("source")}
+        onSave={handleCropSave}
       />
     </div>
   );
