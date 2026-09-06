@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/logout-dropdown-menu";
 import { UserProfileSkeleton } from "@/components/accountPage/UserProfileSkeleton";
 import NavbarShell from "./NavbarShell";
+import { DEFAULT_PROFILE_PICTURE } from "@/constants/avatar";
 
 type NavbarProps = {
   buttons: string[];
@@ -107,7 +108,9 @@ const Navbar: React.FC<NavbarProps> = ({
             <DropdownMenuTrigger asChild>
               <div className="cursor-pointer">
                 <Avatar>
-                  <AvatarImage src={picture || ""} />
+                  <AvatarImage
+                    src={(picture as string) || DEFAULT_PROFILE_PICTURE}
+                  />
                   <AvatarFallback>{firstLetter}</AvatarFallback>
                 </Avatar>
               </div>
