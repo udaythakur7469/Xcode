@@ -16,6 +16,7 @@ import {
   forkSharedChat,
   sendChatEmail,
 } from "../controllers/chatController.js";
+import { searchMessages } from "../controllers/searchController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { readLimiter } from "../middlewares/rateLimiter.js";
 
@@ -45,6 +46,14 @@ router.route("/activePath").patch(optionalAuthMiddleware, updateActivePath);
 router
   .route("/message/:messageId/feedback")
   .patch(optionalAuthMiddleware, updateFeedback);
+
+// GET /chat/searchMessages
+// Full-text search across all branches of a chat, or all of a user's chats.
+// Powers the AI chat dialog's Text Search panel and Node Search's in-graph
+// search. GET /chat/getMessages already returns a chat's full tree (all
+// branches, not just activePath) and GET /chat/getUserChats already returns
+// the chat list, so this is the only new endpoint the search feature needed.
+router.route("/searchMessages").get(optionalAuthMiddleware, searchMessages);
 
 //-----------------------------------------share chat routes----------------------------------------------------------------------
 
