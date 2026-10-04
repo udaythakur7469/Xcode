@@ -1,5 +1,6 @@
 import axios from "@/lib/axiosInstance";
 import { create } from "zustand";
+import { prevalidateTag } from "@/services/tagValidationServics";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -163,6 +164,7 @@ interface PostData {
   generateTitleError: string | null;
   isGeneratingTags: boolean;
   generateTagsError: string | null;
+  tagValidationCache: Map<string, { valid: boolean; message: string }>;
 
   manageDraftPost: (
     id: string,
@@ -172,6 +174,17 @@ interface PostData {
   getPostBaseTemplate: (title: string) => Promise<void>;
   fetchPostTags: () => Promise<void>;
   validateTag: (tag: string, action: string) => Promise<TagValidation>;
+  /**
+   * Single entry point every tag-selection UI should call. Checks the
+   * existing tags list, then the in-session validation cache, then
+   * client-side prevalidation, and only falls through to the AI
+   * (`validateTag`) when the tag is genuinely ambiguous. Result is
+   * cached so the same tag is never re-validated against the AI twice
+   * in one session, including across dropdown open/close.
+   */
+  validateTagCached: (
+    tag: string,
+  ) => Promise<{ valid: boolean; message: string }>;
   createNewPost: (
     title: string,
     problemTitle: string,
@@ -234,6 +247,7 @@ export const usePostStore = create<PostData>()((set, get) => ({
   TagsList: null,
   isFetchingTag: false,
   tagFetchingError: null,
+  tagValidationCache: new Map(),
   TagValidation: null,
   isTagGettingValidated: false,
   tagValidationError: null,
@@ -328,6 +342,54 @@ export const usePostStore = create<PostData>()((set, get) => ({
 
       throw error;
     }
+  },
+
+  validateTagCached: async (tag) => {
+    const trimmedTag = tag.trim();
+    const existingTags = get().TagsList?.data?.tags || [];
+
+    // 1. Already an official tag - no validation needed
+    const alreadyExists = existingTags.some(
+      (existingTag) => existingTag.toLowerCase() === trimmedTag.toLowerCase(),
+    );
+    if (alreadyExists) {
+      return { valid: true, message: "Tag exists" };
+    }
+
+    // 2. Already validated this session - skip the AI call entirely
+    const cached = get().tagValidationCache.get(trimmedTag.toLowerCase());
+    if (cached) {
+      return cached;
+    }
+
+    // 3. Deterministic checks - reject obviously bad tags with no network cost
+    const prevalidation = prevalidateTag(trimmedTag);
+    if (prevalidation.status === "invalid") {
+      const result = { valid: false, message: prevalidation.message };
+      set((state) => ({
+        tagValidationCache: new Map(state.tagValidationCache).set(
+          trimmedTag.toLowerCase(),
+          result,
+        ),
+      }));
+      return result;
+    }
+
+    // 4. Ambiguous - fall through to the AI, then cache the result
+    const response = await get().validateTag(trimmedTag, "validate");
+    const result = {
+      valid: response.data.valid,
+      message: response.message,
+    };
+
+    set((state) => ({
+      tagValidationCache: new Map(state.tagValidationCache).set(
+        trimmedTag.toLowerCase(),
+        result,
+      ),
+    }));
+
+    return result;
   },
   createNewPost: async (title, problemTitle, tags, content, isDraftPost) => {
     set({ isCreatingPost: true, createPostError: null });
