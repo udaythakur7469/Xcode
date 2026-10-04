@@ -21,8 +21,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/logout-dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DEFAULT_PROFILE_PICTURE } from "@/constants/avatar";
 import AccountDropDown from "@/components/landingPage/helperComponents/AccountDropDown";
+import LogoutDialog from "@/components/landingPage/helperComponents/LogoutDialog";
 import { useUserStore } from "@/features/userStore";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { SignupDialog } from "@/components/auth/signupPage/SignupDialog";
@@ -65,6 +65,14 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [isShortcutDialogOpen, setIsShortcutDialogOpen] = useState(false);
+  // Controlled so logging out can close this alongside the LogoutDialog
+  // instead of leaving it open underneath - see AccountDropDown's
+  // onOpenLogout prop.
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+  // Rendered unconditionally below (outside the isUserAuthenticated
+  // branch), independent of the dropdown's own open state - see
+  // AccountDropDown.tsx for why LogoutDialog moved out of there.
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] =
     useState<boolean>(false);
   const timerRef = useRef<TimerRef>(null);
@@ -122,9 +130,9 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+  // No mount-effect checkAuth() call here anymore - AuthProvider (mounted
+  // once in the root layout) owns the app-wide identity check. This page
+  // just reads isUserAuthenticated/userData from the store.
 
   const name = userData?.name;
 
@@ -359,18 +367,16 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
               </Dialog>
               <MenubarMenu>
                 {isUserAuthenticated ? (
-                  <DropdownMenu>
+                  <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
                     <DropdownMenuTrigger asChild>
                       <div className="cursor-pointer">
                         <Avatar className="h-8 w-8">
-                          <AvatarImage
-                            src={(picture as string) || DEFAULT_PROFILE_PICTURE}
-                          />
+                          <AvatarImage src={picture || ""} />
                           <AvatarFallback>{firstLetter}</AvatarFallback>
                         </Avatar>
                       </div>
                     </DropdownMenuTrigger>
-                    <AccountDropDown />
+                    <AccountDropDown onOpenLogout={() => setIsLogoutOpen(true)} />
                   </DropdownMenu>
                 ) : (
                   <MenubarTrigger
@@ -418,6 +424,16 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
           setIsLoginOpen(true);
         }}
       />
+
+      {/* Logout dialog — rendered unconditionally, independent of
+          isUserAuthenticated, so clearUser() flipping that flag on
+          successful logout can never unmount this mid-flow. */}
+      <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+        <LogoutDialog
+          onClose={() => setIsLogoutOpen(false)}
+          onLoggedOut={() => setIsAccountMenuOpen(false)}
+        />
+      </Dialog>
     </>
   );
 };
