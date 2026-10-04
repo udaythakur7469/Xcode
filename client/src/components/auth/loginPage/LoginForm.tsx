@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -23,11 +23,17 @@ import { EyeOff, Eye } from "lucide-react";
 import { OAuthButtons } from "@/components/auth/helperComponents/OAuthButtons";
 import { MagicLinkButton } from "@/components/auth/helperComponents/MagicLinkButton";
 
+const SUCCESS_MESSAGE_MS = 3000;
+
 interface LoginFormProps {
   onSuccess?: () => void;
   onSuccessfulAuth: () => void;
   openSignup: () => void;
   openForgotPassword: () => void;
+  // Reports isLoading || isSuccess up to LoginDialog, which forwards it to
+  // CustomDialog as preventClose - keeps the dialog open and non-dismissible
+  // through the whole loader -> success-message window.
+  onBusyChange?: (isBusy: boolean) => void;
 }
 
 export const LoginForm = ({
@@ -35,6 +41,7 @@ export const LoginForm = ({
   onSuccessfulAuth,
   openSignup,
   openForgotPassword,
+  onBusyChange,
 }: LoginFormProps) => {
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -43,16 +50,39 @@ export const LoginForm = ({
 
   const { login, isLoading, error } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    onBusyChange?.(isLoading || isSuccess);
+  }, [isLoading, isSuccess, onBusyChange]);
+
+  // Guards against calling onSuccessfulAuth/onSuccess if this component
+  // happens to unmount before the success-message timeout fires.
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+    };
+  }, []);
 
   const onSubmit = async (loginData: LoginFormData) => {
     try {
       await login(loginData.email, loginData.password);
-      onSuccessfulAuth?.();
-      onSuccess?.();
+
+      // Show "Login successful" in the button for a moment before actually
+      // closing anything - onBusyChange(true) above keeps the dialog
+      // non-dismissible for this window.
+      setIsSuccess(true);
+      successTimeoutRef.current = setTimeout(() => {
+        onSuccessfulAuth?.();
+        onSuccess?.();
+      }, SUCCESS_MESSAGE_MS);
     } catch (err) {
       console.log(err);
     }
   };
+
+  const isBusy = isLoading || isSuccess;
 
   return (
     <Form {...form}>
@@ -140,12 +170,15 @@ export const LoginForm = ({
         {/* Login button */}
         <Button
           type="submit"
+          disabled={isBusy}
           className="w-full flex items-center justify-center"
         >
           {isLoading ? (
             <PropagateLoader
               style={{ display: "flex", alignItems: "center", height: "100%" }}
             />
+          ) : isSuccess ? (
+            "Login successful"
           ) : error ? (
             error
           ) : (
