@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   DialogContent,
   DialogHeader,
@@ -10,17 +10,51 @@ import { useAuthStore } from "@/features/authStore";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useChatStore } from "@/features/chatStore";
+import { releaseBodyLock } from "@/lib/releaseBodyLock";
+
+const SUCCESS_MESSAGE_MS = 3000;
 
 type LogoutDialogProps = {
   onClose: () => void;
+  // Fired once logout has fully finished (after the success message has
+  // shown) so the parent can close whatever overlay it wrapped this dialog
+  // in - a DropdownMenu (Navbar/ProblemNavbar) or the command bar's
+  // FloatingDialog. Closing only THIS dialog and leaving that outer
+  // overlay mounted is what was leaving <body> permanently locked and
+  // freezing the page until reload.
+  onLoggedOut: () => void;
 };
 
-const LogoutDialog: React.FC<LogoutDialogProps> = ({ onClose }) => {
+const LogoutDialog: React.FC<LogoutDialogProps> = ({ onClose, onLoggedOut }) => {
   const router = useRouter();
   const pathname = usePathname();
 
   const { logout, isLoading, error } = useAuthStore();
   const { resetStore } = useChatStore();
+
+  const [isSuccess, setIsSuccess] = useState(false);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Guards against calling onClose/onLoggedOut/router.replace if this
+  // component happens to unmount before the success-message timeout fires.
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+    };
+  }, []);
+
+  const finishLogout = () => {
+    // Close this Dialog AND the outer overlay together, then release any
+    // body lock either of them left behind, then navigate - in that exact
+    // order, so nothing gets unmounted mid-transition by the navigation.
+    onClose();
+    onLoggedOut();
+    releaseBodyLock();
+
+    if (pathname.startsWith("/account")) {
+      router.replace("/");
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -30,20 +64,29 @@ const LogoutDialog: React.FC<LogoutDialogProps> = ({ onClose }) => {
       // 2️⃣ Reset chat/global state
       resetStore();
 
-      // 3️⃣ Close dialog AFTER everything is done
-      onClose();
-
-      // 4️⃣ Redirect safely
-      if (pathname.startsWith("/account")) {
-        router.replace("/");
-      }
+      // 3️⃣ Show "Logout successful" in the button for a moment before
+      // actually closing anything - the dialog stays open and
+      // non-dismissible for this window (see onInteractOutside/
+      // onEscapeKeyDown below).
+      setIsSuccess(true);
+      successTimeoutRef.current = setTimeout(finishLogout, SUCCESS_MESSAGE_MS);
     } catch (err) {
       console.error("Logout failed:", err);
     }
   };
 
+  const isBusy = isLoading || isSuccess;
+
   return (
-    <DialogContent className="sm:max-w-md">
+    <DialogContent
+      className="sm:max-w-md"
+      onInteractOutside={(event) => {
+        if (isBusy) event.preventDefault();
+      }}
+      onEscapeKeyDown={(event) => {
+        if (isBusy) event.preventDefault();
+      }}
+    >
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
@@ -59,10 +102,18 @@ const LogoutDialog: React.FC<LogoutDialogProps> = ({ onClose }) => {
         <Button
           variant="destructive"
           onClick={handleLogout}
-          disabled={isLoading}
+          disabled={isBusy}
           className="w-full mt-6 flex justify-center items-center"
         >
-          {isLoading ? <PropagateLoader size={8} /> : error ? error : "Logout"}
+          {isLoading ? (
+            <PropagateLoader size={8} />
+          ) : isSuccess ? (
+            "Logout successful"
+          ) : error ? (
+            error
+          ) : (
+            "Logout"
+          )}
         </Button>
       </motion.div>
     </DialogContent>
