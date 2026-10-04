@@ -152,7 +152,10 @@ const QuestionResultsLoader: React.FC<QuestionResultsLoaderProps> = ({
   if (!isLoading) return null;
 
   return (
-    <div className="h-full w-full flex flex-col bg-[#0a0a0b]">
+    <div
+      className="h-full w-full flex flex-col bg-[#0a0a0b]"
+      style={{ cursor: "progress" }}
+    >
       <style>{`
         .qrl-body::-webkit-scrollbar { width: 0; height: 0; }
         .qrl-body { scrollbar-width: none; -ms-overflow-style: none; }
