@@ -81,7 +81,19 @@ export interface SearchResult {
   snippet: string;
   matchStart: number | null;
   matchEnd: number | null;
+  // Every matched word inside `snippet` as [start, end) offsets — fuzzy
+  // search can match several words (and near-misses), not one phrase.
+  highlights: Array<[number, number]>;
+  score?: number;
   createdAt: string;
+}
+
+// Set by revealMessage; consumed by ChatMessageList, which scrolls the
+// target bubble into view (instead of snapping to the bottom) and flashes it.
+export interface RevealTarget {
+  chatId: string;
+  messageId: string;
+  nonce: number;
 }
 
 // Per-chat cached tree data
@@ -203,6 +215,8 @@ interface ChatState {
   // messageId on success so the UI can scroll to and flash-highlight it,
   // or null if the message couldn't be resolved.
   revealMessage: (chatId: string, messageId: string) => Promise<string | null>;
+  revealTarget: RevealTarget | null;
+  clearRevealTarget: (nonce?: number) => void;
 
   // ── Chat Search state (Text Search + Node Search panels) ──────────────────
   activePanel: SearchPanelType;
@@ -273,6 +287,9 @@ interface ChatState {
 // Debounce timer for live text search — module-level since it must survive
 // across individual setTextQuery calls, not be reset per-call.
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+// Monotonic id so a slow, older search response can never overwrite a newer one.
+let searchRequestSeq = 0;
+let revealNonce = 0;
 
 export const useChatStore = create<ChatState>()((set, get) => ({
   activeChatId: null,
@@ -300,6 +317,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   problemTitle: null,
 
   // ── Chat Search defaults ──────────────────────────────────────────────────
+  revealTarget: null,
   activePanel: null,
   textQuery: "",
   textScope: "chat",
@@ -878,12 +896,28 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       return null;
     }
 
+    // Publish the target BEFORE switching chats / rebuilding the path, so
+    // ChatMessageList knows not to snap to the bottom and instead scrolls to
+    // this exact message once it is rendered.
+    const nonce = ++revealNonce;
+    set({ revealTarget: { chatId, messageId, nonce } });
+    // Safety net: never leave a stale target behind (it would suppress the
+    // normal scroll-to-bottom behaviour) if the bubble never renders.
+    setTimeout(() => get().clearRevealTarget(nonce), 5000);
+
     if (activeChatId !== chatId) {
       setActiveChatId(chatId);
     }
 
     await navigateBranch(chatId, messageId);
     return messageId;
+  },
+
+  clearRevealTarget: (nonce) => {
+    const current = get().revealTarget;
+    if (!current) return;
+    if (nonce !== undefined && current.nonce !== nonce) return;
+    set({ revealTarget: null });
   },
 
   // ── Chat Search (Text Search + Node Search) ──────────────────────────────
@@ -916,7 +950,9 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   closeSearchPanel: () => set({ activePanel: null }),
 
   setTextQuery: (textQuery) => {
-    set({ textQuery });
+    // Flag "searching" immediately so the panel never flashes
+    // "No messages found" during the debounce window.
+    set({ textQuery, isSearchingText: textQuery.trim().length > 0 });
     if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
       get().runTextSearch();
@@ -939,6 +975,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       return;
     }
 
+    const requestId = ++searchRequestSeq;
     set({ isSearchingText: true, textSearchError: null });
     try {
       const res = await axios.get(`${API_URL}/chat/searchMessages`, {
@@ -949,6 +986,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
           cursor: opts.append ? get().textNextCursor : undefined,
         },
       });
+      if (requestId !== searchRequestSeq) return; // superseded by a newer search
       const { results, nextCursor } = res.data as {
         results: SearchResult[];
         nextCursor: string | null;
@@ -959,6 +997,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
         isSearchingText: false,
       }));
     } catch (err: any) {
+      if (requestId !== searchRequestSeq) return;
       const msg = err.response?.data?.message ?? "Search failed";
       set({ isSearchingText: false, textSearchError: msg });
     }
@@ -1270,6 +1309,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       textNextCursor: null,
       isSearchingText: false,
       textSearchError: null,
+      revealTarget: null,
       nodeScope: "chat",
       nodeGraphOpenedFromChatId: null,
       loadedChatTreeIds: new Set<string>(),
