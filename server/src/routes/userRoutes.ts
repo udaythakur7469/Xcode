@@ -7,6 +7,7 @@ import {
   getUserSolvedLanguages,
   updateProfile,
   updateProfilePicture,
+  getUserProfile,
 } from "../controllers/userController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import { upload } from "../services/uploadService.js";
@@ -60,6 +61,30 @@ router.route("/checkUser").get(
   cacheMiddleware(redis, {
     ttl: 300, // 5 minutes
     autoCache: {
+      tags: ["user:identity"],
+      includeAuth: true,
+      keyGenerator: (req: any) => {
+        const userId = req.user?.userId;
+        return `user:identity:${userId}`;
+      },
+    },
+  }),
+  authenticatedUser,
+);
+
+/**
+ * GET /user/profile
+ * Everything the account page needs beyond identity: links, stats, and the
+ * solved-problems aggregation for languages/tags/difficulty. This is the
+ * heavy query that used to live behind /checkUser — only the account page
+ * calls this route.
+ */
+router.route("/profile").get(
+  authMiddleware,
+  userReadLimiter,
+  cacheMiddleware(redis, {
+    ttl: 300,
+    autoCache: {
       tags: ["user:profile"],
       includeAuth: true,
       keyGenerator: (req: any) => {
@@ -68,7 +93,7 @@ router.route("/checkUser").get(
       },
     },
   }),
-  authenticatedUser,
+  getUserProfile,
 );
 
 /**
