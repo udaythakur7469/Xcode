@@ -34,17 +34,41 @@ export function computeLayout(
     );
   });
 
+  // A chat's title rectangle is wider (rectW) than one column slot
+  // (colSpacing), so a chat whose message tree is only 1 slot wide would
+  // overlap its neighbouring chat's rectangle. Every non-root rect therefore
+  // reserves at least enough slots to fit its own width plus a small gap, and
+  // its whole subtree is centred inside that reserved span.
+  const MIN_RECT_SLOTS = Math.ceil((T2D.rectW + 16) / T2D.colSpacing);
+
   let leafCounter = 0;
+  const collectSubtree = (id: string, out: string[] = []) => {
+    out.push(id);
+    (childrenMap[id] ?? []).forEach((k) => collectSubtree(k, out));
+    return out;
+  };
   function assign(id: string, depth: number): number {
     const kids = childrenMap[id] ?? [];
-    nodeMap[id].depth = depth;
+    const node = nodeMap[id];
+    node.depth = depth;
+    const startSlot = leafCounter;
     if (kids.length === 0) {
-      nodeMap[id].x = leafCounter++;
-      return nodeMap[id].x!;
+      node.x = leafCounter++;
+    } else {
+      const xs = kids.map((k) => assign(k, depth + 1));
+      node.x = xs.reduce((a, b) => a + b, 0) / xs.length;
     }
-    const xs = kids.map((k) => assign(k, depth + 1));
-    nodeMap[id].x = xs.reduce((a, b) => a + b, 0) / xs.length;
-    return nodeMap[id].x!;
+    if (node.kind === "rect" && node.parentId) {
+      const span = leafCounter - startSlot;
+      if (span < MIN_RECT_SLOTS) {
+        const shift = (MIN_RECT_SLOTS - span) / 2;
+        collectSubtree(id).forEach((sid) => {
+          nodeMap[sid].x = nodeMap[sid].x! + shift;
+        });
+        leafCounter = startSlot + MIN_RECT_SLOTS;
+      }
+    }
+    return node.x!;
   }
   assign(rootId, 0);
 
