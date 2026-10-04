@@ -9,7 +9,54 @@ import {
   type AvatarGender,
 } from "../constants/avatar.js";
 
+// ── Identity check (GET /user/checkUser) ──────────────────────────────────
+//
+// This ONLY answers "is this cookie valid, and who is it." It intentionally
+// does not touch links/stats/solvedProblems — that used to live here and
+// made every auth check on every page pay for the account page's full
+// aggregation query. Anything the account page needs on top of identity
+// belongs in getUserProfile below instead of being added back here.
 export const authenticatedUser = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        picture: true,
+        provider: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error) {
+    logger.error("Error in authenticatedUser controller ", error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+// ── Full profile data (GET /user/profile) ─────────────────────────────────
+//
+// This is everything the account page needs beyond identity: links, stats,
+// and the solved-problems aggregation for languages/tags/difficulty. Split
+// out of authenticatedUser so pages that just need "is this user logged
+// in" never pay for this query.
+export const getUserProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
 
@@ -120,12 +167,9 @@ export const authenticatedUser = async (req, res) => {
         institution: userData.institution || null,
         links: Object.keys(formattedLinks).length > 0 ? formattedLinks : null,
         stats: {
-          ...difficultyCounts, // Include the difficulty counts
+          ...difficultyCounts,
           languages: Object.entries(languageFrequency).map(
-            ([language, count]) => ({
-              language,
-              count,
-            }),
+            ([language, count]) => ({ language, count }),
           ),
           tags: Object.entries(tagFrequency).map(([tag, count]) => ({
             tag,
@@ -135,7 +179,7 @@ export const authenticatedUser = async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error("Error in authenticatedUser controller ", error);
+    logger.error("Error in getUserProfile controller ", error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
