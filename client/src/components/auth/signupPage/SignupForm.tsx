@@ -29,16 +29,23 @@ import { MagicLinkButton } from "@/components/auth/helperComponents/MagicLinkBut
 // Spring config — same as the prototype
 const SWAP_SPRING = { type: "spring", stiffness: 300, damping: 28 } as const;
 
+const SUCCESS_MESSAGE_MS = 3000;
+
 interface SignupFormProps {
   onSuccess?: () => void;
   onSuccessfulAuth: () => void;
   openLogin: () => void;
+  // Reports isLoading || isSuccess up to SignupDialog, which forwards it to
+  // CustomDialog as preventClose - keeps the dialog open and non-dismissible
+  // through the whole loader -> success-message window.
+  onBusyChange?: (isBusy: boolean) => void;
 }
 
 export const SignupForm = ({
   onSuccess,
   onSuccessfulAuth,
   openLogin,
+  onBusyChange,
 }: SignupFormProps) => {
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -64,17 +71,40 @@ export const SignupForm = ({
   }, []);
 
   const [showPassword, setShowPassword] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    onBusyChange?.(isLoading || isSuccess);
+  }, [isLoading, isSuccess, onBusyChange]);
+
+  // Guards against calling onSuccessfulAuth/onSuccess/router.refresh if
+  // this component happens to unmount before the success timeout fires.
+  useEffect(() => {
+    return () => {
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+    };
+  }, []);
 
   const onSubmit = async (signUpData: SignupFormData) => {
     try {
       await signUp(signUpData.name, signUpData.email, signUpData.password);
-      onSuccessfulAuth?.();
-      onSuccess?.();
-      router.refresh();
+
+      // Show "Signup successful" in the button for a moment before actually
+      // closing anything - onBusyChange(true) above keeps the dialog
+      // non-dismissible for this window.
+      setIsSuccess(true);
+      successTimeoutRef.current = setTimeout(() => {
+        onSuccessfulAuth?.();
+        onSuccess?.();
+        router.refresh();
+      }, SUCCESS_MESSAGE_MS);
     } catch (err) {
       console.log(err);
     }
   };
+
+  const isBusy = isLoading || isSuccess;
 
   return (
     <Form {...form}>
@@ -187,12 +217,15 @@ export const SignupForm = ({
         {/* Sign Up button */}
         <Button
           type="submit"
+          disabled={isBusy}
           className="w-full flex items-center justify-center"
         >
           {isLoading ? (
             <PropagateLoader
               style={{ display: "flex", alignItems: "center", height: "100%" }}
             />
+          ) : isSuccess ? (
+            "Signup successful"
           ) : error ? (
             error
           ) : (
