@@ -142,25 +142,131 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
 
   const savedSidebarWidthPercent = useRef(31.1);
 
-  // Lock the page's own scroll while this dialog is open, so scrolling
-  // beyond the top/bottom of the dialog's content never falls through
-  // to the page underneath.
+  // Lock the page's own scroll while this dialog is open.
+  //
+  // Why this is more than `body { overflow: hidden }`:
+  //  1. globals.css gives BOTH <html> and <body> `overflow-y: scroll`, so
+  //     locking body alone leaves <html> scrollable — lock both.
+  //  2. React attaches wheel/touch listeners as *passive*, so calling
+  //     preventDefault() in an onWheel prop is silently ignored. A native
+  //     non-passive listener is the only thing that can actually cancel
+  //     the scroll.
+  //  3. Wheel events inside the dialog must still scroll the dialog's own
+  //     scrollable areas (chat list, sidebar, search results). We only cancel
+  //     the event if nothing between the target and the dialog can consume it
+  //     (this also stops "scroll chaining" at the top/bottom edge of a list
+  //     from leaking through to the page).
   useEffect(() => {
     if (!open) return;
 
-    const scrollbarWidth =
-      window.innerWidth - document.documentElement.clientWidth;
-    const originalOverflow = document.body.style.overflow;
-    const originalPaddingRight = document.body.style.paddingRight;
+    const html = document.documentElement;
+    const body = document.body;
+    const scrollbarWidth = window.innerWidth - html.clientWidth;
+    const original = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      bodyPaddingRight: body.style.paddingRight,
+    };
 
-    document.body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
     if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
+      body.style.paddingRight = `${scrollbarWidth}px`;
     }
 
+    const canConsumeScroll = (el: HTMLElement, dx: number, dy: number) => {
+      const style = getComputedStyle(el);
+      const scrollableY =
+        /(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight;
+      const scrollableX =
+        /(auto|scroll)/.test(style.overflowX) && el.scrollWidth > el.clientWidth;
+      if (scrollableY && dy !== 0) {
+        if (dy < 0 && el.scrollTop > 0) return true;
+        if (dy > 0 && el.scrollTop + el.clientHeight < el.scrollHeight - 1) return true;
+      }
+      if (scrollableX && dx !== 0) {
+        if (dx < 0 && el.scrollLeft > 0) return true;
+        if (dx > 0 && el.scrollLeft + el.clientWidth < el.scrollWidth - 1) return true;
+      }
+      return false;
+    };
+
+    // Radix dropdowns / alert dialogs open from inside this dialog are
+    // portaled to <body>, i.e. outside dialogRef — they must stay scrollable.
+    const PORTAL_SELECTOR =
+      '[role="dialog"], [role="alertdialog"], [role="listbox"], [role="menu"], [data-radix-popper-content-wrapper]';
+
+    // Walks from `target` up to `stopAt`, true if any ancestor can scroll.
+    const someAncestorScrolls = (
+      target: HTMLElement,
+      stopAt: HTMLElement | null,
+      dx: number,
+      dy: number,
+    ) => {
+      let el: HTMLElement | null = target;
+      while (el && el !== stopAt && el !== document.body) {
+        if (canConsumeScroll(el, dx, dy)) return true;
+        el = el.parentElement;
+      }
+      return false;
+    };
+
+    const guardWheel = (e: WheelEvent) => {
+      const dialog = dialogRef.current;
+      const target = e.target as HTMLElement | null;
+      if (!dialog || !target) return;
+
+      if (!dialog.contains(target)) {
+        // Portaled UI (menus, confirm dialogs): scroll only its own content.
+        if (target.closest(PORTAL_SELECTOR)) {
+          if (!someAncestorScrolls(target, null, e.deltaX, e.deltaY)) e.preventDefault();
+          return;
+        }
+        // The blurred backdrop → never scroll the page.
+        e.preventDefault();
+        return;
+      }
+      // Panels that handle wheel themselves (e.g. node-tree zoom) opt out.
+      if (target.closest("[data-wheel-owner]")) return;
+      // Inside the dialog → allow only if some ancestor can actually scroll.
+      if (!someAncestorScrolls(target, dialog, e.deltaX, e.deltaY)) e.preventDefault();
+    };
+
+    let lastTouchY = 0;
+    const onTouchStart = (e: TouchEvent) => {
+      lastTouchY = e.touches[0]?.clientY ?? 0;
+    };
+    const guardTouch = (e: TouchEvent) => {
+      const dialog = dialogRef.current;
+      const target = e.target as HTMLElement | null;
+      if (!dialog || !target) return;
+      const y = e.touches[0]?.clientY ?? lastTouchY;
+      const dy = lastTouchY - y;
+      lastTouchY = y;
+
+      if (!dialog.contains(target)) {
+        if (target.closest(PORTAL_SELECTOR)) {
+          if (!someAncestorScrolls(target, null, 0, dy)) e.preventDefault();
+          return;
+        }
+        e.preventDefault();
+        return;
+      }
+      if (target.closest("[data-wheel-owner]")) return;
+      if (!someAncestorScrolls(target, dialog, 0, dy)) e.preventDefault();
+    };
+
+    document.addEventListener("wheel", guardWheel, { passive: false, capture: true });
+    document.addEventListener("touchstart", onTouchStart, { passive: true, capture: true });
+    document.addEventListener("touchmove", guardTouch, { passive: false, capture: true });
+
     return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.paddingRight = originalPaddingRight;
+      document.removeEventListener("wheel", guardWheel, { capture: true });
+      document.removeEventListener("touchstart", onTouchStart, { capture: true });
+      document.removeEventListener("touchmove", guardTouch, { capture: true });
+      html.style.overflow = original.htmlOverflow;
+      body.style.overflow = original.bodyOverflow;
+      body.style.paddingRight = original.bodyPaddingRight;
     };
   }, [open]);
 
@@ -545,7 +651,6 @@ const FloatingDialog: React.FC<FloatingDialogProps> = ({
           <div
             className="fixed inset-0 bg-black/40 backdrop-blur-md will-change-auto z-[0]"
             style={{ overscrollBehavior: "contain" }}
-            onWheel={(e) => e.preventDefault()}
           />
 
           <motion.div
