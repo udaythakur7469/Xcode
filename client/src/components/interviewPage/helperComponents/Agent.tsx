@@ -25,15 +25,19 @@ enum CallStatus {
 
 const Agent: React.FC<agentProps> = ({ type, id }) => {
   const router = useRouter();
-  const { checkAuth, userData } = useUserStore();
+  const { userData } = useUserStore();
   const { getInterviewDetails, interview, getFeedback } = useInterviewStore();
 
+  // No checkAuth() call here anymore — AuthProvider (mounted once in the
+  // root layout) owns the app-wide identity check, and InterviewAuthGate
+  // (the parent that renders this) already gates on isUserAuthenticated
+  // before this ever mounts. This effect now only fetches the interview
+  // itself.
   useEffect(() => {
-    checkAuth();
     if (type === "practice") {
       getInterviewDetails(id);
     }
-  }, [checkAuth, getInterviewDetails, type, id]);
+  }, [getInterviewDetails, type, id]);
 
   const questions = interview?.questions;
 
@@ -212,7 +216,8 @@ const Agent: React.FC<agentProps> = ({ type, id }) => {
           <div
             className={cn(
               "flex flex-col items-center justify-center w-1/2 gap-3.5 p-7 h-[300px] rounded-2xl border flex-1 relative overflow-hidden transition-all",
-              isAISpeaking && "shadow-[0_0_0_1px_rgba(34,197,94,0.12),0_18px_40px_-20px_var(--brand-glow)]",
+              isAISpeaking &&
+                "shadow-[0_0_0_1px_rgba(34,197,94,0.12),0_18px_40px_-20px_var(--brand-glow)]",
             )}
             style={{
               background: "linear-gradient(160deg, #202024 0%, #141416 100%)",
@@ -253,11 +258,14 @@ const Agent: React.FC<agentProps> = ({ type, id }) => {
           <div
             className={cn(
               "flex flex-col items-center justify-center w-1/2 gap-3.5 p-7 h-[300px] rounded-2xl border flex-1 relative overflow-hidden transition-all",
-              isUserSpeaking && "shadow-[0_0_0_1px_rgba(34,197,94,0.12),0_18px_40px_-20px_var(--brand-glow)]",
+              isUserSpeaking &&
+                "shadow-[0_0_0_1px_rgba(34,197,94,0.12),0_18px_40px_-20px_var(--brand-glow)]",
             )}
             style={{
               background: "linear-gradient(160deg, #202024 0%, #141416 100%)",
-              borderColor: isUserSpeaking ? "var(--brand-dim)" : "var(--border)",
+              borderColor: isUserSpeaking
+                ? "var(--brand-dim)"
+                : "var(--border)",
               borderWidth: 1,
               borderStyle: "solid",
             }}
@@ -291,7 +299,9 @@ const Agent: React.FC<agentProps> = ({ type, id }) => {
                 />
               )}
             </div>
-            <p className="text-[15px] font-medium text-foreground/90 z-10">You</p>
+            <p className="text-[15px] font-medium text-foreground/90 z-10">
+              You
+            </p>
             <small className="text-xs text-muted-foreground z-10">
               {isUserSpeaking ? "speaking…" : "listening"}
             </small>
@@ -342,7 +352,8 @@ const Agent: React.FC<agentProps> = ({ type, id }) => {
             <Button
               className="relative w-52 h-16 px-7 py-3 rounded-full shadow-sm focus:outline-none focus:shadow-2xl text-lg font-semibold text-white border border-transparent transition-transform hover:-translate-y-0.5"
               style={{
-                background: "linear-gradient(135deg, var(--brand), var(--brand-dim))",
+                background:
+                  "linear-gradient(135deg, var(--brand), var(--brand-dim))",
                 boxShadow: "0 12px 30px -12px var(--brand-glow)",
               }}
               onClick={handleCall}
