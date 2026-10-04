@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { LoginForm } from "@/components/auth/loginPage/LoginForm";
 import { CustomDialog } from "@/components/auth/helperComponents/CustomDialog";
 import { motion, AnimatePresence } from "framer-motion";
@@ -17,6 +18,10 @@ export const LoginDialog: React.FC<LoginDialogProps> = ({
   openForgotPassword,
   onSuccessfulAuth,
 }) => {
+  // Mirrors LoginForm's isLoading || isSuccess - keeps CustomDialog
+  // non-dismissible through the success-message window.
+  const [isBusy, setIsBusy] = useState(false);
+
   const handleOpenSignup = () => {
     onClose();
     openSignup();
@@ -28,7 +33,7 @@ export const LoginDialog: React.FC<LoginDialogProps> = ({
   };
 
   return (
-    <CustomDialog isOpen={isOpen} onClose={onClose} title="Login">
+    <CustomDialog isOpen={isOpen} onClose={onClose} title="Login" preventClose={isBusy}>
       <AnimatePresence mode="wait">
         {isOpen && (
           <motion.div
@@ -44,6 +49,7 @@ export const LoginDialog: React.FC<LoginDialogProps> = ({
                 onSuccessfulAuth={onSuccessfulAuth}
                 openSignup={handleOpenSignup}
                 openForgotPassword={handleOpenForgotPassword}
+                onBusyChange={setIsBusy}
               />
             </div>
           </motion.div>
