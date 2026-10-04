@@ -46,8 +46,8 @@ interface authData {
   updateInstitution: (institution: string) => Promise<void>;
   heatmapData: Record<string, number> | null;
   fetchHeatmapData: () => Promise<void>;
-  updateProfilePicture: (file: File) => Promise<void>;
-  deleteProfilePicture: () => Promise<void>;
+  updateProfilePicture: (file: File | Blob) => Promise<void>;
+  setDefaultAvatar: (gender: "male" | "female") => Promise<void>;
 }
 
 let checkAuthRequestId = 0;
@@ -277,13 +277,13 @@ export const useUserStore = create<authData>()(
     }
   },
 
-  updateProfilePicture: async (file: File) => {
+  updateProfilePicture: async (file: File | Blob) => {
     try {
       set({ isDataUpdating: true });
 
       // Create FormData
       const formData = new FormData();
-      formData.append("picture", file);
+      formData.append("picture", file, "avatar.png");
 
       // Upload to backend
       const response = await axios.patch(
@@ -313,13 +313,16 @@ export const useUserStore = create<authData>()(
     }
   },
 
-  deleteProfilePicture: async () => {
+  setDefaultAvatar: async (gender: "male" | "female") => {
     try {
       set({ isDataUpdating: true });
 
-      const response = await axios.delete(`${API_URL}/user/profile/picture`);
+      const response = await axios.patch(
+        `${API_URL}/user/profile/picture/default`,
+        { gender },
+      );
 
-      // Update local state with the default picture URL the server reset to
+      // Update local state with the default picture URL the server set
       set((state) => ({
         userData: state.userData
           ? { ...state.userData, picture: response.data.imageUrl }
@@ -329,7 +332,7 @@ export const useUserStore = create<authData>()(
     } catch (error: any) {
       set({
         error:
-          error.response?.data?.message || "Failed to delete profile picture",
+          error.response?.data?.message || "Failed to set default avatar",
         isDataUpdating: false,
       });
       throw error;

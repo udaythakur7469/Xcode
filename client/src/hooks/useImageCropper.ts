@@ -2,6 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CropTransform } from "@/lib/cropImage";
 
 export const CROP_STAGE_SIZE = 320;
+// Diameter of the visible circular crop hole (same pixel space as the stage).
+export const CROP_HOLE_DIAMETER = 220;
+const HOLE_INSET = (CROP_STAGE_SIZE - CROP_HOLE_DIAMETER) / 2;
 export const CROP_ZOOM_MIN = 100;
 export const CROP_ZOOM_MAX = 300;
 
@@ -41,10 +44,13 @@ export function useImageCropper() {
   // transform change (which would tear down/rebuild it mid-drag).
   const latestRef = useRef({ transform, naturalSize });
   latestRef.current = { transform, naturalSize };
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
 
   const baseScaleFor = useCallback((width: number, height: number) => {
     const minDimension = Math.min(width, height);
-    return minDimension > 0 ? CROP_STAGE_SIZE / minDimension : 1;
+    // At 100% zoom the image's shorter side exactly spans the circle.
+    return minDimension > 0 ? CROP_HOLE_DIAMETER / minDimension : 1;
   }, []);
 
   const clampOrigin = useCallback(
@@ -57,11 +63,15 @@ export function useImageCropper() {
     ) => {
       const scaledWidth = width * scale;
       const scaledHeight = height * scale;
-      const minX = Math.min(0, CROP_STAGE_SIZE - scaledWidth);
-      const minY = Math.min(0, CROP_STAGE_SIZE - scaledHeight);
+      // The image only has to cover the circle's bounding square, so its
+      // edges/corners can be dragged all the way to the circle's edge.
+      const maxX = HOLE_INSET;
+      const maxY = HOLE_INSET;
+      const minX = HOLE_INSET + CROP_HOLE_DIAMETER - scaledWidth;
+      const minY = HOLE_INSET + CROP_HOLE_DIAMETER - scaledHeight;
       return {
-        originX: Math.max(minX, Math.min(0, originX)),
-        originY: Math.max(minY, Math.min(0, originY)),
+        originX: Math.max(minX, Math.min(maxX, originX)),
+        originY: Math.max(minY, Math.min(maxY, originY)),
       };
     },
     [],
@@ -82,6 +92,7 @@ export function useImageCropper() {
 
   const handleZoomChange = useCallback(
     (nextZoom: number) => {
+      zoomRef.current = nextZoom;
       setZoom(nextZoom);
       setTransform((prev) => {
         const { naturalSize: size } = latestRef.current;
@@ -166,11 +177,12 @@ export function useImageCropper() {
       const step = deltaY < 0 ? 5 : -5;
       const nextZoom = Math.max(
         CROP_ZOOM_MIN,
-        Math.min(CROP_ZOOM_MAX, zoom + step),
+        Math.min(CROP_ZOOM_MAX, zoomRef.current + step),
       );
+      if (nextZoom === zoomRef.current) return;
       handleZoomChange(nextZoom);
     },
-    [zoom, handleZoomChange],
+    [handleZoomChange],
   );
 
   return {

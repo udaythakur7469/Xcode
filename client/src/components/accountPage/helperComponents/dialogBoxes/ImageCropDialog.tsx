@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import { MoonLoader } from "react-spinners";
 import {
@@ -39,8 +39,12 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
   onBack,
   onSave,
 }) => {
-  const imageRef = useRef<HTMLImageElement>(null);
   const [isSaving, setIsSaving] = React.useState(false);
+  // The stage lives inside a Radix portal, which mounts AFTER this component
+  // first renders — so a plain useRef is still null when effects run. Using
+  // state-backed callback refs guarantees our effects re-run once the
+  // element really exists.
+  const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
   const {
     transform,
     zoom,
@@ -51,23 +55,23 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
     handleWheelZoom,
   } = useImageCropper();
 
-  // Re-center the image every time a new source is loaded into the dialog.
+  // Initialise (center + reset zoom) whenever the <img> finishes loading.
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    initializeImage(img.naturalWidth, img.naturalHeight);
+  };
+
+  // Mouse-wheel zoom needs a NON-passive native listener so preventDefault
+  // works (React's onWheel is passive) and the page behind doesn't scroll.
   useEffect(() => {
-    const img = imageRef.current;
-    if (!img || !imageSrc) return;
-
-    const handleLoad = () => {
-      initializeImage(img.naturalWidth, img.naturalHeight);
+    if (!stageEl) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      handleWheelZoom(e.deltaY);
     };
-
-    if (img.complete && img.naturalWidth > 0) {
-      handleLoad();
-    } else {
-      img.addEventListener("load", handleLoad);
-      return () => img.removeEventListener("load", handleLoad);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageSrc]);
+    stageEl.addEventListener("wheel", onWheel, { passive: false });
+    return () => stageEl.removeEventListener("wheel", onWheel);
+  }, [stageEl, handleWheelZoom]);
 
   const handleSave = async () => {
     if (!imageSrc) return;
@@ -104,17 +108,15 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
           visually shown.
         */}
         <div
+          ref={setStageEl}
           className="relative mx-auto h-80 w-80 touch-none select-none overflow-hidden rounded-lg bg-black"
           style={{ cursor: isDragging ? "grabbing" : "grab" }}
           onPointerDown={handlePointerDown}
-          onWheel={(e) => {
-            e.preventDefault();
-            handleWheelZoom(e.deltaY);
-          }}
         >
           {imageSrc && (
             <img
-              ref={imageRef}
+              key={imageSrc}
+              onLoad={handleImageLoad}
               src={imageSrc}
               alt="Crop preview"
               draggable={false}
