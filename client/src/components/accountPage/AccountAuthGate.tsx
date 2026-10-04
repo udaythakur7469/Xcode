@@ -14,30 +14,33 @@ const REDIRECT_SECONDS = 3;
  * and non-interactive behind a fixed, non-dismissible dialog telling them
  * to log in or sign up. No login form here — after REDIRECT_SECONDS the
  * user is sent back with router.back().
+ *
+ * Doesn't call checkAuth() itself — AuthProvider (mounted once in the root
+ * layout) owns that. This just reads the resulting state, and additionally
+ * waits for isHydrated so a reload never flashes the "login required"
+ * dialog for a second while the persisted session is still loading.
  */
 const AccountAuthGate: React.FC<AccountAuthGateProps> = ({ children }) => {
   const router = useRouter();
-  const { checkAuth, isUserAuthenticated, isCheckingUserAuth } = useUserStore();
+  const { isUserAuthenticated, isCheckingUserAuth, isHydrated } =
+    useUserStore();
 
   const [hasBeenAuthenticated, setHasBeenAuthenticated] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(REDIRECT_SECONDS);
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  useEffect(() => {
     if (isUserAuthenticated) setHasBeenAuthenticated(true);
   }, [isUserAuthenticated]);
 
+  const isStillResolving = !isHydrated || isCheckingUserAuth;
   const isLocked = hasBeenAuthenticated
     ? false
-    : isCheckingUserAuth || !isUserAuthenticated;
+    : isStillResolving || !isUserAuthenticated;
 
   // Countdown + redirect, only once we're sure the user isn't authenticated
-  // (i.e. the initial check has finished and failed).
+  // (i.e. hydration + the initial check have both finished and failed).
   useEffect(() => {
-    if (!isLocked || isCheckingUserAuth) return;
+    if (!isLocked || isStillResolving) return;
 
     setSecondsLeft(REDIRECT_SECONDS);
     const interval = setInterval(() => {
@@ -51,7 +54,7 @@ const AccountAuthGate: React.FC<AccountAuthGateProps> = ({ children }) => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [isLocked, isCheckingUserAuth, router]);
+  }, [isLocked, isStillResolving, router]);
 
   return (
     <div className="relative">
