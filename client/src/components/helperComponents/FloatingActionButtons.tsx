@@ -247,8 +247,8 @@ const FloatingActionButtons = () => {
 
       <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
         <LogoutDialog
-          isOpen={isLogoutOpen}
           onClose={() => setIsLogoutOpen(false)}
+          onLoggedOut={() => setCommandBarDialogOpen(false)}
         />
       </Dialog>
     </>
