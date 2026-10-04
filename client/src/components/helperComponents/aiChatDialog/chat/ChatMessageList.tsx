@@ -26,10 +26,21 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
   const createRegenerateBranch = useChatStore((s) => s.createRegenerateBranch);
   const createEditBranch = useChatStore((s) => s.createEditBranch);
 
+  const revealTarget = useChatStore((s) => s.revealTarget);
+  const clearRevealTarget = useChatStore((s) => s.clearRevealTarget);
+
+  // True while a search result is being revealed in this chat. While true,
+  // every "snap / scroll to bottom" behaviour below stands down so it can't
+  // fight the scroll-to-message logic.
+  const isRevealPending = () => {
+    const t = useChatStore.getState().revealTarget;
+    return !!t && t.chatId === activeChatId;
+  };
+
   // Reset initial-load flag whenever the active chat changes
   useLayoutEffect(() => {
     isInitialLoad.current = true;
-    if (containerRef.current) {
+    if (containerRef.current && !isRevealPending()) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [activeChatId]);
@@ -40,6 +51,10 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
+
+      // Opened via search result → the reveal effect below positions the
+      // scroll on the target message; don't snap to the bottom.
+      if (isRevealPending()) return;
 
       const container = containerRef.current;
       if (!container) return;
@@ -66,8 +81,74 @@ const ChatMessageList: React.FC<ChatMessageListProps> = ({
     }
 
     // New message after initial load — smooth scroll
+    if (isRevealPending()) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
+
+  // ── Reveal a message chosen from Text Search / Node Search ───────────────
+  // Scrolls the target bubble to the vertical centre of the list and flashes
+  // it. Layout can still shift for a moment after first paint (markdown, code
+  // blocks), so we re-centre on DOM mutations for a short window — but stop
+  // the instant the user scrolls/touches, so we never fight them.
+  useLayoutEffect(() => {
+    if (!revealTarget || revealTarget.chatId !== activeChatId) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const selector = `[data-message-id="${CSS.escape(revealTarget.messageId)}"]`;
+    const target = container.querySelector<HTMLElement>(selector);
+    if (!target) return; // path not rebuilt yet — effect re-runs when messages change
+
+    const centre = () => {
+      const c = container.getBoundingClientRect();
+      const t = target.getBoundingClientRect();
+      const delta = t.top - c.top - (c.height / 2 - t.height / 2);
+      // Very tall message: align its top a little below the container top
+      // instead of centring (centring would cut off the beginning).
+      const tooTall = t.height > c.height * 0.8;
+      container.scrollTop += tooTall ? t.top - c.top - 16 : delta;
+    };
+    centre();
+
+    // Highlight ONLY the bubble's own border — `target` is the full-width
+    // row wrapper, so animating it would light up the whole horizontal strip.
+    const bubble = target.querySelector<HTMLElement>("[data-message-bubble]") ?? target;
+    bubble.animate(
+      [
+        { boxShadow: "0 0 0 0 rgba(34,197,94,0)" },
+        { boxShadow: "0 0 0 2px rgba(34,197,94,.9)", offset: 0.2 },
+        { boxShadow: "0 0 0 2px rgba(34,197,94,.9)", offset: 0.65 },
+        { boxShadow: "0 0 0 0 rgba(34,197,94,0)" },
+      ],
+      { duration: 1800, easing: "ease-out" },
+    );
+
+    let userTookOver = false;
+    const stop = () => {
+      userTookOver = true;
+      observer.disconnect();
+    };
+    const observer = new MutationObserver(() => {
+      if (!userTookOver) centre();
+    });
+    observer.observe(container, { childList: true, subtree: true });
+    container.addEventListener("wheel", stop, { passive: true, once: true });
+    container.addEventListener("touchstart", stop, { passive: true, once: true });
+    container.addEventListener("mousedown", stop, { once: true });
+
+    const settle = setTimeout(() => {
+      observer.disconnect();
+      clearRevealTarget(revealTarget.nonce);
+    }, 700);
+
+    return () => {
+      clearTimeout(settle);
+      observer.disconnect();
+      container.removeEventListener("wheel", stop);
+      container.removeEventListener("touchstart", stop);
+      container.removeEventListener("mousedown", stop);
+    };
+  }, [revealTarget, activeChatId, messages, isLoading, clearRevealTarget]);
 
   if (error) {
     return (
