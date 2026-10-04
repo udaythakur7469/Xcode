@@ -188,6 +188,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
     <>
       {/* Outer wrapper — hover zone covers bubble + navigator + action bar */}
       <div
+        data-message-id={message.id}
         className={`flex flex-col mb-4 ${isUser ? "items-end" : "items-start"}`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
@@ -195,7 +196,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
         onTouchEnd={isUser ? handleTouchEnd : undefined}
       >
         {/* ── Bubble ──────────────────────────────────────────────────────── */}
-        <div className={bubbleClasses}>
+        <div data-message-bubble className={bubbleClasses}>
           {isThinking ? (
             /* Thinking state — Stop button removed from bubble, lives in ChatInput */
             <div className="flex items-center gap-2 py-0.5 text-zinc-300">
