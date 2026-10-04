@@ -50,16 +50,24 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(
     const canvasRef = useRef<HTMLDivElement>(null);
     const sizerRef = useRef<HTMLDivElement>(null);
     const wrapRef = useRef<HTMLDivElement>(null);
+    // Getter-backed so the zoom hook always sees the CURRENT DOM nodes, even
+    // on the very first layout effect (a plain snapshot taken during render
+    // would still hold null for refs that attach after that render).
     const refsBundle = useRef<{
       canvas: HTMLDivElement | null;
       sizer: HTMLDivElement | null;
       wrap: HTMLDivElement | null;
-    }>({ canvas: null, sizer: null, wrap: null });
-    refsBundle.current = {
-      canvas: canvasRef.current,
-      sizer: sizerRef.current,
-      wrap: wrapRef.current,
-    };
+    }>({
+      get canvas() {
+        return canvasRef.current;
+      },
+      get sizer() {
+        return sizerRef.current;
+      },
+      get wrap() {
+        return wrapRef.current;
+      },
+    });
     const baseSizeRef = useRef({ width: 0, height: 0, rootPx: 0 });
 
     const { applyInstant, zoomIn, zoomOut, zoomByWheel } = useZoomAnimation(
@@ -191,24 +199,92 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(
       [chatCache, openedFromChatId, onRevealMessage],
     );
 
-    const handleWheel = useCallback(
-      (e: React.WheelEvent) => {
-        if (!e.ctrlKey) return;
+    // ── Mouse wheel = zoom (anchored at the cursor) ─────────────────────────
+    // Must be a NATIVE non-passive listener: React registers onWheel as
+    // passive, so preventDefault() there is ignored and the canvas would
+    // scroll instead of zooming.
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const onWheel = (e: WheelEvent) => {
         e.preventDefault();
-        zoomByWheel(e.deltaY);
+        const rect = canvas.getBoundingClientRect();
+        zoomByWheel(e.deltaY, e.deltaMode, {
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        });
         setHovered(null);
-      },
-      [zoomByWheel],
-    );
+      };
+      canvas.addEventListener("wheel", onWheel, { passive: false });
+      return () => canvas.removeEventListener("wheel", onWheel);
+    }, [zoomByWheel]);
+
+    // ── Click-and-drag = pan ────────────────────────────────────────────────
+    // Works from anywhere on the canvas, including over nodes. A press only
+    // becomes a drag after moving a few pixels, so plain clicks on nodes
+    // still open the message; a click that ends a drag is swallowed.
+    const [isPanning, setIsPanning] = useState(false);
+    const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      // Don't hijack presses on the canvas's own scrollbars.
+      if (e.clientX - canvas.getBoundingClientRect().left > canvas.clientWidth) return;
+      if (e.clientY - canvas.getBoundingClientRect().top > canvas.clientHeight) return;
+
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startLeft = canvas.scrollLeft;
+      const startTop = canvas.scrollTop;
+      let dragging = false;
+
+      const onMove = (ev: MouseEvent) => {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (!dragging) {
+          if (Math.hypot(dx, dy) < 4) return;
+          dragging = true;
+          setIsPanning(true);
+          setHovered(null);
+        }
+        ev.preventDefault();
+        canvas.scrollLeft = startLeft - dx;
+        canvas.scrollTop = startTop - dy;
+      };
+      const onUp = () => {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+        if (dragging) {
+          setIsPanning(false);
+          // Swallow the click the browser fires right after a drag.
+          const swallow = (ev: MouseEvent) => {
+            ev.stopPropagation();
+            ev.preventDefault();
+          };
+          window.addEventListener("click", swallow, { capture: true, once: true });
+          setTimeout(() => window.removeEventListener("click", swallow, true), 0);
+        }
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    }, []);
 
     return (
       <div
         ref={canvasRef}
-        onWheel={handleWheel}
+        data-wheel-owner
+        onMouseDown={handleMouseDown}
         onScroll={() => setHovered(null)}
-        className="flex-1 overflow-auto relative px-10 py-7"
+        className={`flex-1 overflow-auto relative px-10 py-7 select-none ${
+          isPanning ? "cursor-grabbing" : "cursor-grab"
+        }`}
       >
-        <div className="flex items-center gap-4.5 pb-4.5 text-[11.5px] text-zinc-400">
+        {/* Legend — explicit pixel gaps (Tailwind has no gap-4.5 / pb-4.5, which
+            is why the items used to touch each other and the tree below). */}
+        <div
+          className="flex flex-wrap items-center text-[11.5px] text-zinc-400"
+          style={{ columnGap: 28, rowGap: 8, marginBottom: 40 }}
+        >
           <span className="flex items-center gap-1.5">
             <i className="w-2.5 h-2.5 rounded-full inline-block bg-[var(--brand)]" />
             Your message
