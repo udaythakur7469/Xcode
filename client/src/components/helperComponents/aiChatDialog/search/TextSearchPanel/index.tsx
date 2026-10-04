@@ -14,6 +14,9 @@ const TextSearchPanel: React.FC<TextSearchPanelProps> = ({ dialogControls }) => 
   const textQuery = useChatStore((s) => s.textQuery);
   const textScope = useChatStore((s) => s.textScope);
   const textResults = useChatStore((s) => s.textResults);
+  const textSearchError = useChatStore((s) => s.textSearchError);
+  const textNextCursor = useChatStore((s) => s.textNextCursor);
+  const runTextSearch = useChatStore((s) => s.runTextSearch);
   const isSearchingText = useChatStore((s) => s.isSearchingText);
   const setTextQuery = useChatStore((s) => s.setTextQuery);
   const setTextScope = useChatStore((s) => s.setTextScope);
@@ -59,7 +62,8 @@ const TextSearchPanel: React.FC<TextSearchPanelProps> = ({ dialogControls }) => 
       <div className="px-4 pt-2 text-[11px] text-zinc-500 max-w-[640px] mx-auto w-full">
         {textQuery.trim() &&
           !isSearchingText &&
-          `${textResults.length} result${textResults.length !== 1 ? "s" : ""} for "${textQuery.trim()}"`}
+          !textSearchError &&
+          `${textResults.length}${textNextCursor ? "+" : ""} result${textResults.length !== 1 ? "s" : ""} for "${textQuery.trim()}"`}
         {isSearchingText && "Searching…"}
       </div>
 
@@ -69,19 +73,35 @@ const TextSearchPanel: React.FC<TextSearchPanelProps> = ({ dialogControls }) => 
           <div className="py-10 text-center text-zinc-500 text-sm">
             Start typing to search your {textScope === "chat" ? "current chat" : "chats"}.
           </div>
+        ) : textSearchError && !isSearchingText ? (
+          <div className="py-10 text-center text-red-400 text-sm">
+            Search failed: {textSearchError}
+          </div>
         ) : !isSearchingText && textResults.length === 0 ? (
           <div className="py-10 text-center text-zinc-500 text-sm">
             No messages found for &quot;{textQuery.trim()}&quot;.
           </div>
         ) : (
-          textResults.map((result) => (
-            <SearchResultItem
-              key={result.messageId}
-              result={result}
-              scope={textScope}
-              onClick={() => handleResultClick(result.chatId, result.messageId)}
-            />
-          ))
+          <>
+            {textResults.map((result) => (
+              <SearchResultItem
+                key={result.messageId}
+                result={result}
+                scope={textScope}
+                onClick={() => handleResultClick(result.chatId, result.messageId)}
+              />
+            ))}
+            {textNextCursor && (
+              <button
+                type="button"
+                disabled={isSearchingText}
+                onClick={() => runTextSearch({ append: true })}
+                className="w-full mt-2 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+              >
+                Show more results
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
