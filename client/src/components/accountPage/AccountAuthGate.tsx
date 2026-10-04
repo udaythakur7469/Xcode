@@ -69,7 +69,9 @@ const AccountAuthGate: React.FC<AccountAuthGateProps> = ({ children }) => {
         {children}
       </div>
 
-      {isLocked && (
+      {/* Only show the dialog once hydration + the auth check have finished
+          and the user is confirmed signed out — never while resolving. */}
+      {isLocked && !isStillResolving && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-sm">
           <div
             className="w-[min(420px,90vw)] rounded-2xl border p-7 text-center shadow-2xl"
@@ -93,11 +95,9 @@ const AccountAuthGate: React.FC<AccountAuthGateProps> = ({ children }) => {
             <p className="mb-1.5 text-sm text-muted-foreground">
               Please login or signup to access your account.
             </p>
-            {!isCheckingUserAuth && (
-              <p className="text-xs text-muted-foreground/70">
-                Redirecting you back in {secondsLeft}s…
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground/70">
+              Redirecting you back in {secondsLeft}s…
+            </p>
           </div>
         </div>
       )}
