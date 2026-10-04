@@ -10,26 +10,20 @@ import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/Forgo
 type InterviewAuthGateProps = { children: React.ReactNode };
 
 /**
- * Blocks /practice-interview and /generate-interview entirely for signed-out
- * (or not-yet-checked) users: page content is blurred + non-interactive
- * behind a fixed dialog that cannot be dismissed. It only goes away once
- * useUserStore reports isUserAuthenticated === true (via checkAuth, the same
- * flow Agent.tsx already relies on and the same onSuccessfulAuth={checkAuth}
- * pattern used across the app's Login/Signup/ForgotPassword dialogs).
+ * Doesn't call checkAuth() itself — AuthProvider (mounted once in the root
+ * layout) owns that. This just reads the resulting state, and additionally
+ * waits for isHydrated so a reload never flashes this dialog for a second
+ * while the persisted session is still loading.
  */
 const InterviewAuthGate: React.FC<InterviewAuthGateProps> = ({ children }) => {
-  const { checkAuth, isUserAuthenticated, isCheckingUserAuth } =
+  const { checkAuth, isUserAuthenticated, isCheckingUserAuth, isHydrated } =
     useUserStore();
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
-  const isLocked = isCheckingUserAuth || !isUserAuthenticated;
+  const isLocked = !isHydrated || isCheckingUserAuth || !isUserAuthenticated;
 
   return (
     <div className="relative">
