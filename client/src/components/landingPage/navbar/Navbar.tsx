@@ -11,13 +11,14 @@ import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/Forgo
 import { ResetPasswordDialog } from "@/components/auth/resetPasswordPage/ResetPasswordDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import AccountDropDown from "../helperComponents/AccountDropDown";
+import LogoutDialog from "../helperComponents/LogoutDialog";
+import { Dialog } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
 } from "@/components/ui/logout-dropdown-menu";
 import { UserProfileSkeleton } from "@/components/accountPage/UserProfileSkeleton";
 import NavbarShell from "./NavbarShell";
-import { DEFAULT_PROFILE_PICTURE } from "@/constants/avatar";
 
 type NavbarProps = {
   buttons: string[];
@@ -34,28 +35,34 @@ const Navbar: React.FC<NavbarProps> = ({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const [isAuthChecked, setIsAuthChecked] = useState<boolean>(false);
-
   // Dialog open/close state
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [isResetPasswordOpen, setIsResetPasswordOpen] = useState(false);
 
+  // Controlled so logging out can close this alongside the LogoutDialog
+  // instead of leaving it open underneath - see AccountDropDown's
+  // onOpenLogout prop for why this needs to be controlled at all.
+  const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
+
+  // Rendered unconditionally below (outside the isUserAuthenticated
+  // branch), independent of the dropdown's own open state - see
+  // AccountDropDown.tsx for why LogoutDialog moved out of there.
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+
   // The token read from ?resetToken= — kept in state so the dialog
   // can use it even after we clear it from the URL
   const [resetToken, setResetToken] = useState<string>("");
 
-  const { checkAuth, userData, isUserAuthenticated } = useUserStore();
+  const { checkAuth, userData, isUserAuthenticated, isCheckingUserAuth, isHydrated } =
+    useUserStore();
 
-  // ── Auth init ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const initAuth = async () => {
-      await checkAuth();
-      setIsAuthChecked(true);
-    };
-    initAuth();
-  }, [checkAuth]);
+  // No mount-effect checkAuth() call here anymore - AuthProvider (mounted
+  // once in the root layout) owns the app-wide identity check. isAuthChecked
+  // below is derived from the store's own isHydrated/isCheckingUserAuth
+  // instead of this component driving its own check.
+  const isAuthChecked = isHydrated && !isCheckingUserAuth;
 
   // ── Auto-open ResetPasswordDialog when ?resetToken= is in the URL ───────────
   // This is how the "Reset my password" email link lands back on the homepage:
@@ -104,18 +111,16 @@ const Navbar: React.FC<NavbarProps> = ({
       <ThemeToggle />
       <MenubarMenu>
         {isUserAuthenticated ? (
-          <DropdownMenu>
+          <DropdownMenu open={isAccountMenuOpen} onOpenChange={setIsAccountMenuOpen}>
             <DropdownMenuTrigger asChild>
               <div className="cursor-pointer">
                 <Avatar>
-                  <AvatarImage
-                    src={(picture as string) || DEFAULT_PROFILE_PICTURE}
-                  />
+                  <AvatarImage src={picture || ""} />
                   <AvatarFallback>{firstLetter}</AvatarFallback>
                 </Avatar>
               </div>
             </DropdownMenuTrigger>
-            <AccountDropDown />
+            <AccountDropDown onOpenLogout={() => setIsLogoutOpen(true)} />
           </DropdownMenu>
         ) : (
           <MenubarTrigger
@@ -203,6 +208,16 @@ const Navbar: React.FC<NavbarProps> = ({
           setIsLoginOpen(true);
         }}
       />
+
+      {/* Logout dialog — rendered unconditionally, independent of
+          isUserAuthenticated, so clearUser() flipping that flag on
+          successful logout can never unmount this mid-flow. */}
+      <Dialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+        <LogoutDialog
+          onClose={() => setIsLogoutOpen(false)}
+          onLoggedOut={() => setIsAccountMenuOpen(false)}
+        />
+      </Dialog>
     </>
   );
 };
