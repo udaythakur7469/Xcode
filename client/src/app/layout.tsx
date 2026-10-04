@@ -6,6 +6,7 @@ import ClientFABWrapper from "@/components/helperComponents/ClientFABWrapper";
 import { CommentPanelProvider } from "@/context/commentPanelContext";
 import { SocketProvider } from "@/context/socketContext";
 import { AiAnalysisPanelProvider } from "@/context/aiAnalysisPanelContext";
+import AuthProvider from "@/components/providers/AuthProvider";
 
 export const metadata: Metadata = {
   title: "Xcode",
@@ -33,15 +34,17 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <SocketProvider>
-            <CommentPanelProvider>
-              <AiAnalysisPanelProvider>
-                {children}
-                <Toaster />
-                <ClientFABWrapper />
-              </AiAnalysisPanelProvider>
-            </CommentPanelProvider>
-          </SocketProvider>
+          <AuthProvider>
+            <SocketProvider>
+              <CommentPanelProvider>
+                <AiAnalysisPanelProvider>
+                  {children}
+                  <Toaster />
+                  <ClientFABWrapper />
+                </AiAnalysisPanelProvider>
+              </CommentPanelProvider>
+            </SocketProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
