@@ -286,6 +286,24 @@ interface ChatState {
 
 // Debounce timer for live text search — module-level since it must survive
 // across individual setTextQuery calls, not be reset per-call.
+// Remembered "This Chat / All Chats" tab for each search panel. Persisted so
+// it survives closing the panel, closing the dialog and page reloads.
+const SCOPE_LS = { text: "chatSearch:textScope", node: "chatSearch:nodeScope" } as const;
+const loadScope = (key: keyof typeof SCOPE_LS): SearchScope => {
+  try {
+    return localStorage.getItem(SCOPE_LS[key]) === "all" ? "all" : "chat";
+  } catch {
+    return "chat";
+  }
+};
+const saveScope = (key: keyof typeof SCOPE_LS, scope: SearchScope) => {
+  try {
+    localStorage.setItem(SCOPE_LS[key], scope);
+  } catch {
+    /* storage unavailable — remembering is best-effort */
+  }
+};
+
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 // Monotonic id so a slow, older search response can never overwrite a newer one.
 let searchRequestSeq = 0;
@@ -320,12 +338,12 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   revealTarget: null,
   activePanel: null,
   textQuery: "",
-  textScope: "chat",
+  textScope: loadScope("text"),
   textResults: [],
   textNextCursor: null,
   isSearchingText: false,
   textSearchError: null,
-  nodeScope: "chat",
+  nodeScope: loadScope("node"),
   nodeGraphOpenedFromChatId: null,
   loadedChatTreeIds: new Set<string>(),
   graphZoom: 1,
@@ -938,7 +956,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   openNodeSearch: (activeChatId) => {
     set({
       activePanel: "node",
-      nodeScope: "chat",
+      nodeScope: get().nodeScope, // remembered tab (persisted)
       nodeGraphOpenedFromChatId: activeChatId,
       loadedChatTreeIds: new Set(activeChatId ? [activeChatId] : []),
       graphZoom: 1,
@@ -960,6 +978,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   },
 
   setTextScope: (textScope) => {
+    saveScope("text", textScope);
     set({ textScope });
     get().runTextSearch();
   },
@@ -1003,13 +1022,15 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     }
   },
 
-  setNodeScope: (nodeScope) =>
+  setNodeScope: (nodeScope) => {
+    saveScope("node", nodeScope);
     set({
       nodeScope,
       graphZoom: 1,
       graphSearchOpen: false,
       graphSearchQuery: "",
-    }),
+    });
+  },
 
   markChatTreeLoaded: (chatId) =>
     set((state) => ({
@@ -1304,13 +1325,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       // Chat Search state also clears when the dialog closes
       activePanel: null,
       textQuery: "",
-      textScope: "chat",
+      textScope: loadScope("text"), // remembered tab survives dialog close
       textResults: [],
       textNextCursor: null,
       isSearchingText: false,
       textSearchError: null,
       revealTarget: null,
-      nodeScope: "chat",
+      nodeScope: loadScope("node"),
       nodeGraphOpenedFromChatId: null,
       loadedChatTreeIds: new Set<string>(),
       graphZoom: 1,
