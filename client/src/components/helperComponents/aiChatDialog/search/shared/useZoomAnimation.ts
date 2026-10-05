@@ -201,5 +201,51 @@ export function useZoomAnimation(
     [refs, applyZoomAnchored],
   );
 
-  return { zoomRef, applyInstant, animateTo, zoomIn, zoomOut, zoomByWheel };
+  // Smoothly returns to EXACTLY the state applyInstant(1) produced when the
+  // panel opened: zoom 1, diagram centred on the root, scrolled to the top.
+  // One rAF loop drives zoom + scroll together (same single-clock rule as
+  // animateTo), so there is no drift between them.
+  const recenter = useCallback(() => {
+    const { sizer, wrap, canvas } = refs.current;
+    const base = baseSizeRef.current;
+    if (!sizer || !wrap || !canvas) return;
+
+    const myToken = ++tokenRef.current;
+    const fromZoom = zoomRef.current;
+    const fromLeft = canvas.scrollLeft;
+    const fromTop = canvas.scrollTop;
+    targetZoomRef.current = 1;
+
+    // Same target-scroll rule as applyInstant at zoom 1.
+    const extraSpace1 = canvas.clientWidth / 2 - base.rootPx;
+    const toLeft =
+      extraSpace1 > 0
+        ? 0
+        : Math.max(0, Math.min(-extraSpace1, Math.max(0, base.width - canvas.clientWidth)));
+    const toTop = 0;
+    const start = performance.now();
+
+    function step(now: number) {
+      if (myToken !== tokenRef.current) return;
+      const t = Math.min(1, (now - start) / ZOOM_DURATION_MS);
+      const e = easeOutCubic(t);
+      const z = fromZoom + (1 - fromZoom) * e;
+
+      wrap!.style.transform = `scale(${z})`;
+      sizer!.style.width = `${base.width * z}px`;
+      sizer!.style.height = `${base.height * z}px`;
+      const extra = canvas!.clientWidth / 2 - base.rootPx * z;
+      sizer!.style.marginLeft = extra > 0 ? `${extra}px` : "0px";
+
+      canvas!.scrollLeft = fromLeft + (toLeft - fromLeft) * e;
+      canvas!.scrollTop = fromTop + (toTop - fromTop) * e;
+      zoomRef.current = z;
+
+      if (t < 1) requestAnimationFrame(step);
+      else applyInstant(1); // snap to the exact opening state
+    }
+    requestAnimationFrame(step);
+  }, [refs, baseSizeRef, applyInstant]);
+
+  return { zoomRef, applyInstant, animateTo, zoomIn, zoomOut, zoomByWheel, recenter };
 }
