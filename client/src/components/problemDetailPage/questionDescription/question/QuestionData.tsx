@@ -3,7 +3,13 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useProblemStore } from "@/features/problemStore";
-import { CircleCheckBig, Lightbulb, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  ChartNoAxesCombined,
+  CircleCheckBig,
+  Lightbulb,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import HintsDialog from "../dialogBoxes/hints/HintsDialog";
@@ -57,6 +63,7 @@ const QuestionData: React.FC<QuestionDataProps> = ({ code, language }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hintsOpen, setHintsOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const { socket } = useSocket();
 
@@ -248,7 +255,19 @@ const QuestionData: React.FC<QuestionDataProps> = ({ code, language }) => {
                 {formatCount(storeProblem?.dislikes ?? 0)}
               </Badge>
 
-              <StatsDialog stats={problem.problemStats} />
+              <Dialog open={statsOpen} onOpenChange={setStatsOpen}>
+                <DialogTrigger asChild>
+                  <Badge
+                    variant="secondary"
+                    className="px-2 py-1 flex items-center ml-1 cursor-pointer hover:opacity-80"
+                    onClick={() => setStatsOpen(true)}
+                  >
+                    <ChartNoAxesCombined className="h-5 w-5" />
+                  </Badge>
+                </DialogTrigger>
+
+                {statsOpen && <StatsDialog stats={problem.problemStats} />}
+              </Dialog>
             </div>
           </div>
 
