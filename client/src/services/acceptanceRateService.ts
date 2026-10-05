@@ -1,5 +1,3 @@
-export const toTwoDecimals = async (
-  acceptanceRate: number,
-): Promise<number> => {
-  return Math.round(acceptanceRate * 100) / 100;
+export const toTwoDecimals = (acceptanceRate: number): number => {
+  return Math.round((Number(acceptanceRate) || 0) * 100) / 100;
 };
