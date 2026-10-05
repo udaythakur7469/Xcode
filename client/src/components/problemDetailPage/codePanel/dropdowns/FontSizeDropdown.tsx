@@ -36,10 +36,11 @@ const FontSizeDropdown: React.FC<FontSizeDropdownProps> = ({
           type="number"
           value={fontSize}
           onChange={(e) => setFontSize(e.target.value)}
+          onKeyDown={(e) => e.stopPropagation()}
           min="10"
           max="24"
           placeholder="Font Size"
-          className="my-2 w-full"
+          className="my-2 w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <Button
           variant="secondary"
