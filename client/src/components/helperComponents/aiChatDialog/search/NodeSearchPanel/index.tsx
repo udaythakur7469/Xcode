@@ -6,7 +6,7 @@ import ScopeToggle from "../shared/ScopeToggle";
 import PanelWindowControls from "../shared/PanelWindowControls";
 import TreeCanvas, { TreeCanvasHandle } from "./TreeCanvas";
 import GraphSearchBar from "./GraphSearchBar";
-import ZoomControls from "./ZoomControls";
+import RecenterButton from "./RecenterButton";
 
 interface NodeSearchPanelProps {
   dialogControls: FloatingDialogOverlayControls;
@@ -77,10 +77,6 @@ const NodeSearchPanel: React.FC<NodeSearchPanelProps> = ({ dialogControls }) => 
         }}
       />
 
-      <ZoomControls
-        onZoomIn={() => treeRef.current?.zoomIn()}
-        onZoomOut={() => treeRef.current?.zoomOut()}
-      />
     </div>
   );
 };
