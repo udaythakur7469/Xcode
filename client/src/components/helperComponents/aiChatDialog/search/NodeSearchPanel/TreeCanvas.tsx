@@ -25,8 +25,7 @@ import TreeNode from "./TreeNode";
 import NodeTooltip from "./NodeTooltip";
 
 export interface TreeCanvasHandle {
-  zoomIn: () => void;
-  zoomOut: () => void;
+  recenter: () => void;
   jumpToNextMatch: () => void;
 }
 
@@ -70,7 +69,7 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(
     });
     const baseSizeRef = useRef({ width: 0, height: 0, rootPx: 0 });
 
-    const { applyInstant, zoomIn, zoomOut, zoomByWheel } = useZoomAnimation(
+    const { applyInstant, zoomByWheel, recenter } = useZoomAnimation(
       refsBundle,
       baseSizeRef,
     );
@@ -123,8 +122,7 @@ const TreeCanvas = forwardRef<TreeCanvasHandle, TreeCanvasProps>(
     }, [width, height, rootId, layoutMap, applyInstant]);
 
     useImperativeHandle(ref, () => ({
-      zoomIn,
-      zoomOut,
+      recenter,
       jumpToNextMatch: () => {
         const matchEls = canvasRef.current?.querySelectorAll<HTMLElement>(
           '[data-search-match="true"]',
