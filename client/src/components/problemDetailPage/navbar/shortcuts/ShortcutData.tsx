@@ -31,7 +31,7 @@ import {
   Lightbulb,
   Keyboard,
   Search,
-  GitBranch,
+  Network,
   type LucideIcon,
 } from "lucide-react";
 
@@ -256,7 +256,7 @@ export const shortcuts: Shortcut[] = [
     name: "Open chat message tree",
     keys: ["Alt", "G"],
     category: "ai",
-    icon: GitBranch,
+    icon: Network,
     note: "While the AI chat dialog is open. Press again while Text Search is open to switch to this instead.",
   },
   {
