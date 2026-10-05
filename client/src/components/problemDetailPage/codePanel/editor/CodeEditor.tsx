@@ -15,17 +15,14 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { CheckCheck, History, Maximize, Minimize } from "lucide-react";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Check,
+  CheckCheck,
+  LoaderCircle,
+  Maximize,
+  Minimize,
+} from "lucide-react";
+
 import { CodeEditorSkeleton } from "./CodeEditorSkeleton";
 import { useProblemStore } from "@/features/problemStore";
 import { useSearchParams } from "next/navigation";
@@ -34,6 +31,7 @@ import { useCalendarStore } from "@/features/calenderStore";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import RevisionInfoButton from "../../helperComponents/revisionGuide/RevisionInfoButton";
+import ResetCodeDialog from "../dialogs/ResetCodeDialog";
 
 type CodeEditorProps = {
   onCodeSubmit?: () => void;
@@ -449,46 +447,27 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             <FontSizeDropdown onFontSizeChange={handleFontSizeChange} />
           </div>
           <div className="flex justify-end mr-2 items-center space-x-3">
-            {/* Reset Code Hover Card */}
-            <span className="text-xs text-muted-foreground select-none w-12 text-right">
-              {saveIndicator === "saving" ? "Saving…" : "Saved"}
+            <span className="text-xs select-none w-16 text-right whitespace-nowrap">
+              {saveIndicator === "saving" ? (
+                <span className="inline-flex items-center gap-1 text-yellow-500 text-xs">
+                  <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                  Saving
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-green-500 text-xs">
+                  <Check className="h-3.5 w-3.5 stroke-[3]" />
+                  Saved
+                </span>
+              )}
             </span>
-            <AlertDialog
+            <ResetCodeDialog
               open={isResetConfirmOpen}
               onOpenChange={setIsResetConfirmOpen}
-            >
-              <HoverCard>
-                <HoverCardTrigger asChild>
-                  <History
-                    className="text-yellow-500 cursor-pointer"
-                    onClick={() => setIsResetConfirmOpen(true)}
-                  />
-                </HoverCardTrigger>
-                <HoverCardContent className="mr-5 p-1">
-                  Reset code
-                </HoverCardContent>
-              </HoverCard>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Reset to starter code?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Your current code will be lost and replaced with the starter
-                    template. This can&apos;t be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      setIsResetConfirmOpen(false);
-                      handleResetCode();
-                    }}
-                  >
-                    Reset
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+              onReset={() => {
+                setIsResetConfirmOpen(false);
+                handleResetCode();
+              }}
+            />
             {/* Toggle between Maximize and Minimize icons */}
             {isMaximized ? (
               <HoverCard>
