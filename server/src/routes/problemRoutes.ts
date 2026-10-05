@@ -9,6 +9,7 @@ import {
   getEditorialByProblemTitle,
   getProblemByTitle,
   getProblemReactions,
+  getProblemStats,
   getProblems,
   getTestCases,
   problemReaction,
@@ -118,6 +119,23 @@ router.route("/problemDetail").get(
     },
   }),
   getProblemByTitle,
+);
+
+/**
+ * GET /problem/problemStats
+ * 5 min TTL — aggregate stats (language mix, percentiles, solvers) are
+ * expensive-ish to compute and do not need to be real-time.
+ */
+router.route("/problemStats").get(
+  readLimiter,
+  cacheMiddleware(redis, {
+    ttl: 300, // 5 minutes
+    autoCache: {
+      tags: (req: any) => ["problems", `problem-stats:${req.query.title}`],
+      keyGenerator: (req: any) => `problem:stats:${req.query.title}`,
+    },
+  }),
+  getProblemStats,
 );
 
 /**
