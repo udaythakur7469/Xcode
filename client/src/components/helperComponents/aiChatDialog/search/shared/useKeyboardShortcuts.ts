@@ -18,6 +18,10 @@ import { useChatStore } from "@/features/chatStore";
 //
 // Only active while `enabled` is true — pass whether the AI chat dialog is
 // currently open, so these don't fire globally across the whole site.
+//
+// MUST be called from a component that is mounted whenever the dialog is
+// open (FloatingActionButtons) — NOT from SearchOverlays, which only mounts
+// once a search panel is already open, so Alt+F / Alt+G could never open one.
 // ─────────────────────────────────────────────────────────────────────────────
 export function useChatSearchShortcuts(enabled: boolean) {
   const activeChatId = useChatStore((s) => s.activeChatId);
@@ -27,7 +31,9 @@ export function useChatSearchShortcuts(enabled: boolean) {
 
     function handleKeyDown(e: KeyboardEvent) {
       if (!e.altKey || e.ctrlKey || e.metaKey) return;
-      const key = e.key.toLowerCase();
+      // e.code = physical key. e.key is unreliable with Alt held (on Mac,
+      // Option+F produces "ƒ"; some layouts remap too).
+      const key = e.code.startsWith("Key") ? e.code.slice(3).toLowerCase() : "";
       const { activePanel, openTextSearch, openNodeSearch, setTextScope, setNodeScope } =
         useChatStore.getState();
 
