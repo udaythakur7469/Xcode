@@ -4,7 +4,7 @@ import logger from "../configs/loggerConfig.js";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { getIO } from "../configs/socketConfig.js";
-import { Difficulty } from "@prisma/client";
+import { Difficulty, Prisma } from "@prisma/client";
 import {
   buildPrompt,
   hasCodeChangedSignificantly,
@@ -192,6 +192,275 @@ export const getProblemByTitle = async (req, res, next) => {
 
     res.status(200).json(problem); // Return the problem details
   } catch (error) {
+    next(error);
+  }
+};
+
+// ── Problem statistics (dialog) ───────────────────────────────────────────────
+
+const round = (value: number | null | undefined, digits = 2): number => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  const f = 10 ** digits;
+  return Math.round(n * f) / f;
+};
+
+/**
+ * GET /problem/problemStats?title=
+ *
+ * Aggregated community statistics for the stats dialog:
+ *  - language breakdown (share, accepted count, median runtime per language)
+ *  - unique solvers vs. total accepted submissions
+ *  - runtime / memory distribution of accepted submissions
+ *  - attempts needed before the first accepted submission (per solver)
+ *
+ * Kept separate from getProblemByTitle so the grouped / percentile queries
+ * only run when the dialog is opened, and the response is cached in the route.
+ */
+export const getProblemStats = async (req, res, next) => {
+  const { title } = req.query;
+
+  if (!title || typeof title !== "string") {
+    return res
+      .status(400)
+      .json({ message: "Title is required as a query parameter" });
+  }
+
+  try {
+    const problem = await prisma.problem.findFirst({
+      where: { title },
+      select: { id: true },
+    });
+
+    if (!problem) {
+      return res.status(404).json({ message: "Problem not found" });
+    }
+
+    const problemId = problem.id;
+
+    const [languageRows, languageTimingRows, userRows, perfRows, attemptRows] =
+      await Promise.all([
+        // Submissions per language, split by status
+        prisma.submission.groupBy({
+          by: ["language", "status"],
+          where: { problemId },
+          _count: { _all: true },
+        }),
+
+        // Median runtime / memory per language (accepted submissions only)
+        prisma.$queryRaw<
+          {
+            language: string;
+            medianRuntime: number | null;
+            medianMemory: number | null;
+          }[]
+        >(Prisma.sql`
+          SELECT
+            "language",
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY "runtime")::float AS "medianRuntime",
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY "memory")::float AS "medianMemory"
+          FROM "Submission"
+          WHERE "problemId" = ${problemId} AND "status" = 'accepted'
+          GROUP BY "language"
+        `),
+
+        // Unique users vs. raw submission counts
+        prisma.$queryRaw<
+          {
+            uniqueAttempters: number;
+            uniqueSolvers: number;
+            acceptedSubmissions: number;
+            totalSubmissions: number;
+          }[]
+        >(Prisma.sql`
+          SELECT
+            COUNT(DISTINCT "userId")::int AS "uniqueAttempters",
+            (COUNT(DISTINCT "userId") FILTER (WHERE "status" = 'accepted'))::int AS "uniqueSolvers",
+            (COUNT(*) FILTER (WHERE "status" = 'accepted'))::int AS "acceptedSubmissions",
+            COUNT(*)::int AS "totalSubmissions"
+          FROM "Submission"
+          WHERE "problemId" = ${problemId}
+        `),
+
+        // Runtime / memory distribution (accepted submissions only)
+        prisma.$queryRaw<
+          {
+            samples: number;
+            runtimeMin: number | null;
+            runtimeP25: number | null;
+            runtimeMedian: number | null;
+            runtimeP75: number | null;
+            runtimeP90: number | null;
+            runtimeMax: number | null;
+            memoryMin: number | null;
+            memoryMedian: number | null;
+            memoryP90: number | null;
+            memoryMax: number | null;
+          }[]
+        >(Prisma.sql`
+          SELECT
+            COUNT(*)::int AS "samples",
+            MIN("runtime")::float AS "runtimeMin",
+            percentile_cont(0.25) WITHIN GROUP (ORDER BY "runtime")::float AS "runtimeP25",
+            percentile_cont(0.5)  WITHIN GROUP (ORDER BY "runtime")::float AS "runtimeMedian",
+            percentile_cont(0.75) WITHIN GROUP (ORDER BY "runtime")::float AS "runtimeP75",
+            percentile_cont(0.9)  WITHIN GROUP (ORDER BY "runtime")::float AS "runtimeP90",
+            MAX("runtime")::float AS "runtimeMax",
+            MIN("memory")::float AS "memoryMin",
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY "memory")::float AS "memoryMedian",
+            percentile_cont(0.9) WITHIN GROUP (ORDER BY "memory")::float AS "memoryP90",
+            MAX("memory")::float AS "memoryMax"
+          FROM "Submission"
+          WHERE "problemId" = ${problemId} AND "status" = 'accepted'
+        `),
+
+        // Attempts each solver needed up to and including their first accept
+        prisma.$queryRaw<
+          {
+            solvers: number;
+            averageAttempts: number | null;
+            medianAttempts: number | null;
+            firstTrySolvers: number;
+          }[]
+        >(Prisma.sql`
+          WITH first_accept AS (
+            SELECT "userId", MIN("id") AS "firstAcceptId"
+            FROM "Submission"
+            WHERE "problemId" = ${problemId} AND "status" = 'accepted'
+            GROUP BY "userId"
+          ),
+          per_user AS (
+            SELECT f."userId", COUNT(s."id") AS "attempts"
+            FROM first_accept f
+            JOIN "Submission" s
+              ON s."userId" = f."userId"
+             AND s."problemId" = ${problemId}
+             AND s."id" <= f."firstAcceptId"
+            GROUP BY f."userId"
+          )
+          SELECT
+            COUNT(*)::int AS "solvers",
+            AVG("attempts")::float AS "averageAttempts",
+            percentile_cont(0.5) WITHIN GROUP (ORDER BY "attempts")::float AS "medianAttempts",
+            (COUNT(*) FILTER (WHERE "attempts" = 1))::int AS "firstTrySolvers"
+          FROM per_user
+        `),
+      ]);
+
+    // ── Language breakdown ────────────────────────────────────────────────
+    const byLanguage = new Map<
+      string,
+      { submissions: number; accepted: number }
+    >();
+    for (const row of languageRows) {
+      const entry = byLanguage.get(row.language) ?? {
+        submissions: 0,
+        accepted: 0,
+      };
+      entry.submissions += row._count._all;
+      if (row.status === "accepted") entry.accepted += row._count._all;
+      byLanguage.set(row.language, entry);
+    }
+
+    const timingByLanguage = new Map(
+      languageTimingRows.map((r) => [r.language, r]),
+    );
+
+    const totalLanguageSubmissions = [...byLanguage.values()].reduce(
+      (sum, l) => sum + l.submissions,
+      0,
+    );
+
+    const languages = [...byLanguage.entries()]
+      .map(([language, { submissions, accepted }]) => {
+        const timing = timingByLanguage.get(language);
+        return {
+          language,
+          submissions,
+          accepted,
+          share:
+            totalLanguageSubmissions > 0
+              ? round((submissions / totalLanguageSubmissions) * 100, 1)
+              : 0,
+          acceptanceRate:
+            submissions > 0 ? round((accepted / submissions) * 100, 1) : 0,
+          medianRuntime: timing ? round(timing.medianRuntime) : null,
+          medianMemory: timing ? round(timing.medianMemory) : null,
+        };
+      })
+      .sort((a, b) => b.submissions - a.submissions);
+
+    // ── Solvers ───────────────────────────────────────────────────────────
+    const users = userRows[0];
+    const uniqueAttempters = users?.uniqueAttempters ?? 0;
+    const uniqueSolvers = users?.uniqueSolvers ?? 0;
+    const acceptedSubmissions = users?.acceptedSubmissions ?? 0;
+
+    const solvers = {
+      uniqueAttempters,
+      uniqueSolvers,
+      acceptedSubmissions,
+      // Share of users who tried the problem and eventually solved it
+      solveRate:
+        uniqueAttempters > 0
+          ? round((uniqueSolvers / uniqueAttempters) * 100, 1)
+          : 0,
+      // Accepted submissions per solver (>1 means people resubmit accepted code)
+      acceptsPerSolver:
+        uniqueSolvers > 0 ? round(acceptedSubmissions / uniqueSolvers, 2) : 0,
+    };
+
+    // ── Performance ───────────────────────────────────────────────────────
+    const perf = perfRows[0];
+    const samples = perf?.samples ?? 0;
+    const performance =
+      samples > 0
+        ? {
+            samples,
+            runtime: {
+              min: round(perf.runtimeMin),
+              p25: round(perf.runtimeP25),
+              median: round(perf.runtimeMedian),
+              p75: round(perf.runtimeP75),
+              p90: round(perf.runtimeP90),
+              max: round(perf.runtimeMax),
+            },
+            memory: {
+              min: round(perf.memoryMin),
+              median: round(perf.memoryMedian),
+              p90: round(perf.memoryP90),
+              max: round(perf.memoryMax),
+            },
+          }
+        : null;
+
+    // ── Attempts before first accept ──────────────────────────────────────
+    const attempts = attemptRows[0];
+    const attemptSolvers = attempts?.solvers ?? 0;
+    const attemptsToAccept =
+      attemptSolvers > 0
+        ? {
+            solvers: attemptSolvers,
+            average: round(attempts.averageAttempts),
+            median: round(attempts.medianAttempts, 1),
+            firstTrySolvers: attempts.firstTrySolvers,
+            firstTryRate: round(
+              (attempts.firstTrySolvers / attemptSolvers) * 100,
+              1,
+            ),
+          }
+        : null;
+
+    res.status(200).json({
+      problemId,
+      totalSubmissions: users?.totalSubmissions ?? 0,
+      languages,
+      solvers,
+      performance,
+      attemptsToAccept,
+    });
+  } catch (error) {
+    logger.error("Error fetching problem stats:", error);
     next(error);
   }
 };
