@@ -217,7 +217,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
                   bg-zinc-700 text-white text-sm
                   rounded-lg border border-zinc-500
                   px-3 py-2 outline-none
-                  focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+                  focus:ring-1 focus:ring-[var(--brand)] focus:border-[var(--brand)]
                   leading-relaxed placeholder-zinc-400 min-h-[72px]
                 "
                 placeholder="Edit your message…"
@@ -234,7 +234,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({
                   disabled={
                     !editValue.trim() || editValue.trim() === message.text
                   }
-                  className="px-3 py-1.5 text-xs font-semibold rounded-md bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 text-xs font-semibold rounded-md bg-[var(--brand)] text-white hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   Save
                 </button>
