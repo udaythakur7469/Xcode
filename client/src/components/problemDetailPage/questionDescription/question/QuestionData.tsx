@@ -266,7 +266,12 @@ const QuestionData: React.FC<QuestionDataProps> = ({ code, language }) => {
                   </Badge>
                 </DialogTrigger>
 
-                {statsOpen && <StatsDialog stats={problem.problemStats} />}
+                {statsOpen && (
+                  <StatsDialog
+                    title={problem.title}
+                    stats={problem.problemStats}
+                  />
+                )}
               </Dialog>
             </div>
           </div>
