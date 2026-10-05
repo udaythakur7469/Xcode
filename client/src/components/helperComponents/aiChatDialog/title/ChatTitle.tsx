@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ChevronDown, Search, GitBranch } from "lucide-react";
+import { ChevronDown, Search, Network } from "lucide-react";
 import { useChatStore, AiModel } from "@/features/chatStore";
 import {
   DropdownMenu,
@@ -93,7 +93,7 @@ const ChatTitle: React.FC = () => {
             : "text-zinc-400 hover:bg-zinc-800"
         }`}
       >
-        <GitBranch size={17} />
+        <Network size={17} />
       </button>
     </div>
   );
