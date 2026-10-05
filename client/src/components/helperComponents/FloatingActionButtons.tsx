@@ -18,6 +18,7 @@ import {
   ChatContainerWindow,
 } from "./aiChatDialog/ChatContainer";
 import SearchOverlays from "./aiChatDialog/search/SearchOverlays";
+import { useChatSearchShortcuts } from "./aiChatDialog/search/shared/useKeyboardShortcuts";
 import { useChatStore } from "@/features/chatStore";
 import { ForgotPasswordDialog } from "../auth/forgotPasswordPage/ForgotPasswordDialog";
 import { useSearchParams } from "next/navigation";
@@ -58,6 +59,8 @@ const FloatingActionButtons = () => {
 
     const { checkAuth, isUserAuthenticated } = useUserStore();
     const searchPanelOpen = useChatStore((s) => s.activePanel !== null);
+  // Alt+F / Alt+G / Alt+A / Alt+C — only while the AI chat dialog is open.
+  useChatSearchShortcuts(aiChatDialogOpen);
     const closeSearchPanel = useChatStore((s) => s.closeSearchPanel);
 
     // Closing the AI chat dialog itself must also close any open search
@@ -67,6 +70,14 @@ const FloatingActionButtons = () => {
     // close). The search panel's own "back to chat" button only calls
     // closeSearchPanel() — it must NOT close the dialog itself, just return
     // to the chat under it.
+    // The dialog is also opened/closed by paths that bypass the handler below
+    // (FAB click, keyboard toggle in useFABSystem), so enforce the rule on the
+    // open state itself: every time the dialog opens OR closes, no search
+    // panel may be showing — the chat is always what you land on.
+    useEffect(() => {
+      closeSearchPanel();
+    }, [aiChatDialogOpen, closeSearchPanel]);
+
     const handleAiChatDialogOpenChange = (open: boolean) => {
       if (!open) closeSearchPanel();
       setAiChatDialogOpen(open);
