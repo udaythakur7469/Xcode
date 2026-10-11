@@ -6,7 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabPanel, TabPanels } from "./StatsTabPanels";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Skeleton for StatsDialog.
@@ -25,6 +26,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type StatsTab = "overview" | "languages" | "performance";
+
+// Left-to-right order of the tabs; decides which way the panels slide
+export const STATS_TAB_ORDER: readonly StatsTab[] = [
+  "overview",
+  "languages",
+  "performance",
+];
 
 type StatsDialogSkeletonProps = {
   tab: StatsTab;
@@ -278,17 +286,19 @@ const StatsDialogSkeleton: React.FC<StatsDialogSkeletonProps> = ({
         <TabsTrigger value="performance">Performance</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="overview" className="flex flex-col gap-4">
-        <OverviewSkeleton />
-      </TabsContent>
+      <TabPanels value={tab} order={STATS_TAB_ORDER}>
+        <TabPanel value="overview" className="flex flex-col gap-4">
+          <OverviewSkeleton />
+        </TabPanel>
 
-      <TabsContent value="languages" className="flex flex-col gap-4">
-        <LanguagesSkeleton />
-      </TabsContent>
+        <TabPanel value="languages" className="flex flex-col gap-4">
+          <LanguagesSkeleton />
+        </TabPanel>
 
-      <TabsContent value="performance" className="flex flex-col gap-5">
-        <PerformanceSkeleton />
-      </TabsContent>
+        <TabPanel value="performance" className="flex flex-col gap-5">
+          <PerformanceSkeleton />
+        </TabPanel>
+      </TabPanels>
     </Tabs>
   </>
 );

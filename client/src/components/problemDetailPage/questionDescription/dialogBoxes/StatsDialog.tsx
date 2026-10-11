@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Activity,
   CircleCheckBig,
@@ -20,7 +20,11 @@ import {
 } from "lucide-react";
 import { toTwoDecimals } from "@/services/acceptanceRateService";
 import { formatCount } from "@/services/countService";
-import StatsDialogSkeleton, { type StatsTab } from "./StatsDialogSkeleton";
+import StatsDialogSkeleton, {
+  STATS_TAB_ORDER,
+  type StatsTab,
+} from "./StatsDialogSkeleton";
+import { TabPanel, TabPanels } from "./StatsTabPanels";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -453,7 +457,8 @@ const StatsDialog: React.FC<StatsDialogProps> = ({ title, stats }) => {
         </TabsList>
 
         {/* ── Overview ─────────────────────────────────────────────── */}
-        <TabsContent value="overview" className="flex flex-col gap-4">
+        <TabPanels value={activeTab} order={STATS_TAB_ORDER}>
+        <TabPanel value="overview" className="flex flex-col gap-4">
           <div className="flex items-start justify-center gap-4 py-1 sm:gap-8">
             <Ring
               value={rate}
@@ -527,10 +532,10 @@ const StatsDialog: React.FC<StatsDialogProps> = ({ title, stats }) => {
               start solving this problem.
             </p>
           )}
-        </TabsContent>
+        </TabPanel>
 
         {/* ── Languages ────────────────────────────────────────────── */}
-        <TabsContent value="languages" className="flex flex-col gap-4">
+        <TabPanel value="languages" className="flex flex-col gap-4">
           {extended && hasLanguages && (
             <>
               <div className="flex flex-wrap items-center justify-center gap-6">
@@ -606,10 +611,10 @@ const StatsDialog: React.FC<StatsDialogProps> = ({ title, stats }) => {
               </div>
             </>
           )}
-        </TabsContent>
+        </TabPanel>
 
         {/* ── Performance ──────────────────────────────────────────── */}
-        <TabsContent value="performance" className="flex flex-col gap-5">
+        <TabPanel value="performance" className="flex flex-col gap-5">
           {extended?.performance && (
             <>
               <div className="rounded-lg border bg-secondary p-4">
@@ -657,7 +662,8 @@ const StatsDialog: React.FC<StatsDialogProps> = ({ title, stats }) => {
               </p>
             </>
           )}
-        </TabsContent>
+        </TabPanel>
+      </TabPanels>
       </Tabs>
     </DialogContent>
   );
