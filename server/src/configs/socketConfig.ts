@@ -86,6 +86,23 @@ const registerRoomHandlers = (socket: Socket) => {
     logger.info(`Socket ${socket.id} left room ${room}`);
   });
 
+  // ── Contest room ──────────────────────────────────────────────────────
+  // Client emits this from the leaderboard and workspace pages. See
+  // contestSubmissionService.ts's recomputeRanksAndBroadcast() for what
+  // gets emitted into this room, and CONTEST_SYSTEM_EXPLAINED.md §10 for
+  // why it deliberately stops broadcasting live deltas during a freeze.
+  socket.on("contest:join", (contestId: string | number) => {
+    const room = `contest:${contestId}`;
+    socket.join(room);
+    logger.info(`Socket ${socket.id} joined room ${room}`);
+  });
+
+  socket.on("contest:leave", (contestId: string | number) => {
+    const room = `contest:${contestId}`;
+    socket.leave(room);
+    logger.info(`Socket ${socket.id} left room ${room}`);
+  });
+
   socket.on("disconnect", () => {
     logger.info(`Socket ${socket.id} disconnected`);
   });

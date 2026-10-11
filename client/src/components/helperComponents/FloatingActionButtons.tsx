@@ -21,7 +21,8 @@ import SearchOverlays from "./aiChatDialog/search/SearchOverlays";
 import { useChatSearchShortcuts } from "./aiChatDialog/search/shared/useKeyboardShortcuts";
 import { useChatStore } from "@/features/chatStore";
 import { ForgotPasswordDialog } from "../auth/forgotPasswordPage/ForgotPasswordDialog";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
+import { useContestStore } from "@/features/contestStore";
 
 const PENDING_SHARE_KEY = "pendingShareId";
 
@@ -44,6 +45,24 @@ const FloatingActionButtons = () => {
     handleDragStart,
     handleFABClick,
   } = useFABSystem();
+
+  const pathname = usePathname();
+  const activeContest = useContestStore((s) => s.activeContest);
+
+  // The contest workspace is a timed, focused environment — the command
+  // bar shouldn't compete with whatever shortcuts the editor itself uses
+  // there, same principle already applied to interview-practice routes.
+  // AI chat is a separate, narrower rule: it's only hidden during a LIVE
+  // *rated* contest specifically, since that's a fairness concern (help
+  // while your rating is on the line), not a focus one — an unrated or
+  // ended (practice) workspace has nothing at stake, so AI chat stays
+  // available there. See CONTEST_SYSTEM_EXPLAINED.md §12.
+  const isContestWorkspaceRoute = pathname?.includes("/contests/") && pathname?.endsWith("/workspace");
+  const isLiveRatedContestWorkspace =
+    isContestWorkspaceRoute && activeContest?.status === "LIVE" && activeContest?.rated;
+
+  const showAiChatFab = aiChatVisible && !isLiveRatedContestWorkspace;
+  const showCommandBarFab = commandBarVisible && !isContestWorkspaceRoute;
 
   const searchParams = useSearchParams();
   const shareIdFromUrl = searchParams.get("sharedChat");
@@ -140,7 +159,7 @@ const FloatingActionButtons = () => {
 
   return (
     <>
-      {aiChatVisible && (
+      {showAiChatFab && (
         <FAB
           icon={<MessageSquare size={24} />}
           label="AI Chat (⌘/Ctrl+Q)"
@@ -154,7 +173,7 @@ const FloatingActionButtons = () => {
         />
       )}
 
-      {commandBarVisible && (
+      {showCommandBarFab && (
         <FAB
           icon={<Terminal size={24} />}
           label="Command Bar (⌘/Ctrl+K)"

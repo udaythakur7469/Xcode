@@ -114,6 +114,11 @@ export interface SubmitCodeSuccess {
   testCaseResults: TestCaseResult[];
   percentile: number;
   runtimeDistribution: RuntimeBucket[];
+  // Only present when submitted with a contest context, and only on a
+  // LIVE contest — see submissionController.ts's success-path comment on
+  // why this is a fast, best-effort check rather than the authoritative
+  // source (the async stats worker's isFirstAccept write is that).
+  isFirstAccept?: boolean;
 }
 
 export interface FailedTestCase {
@@ -284,6 +289,7 @@ interface SubmissionStore {
     language: string,
     code: string,
     problemTitle: string,
+    contestContext?: { contestId: number; contestProblemId: number },
   ) => Promise<void>;
   clearRunCodeResult: (problemTitle?: string) => void;
   clearSubmitCodeResult: (problemTitle?: string) => void;
@@ -463,7 +469,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
     });
   },
 
-  submitCode: (language, code, problemTitle) => {
+  submitCode: (language, code, problemTitle, contestContext) => {
     const previousSubmitController = submitCodeAbortController;
     submitCodeAbortController = new AbortController();
     previousSubmitController?.abort();
@@ -489,6 +495,7 @@ export const useSubmissionStore = create<SubmissionStore>((set) => ({
           {
             language,
             code,
+            ...(contestContext ? contestContext : {}),
           },
           {
             params: { title: problemTitle },

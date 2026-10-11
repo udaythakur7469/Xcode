@@ -94,6 +94,16 @@ model User {
   aiHintCaches AiHintCache[]
 
   potdCompletions PotdCompletion[]
+
+  // ── Contest system ──────────────────────────────────────────────────
+  contestRating Int @default(1200)
+  peakRating    Int @default(1200)
+
+  contestParticipations ContestParticipant[]
+  contestSubmissions    ContestSubmission[]
+  ratingHistory         RatingHistory[]
+  contestAchievements   UserAchievement[]
+
   // Timestamp fields.
   lastLogin       DateTime         @default(now())
   createdAt       DateTime         @default(now())
@@ -213,10 +223,21 @@ model Problem {
 
   potdAssignments ProblemOfTheDay[]
 
+  // ── Contest system ──────────────────────────────────────────────────
+  visibility  ProblemVisibility @default(PUBLIC)
+  hiddenUntil DateTime?
+
+  contestAppearances ContestProblem[]
+
   // Timestamp for problem creation.
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   Comment   Comment[]
+}
+
+enum ProblemVisibility {
+  PUBLIC
+  CONTEST_ONLY
 }
 
 // =========================================================
@@ -364,6 +385,8 @@ model Submission {
   memory          Int
   testCasesPassed Int
   totalTestCases  Int
+
+  contestSubmission ContestSubmission?
 
   // Timestamps.
   createdAt DateTime @default(now())
@@ -948,4 +971,208 @@ model AiHintCache {
 
   @@unique([userId, problemId, language])
   @@index([userId, problemId])
+}
+
+// =========================================================
+// Contest System
+// A contest is a fixed set of problems, a time window, and a
+// scoring/ranking rule. See ContestParticipant for live standings,
+// ContestSubmission for the per-submission bookkeeping, RatingHistory
+// for the persistent rating trail, and Achievement/UserAchievement for
+// the badge catalog + unlocks. Full design notes live in
+// CONTEST_SYSTEM_EXPLAINED.md.
+// =========================================================
+
+model Contest {
+  id Int @id @default(autoincrement())
+
+  title String
+  slug  String @unique
+
+  type ContestType
+
+  startTime DateTime
+  endTime   DateTime
+
+  // Unrated contests (fun/themed/sponsor events) skip the entire rating
+  // computation at settlement — see ratingService.ts.
+  rated        Boolean @default(true)
+  ratingWeight Float   @default(1.0)
+
+  status ContestStatus @default(SCHEDULED)
+
+  // Snapshots written mid-flight by contestLifecycleWorker.ts — not
+  // configuration, just data captured at a point in time. Shaped as
+  // { userId, rank, solvedCount, penaltyMins, totalPoints,
+  //   solvedProblems: [{ label, submittedAtMins }] }[].
+  // midpointStandings only feeds the "Comeback" achievement check and is
+  // never served to any endpoint; frozenStandings is what the
+  // leaderboard endpoint serves in place of live data while the
+  // contest is LIVE and past the freeze point.
+  midpointStandings Json?
+  frozenStandings   Json?
+
+  problems      ContestProblem[]
+  participants  ContestParticipant[]
+  submissions   ContestSubmission[]
+  ratingHistory RatingHistory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, startTime])
+}
+
+enum ContestType {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum ContestStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+}
+
+// Join table between Contest and Problem — carries the two facts that
+// only make sense in the context of "this problem, in this contest":
+// the letter label participants see, and how many points it's worth
+// here (independent of any other contest that reuses the same problem).
+model ContestProblem {
+  id Int @id @default(autoincrement())
+
+  contest   Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestId Int
+
+  problem   Problem @relation(fields: [problemId], references: [id])
+  problemId Int
+
+  label  String // "A", "B", "C", ...
+  points Int
+
+  submissions ContestSubmission[]
+
+  @@unique([contestId, label])
+  @@unique([contestId, problemId])
+}
+
+// Join table between Contest and User — registration, plus live contest
+// state for that user (rank/solved/penalty/points). These columns are a
+// maintained cache of a fold over ContestSubmission; ContestSubmission
+// stays the source of truth, this is what makes a leaderboard read a
+// cheap sorted query instead of a recompute on every page load.
+model ContestParticipant {
+  id Int @id @default(autoincrement())
+
+  contest   Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestId Int
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  rank        Int?
+  solvedCount Int @default(0)
+  penaltyMins Int @default(0)
+  totalPoints Int @default(0)
+
+  // Only meaningful once settlement has run on a rated contest.
+  ratingBefore Int?
+  ratingAfter  Int?
+  ratingDelta  Int?
+
+  registeredAt DateTime @default(now())
+
+  @@unique([contestId, userId])
+  @@index([contestId, totalPoints, penaltyMins])
+}
+
+// Bridges a normal Submission to contest bookkeeping. Doesn't duplicate
+// the submission — links to it — and adds the facts that only matter in
+// a contest: which minute of the contest it landed on (penalty time)
+// and whether it was the first accepted solution to that problem,
+// contest-wide (the "first to solve" badge, checked live — see
+// contestSubmissionService.ts — everything else waits for settlement).
+model ContestSubmission {
+  id Int @id @default(autoincrement())
+
+  contest   Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestId Int
+
+  contestProblem   ContestProblem @relation(fields: [contestProblemId], references: [id])
+  contestProblemId Int
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  submission   Submission @relation(fields: [submissionId], references: [id])
+  submissionId Int        @unique
+
+  submittedAtMins Int // minutes elapsed since contest start
+  isAccepted      Boolean
+  isFirstAccept   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([contestId, contestProblemId, isFirstAccept])
+  @@index([contestId, userId])
+}
+
+// One row per (user, contest) that was actually rated — a
+// denormalization purely for read performance: "this user's full
+// rating history, in order" becomes a single indexed query instead of
+// a join across every contest they've registered for (unrated
+// contests included, which shouldn't appear here at all).
+model RatingHistory {
+  id Int @id @default(autoincrement())
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  contest   Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  contestId Int
+
+  rating Int
+  delta  Int
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, contestId])
+  @@index([userId, createdAt])
+}
+
+// Static catalog — seeded once, essentially read-only at runtime. See
+// achievementService.ts's ACHIEVEMENT_CATALOG for the seed data itself;
+// this table just needs to exist so UserAchievement has something to
+// join against and so achievement metadata can move without a code
+// deploy later, if it ever needs to.
+model Achievement {
+  id Int @id @default(autoincrement())
+
+  key         String @unique
+  name        String
+  description String
+  icon        String
+  category    String
+
+  unlocks UserAchievement[]
+}
+
+// The join — which user unlocked which achievement, when, and
+// (optionally) which contest triggered it.
+model UserAchievement {
+  id Int @id @default(autoincrement())
+
+  user   User @relation(fields: [userId], references: [id])
+  userId Int
+
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  achievementId Int
+
+  contestId Int?
+
+  unlockedAt DateTime @default(now())
+
+  @@unique([userId, achievementId])
 }

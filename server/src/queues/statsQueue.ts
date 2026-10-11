@@ -13,6 +13,17 @@ export interface StatsJobData {
   memoryInMegabytes: number;
   testCasesPassed: number;
   totalTestCases: number;
+  // Only present when the submission was made from inside a live contest
+  // workspace — see submissionController.ts's submitCode. Absent for
+  // every normal, non-contest submission, and for practice submissions
+  // against an ENDED contest (those are treated as ordinary submissions
+  // on purpose — see CONTEST_SYSTEM_EXPLAINED.md's practice-mode notes).
+  // Note there's no submissionId here: the Submission row doesn't exist
+  // yet at enqueue time — updateStatistics() creates it and hands its id
+  // back to statsWorker.ts, which is what actually calls
+  // recordContestSubmission with it.
+  contestId?: number;
+  contestProblemId?: number;
 }
 
 export const statsQueue = new Queue<StatsJobData>("stats-updates", {

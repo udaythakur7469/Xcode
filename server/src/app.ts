@@ -8,6 +8,10 @@ import cookieParser from "cookie-parser";
 import routes from "./routes/mergedRoutes.js";
 import "./workers/statsWorker.js";
 import "./workers/executionWorker.js";
+import "./workers/contestSchedulerWorker.js";
+import "./workers/contestLifecycleWorker.js";
+import { startContestSchedulerRepeatable } from "./queues/contestSchedulerQueue.js";
+import { ensureAchievementCatalogSeeded } from "./services/achievementService.js";
 
 interface CustomError extends Error {
   status?: number;
@@ -44,6 +48,20 @@ app.use(
 );
 
 app.use("/api", routes);
+
+// Kicks off the contest scheduler's repeatable job once, at process
+// startup. add() with a stable jobId + repeat option is idempotent, so
+// this is safe to run on every boot/restart without creating duplicate
+// schedules.
+startContestSchedulerRepeatable().catch((err) => {
+  console.error("Failed to start contest scheduler repeatable job:", err);
+});
+
+// Upserts the achievement catalog into the DB — idempotent, no manual
+// seed step, no admin needed. See achievementService.ts.
+ensureAchievementCatalogSeeded().catch((err) => {
+  console.error("Failed to seed achievement catalog:", err);
+});
 
 // Error handling middleware
 app.use((err: CustomError, req: Request, res: Response, next: NextFunction) => {

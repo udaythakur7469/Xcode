@@ -322,6 +322,53 @@ export const submitCode = async (req, res) => {
       .json({ message: "Title is required as a query parameter" });
   }
 
+  // Contest context — present only when submitting from inside a contest
+  // workspace. See recordContestSubmission()'s call site below for how
+  // this branches without touching the judging logic itself, and
+  // CONTEST_SYSTEM_EXPLAINED.md §9/§12 for the reasoning.
+  const contestId = req.body.contestId ? parseInt(req.body.contestId) : undefined;
+  const contestProblemId = req.body.contestProblemId ? parseInt(req.body.contestProblemId) : undefined;
+  let contestContext: { contestId: number; contestProblemId: number } | undefined;
+
+  if (contestId && contestProblemId) {
+    const userId = req.user.id ?? req.user.userId;
+    const [contest, participant, contestProblem] = await Promise.all([
+      prisma.contest.findUnique({ where: { id: contestId } }),
+      prisma.contestParticipant.findUnique({
+        where: { contestId_userId: { contestId, userId } },
+      }),
+      prisma.contestProblem.findUnique({ where: { id: contestProblemId } }),
+    ]);
+
+    if (!contest || contest.status === "SCHEDULED") {
+      return res
+        .status(400)
+        .json({ error: "This contest hasn't started yet" });
+    }
+    // Registration is only required while the contest is LIVE — that's
+    // the actual competition, and standings/rating are on the line.
+    // Once a contest has ENDED, anyone can submit against its problems
+    // for practice, registered or not.
+    if (contest.status === "LIVE" && !participant) {
+      return res
+        .status(403)
+        .json({ error: "You are not registered for this contest" });
+    }
+    if (!contestProblem || contestProblem.contestId !== contestId) {
+      return res
+        .status(400)
+        .json({ error: "This problem is not part of the given contest" });
+    }
+
+    // ENDED contests stay solvable for practice — but deliberately don't
+    // get a contestContext, so nothing downstream (recordContestSubmission,
+    // rank, penalty, points, achievements) ever sees this as a contest
+    // submission. It's judged exactly like a normal problem attempt.
+    if (contest.status === "LIVE") {
+      contestContext = { contestId, contestProblemId };
+    }
+  }
+
   if (!getLanguageConfig(language)) {
     return res.status(400).json({
       error: `Unsupported language: "${language}". Supported languages: ${SUPPORTED_LANGUAGES.join(", ")}`,
@@ -723,6 +770,7 @@ export const submitCode = async (req, res) => {
         memoryInMegabytes,
         testCasesPassed,
         totalTestCases,
+        ...(contestContext ? { ...contestContext } : {}),
       }).catch((err) => {
         logger.error("Failed to enqueue statistics update (background):", err);
       });
@@ -746,6 +794,7 @@ export const submitCode = async (req, res) => {
       memoryInMegabytes,
       testCasesPassed,
       totalTestCases,
+      ...(contestContext ? { ...contestContext } : {}),
     }).catch((err) => {
       logger.error("Failed to enqueue statistics update (background):", err);
     });
@@ -779,11 +828,33 @@ export const submitCode = async (req, res) => {
       runtimeInMilliseconds,
     );
 
+    // Fast, synchronous check for immediate UI feedback (the "🥇 first to
+    // solve" badge). This is separate from — and runs ahead of —
+    // recordContestSubmission in the async stats worker, which is still
+    // the authoritative source that actually writes ContestSubmission
+    // and unlocks the achievement. In the rare case of two people
+    // solving within milliseconds of each other, the async worker's
+    // isFirstAccept write is what actually counts; this is just a
+    // best-effort instant signal so the editor doesn't have to wait on
+    // the background job to show it.
+    let isFirstAccept: boolean | undefined;
+    if (contestContext) {
+      const existingAccept = await prisma.contestSubmission.findFirst({
+        where: {
+          contestId: contestContext.contestId,
+          contestProblemId: contestContext.contestProblemId,
+          isFirstAccept: true,
+        },
+      });
+      isFirstAccept = !existingAccept;
+    }
+
     res.status(200).json({
       success: true,
       message: "All test cases passed",
       percentile,
       runtimeDistribution,
+      ...(isFirstAccept !== undefined ? { isFirstAccept } : {}),
       ...sharedFields,
     });
   } catch (error) {
@@ -912,6 +983,12 @@ export const updateStatistics = async (
       updatedAt: new Date(),
     },
   });
+
+  // Returned so statsWorker.ts can attach contest bookkeeping to the
+  // Submission row this call just created — the row doesn't exist yet
+  // at the time submitCode() enqueues the job, so its id can only be
+  // handed back from here, not passed in.
+  return submission;
 };
 
 export const getUserSubmissions = async (req, res, next) => {

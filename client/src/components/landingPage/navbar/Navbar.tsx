@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { MenubarMenu, MenubarTrigger } from "@/components/ui/menubar";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LoginDialog } from "@/components/auth/loginPage/LoginDialog";
 import { useUserStore } from "@/features/userStore";
 import { ThemeToggle } from "@/components/themes/themeToggle";
@@ -33,7 +33,6 @@ const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
 
   // Dialog open/close state
   const [isLoginOpen, setIsLoginOpen] = useState(false);
@@ -70,7 +69,8 @@ const Navbar: React.FC<NavbarProps> = ({
   //   Navbar detects the param → saves token to state → opens ResetPasswordDialog
   //   After success → router.replace('/') strips the token from the URL
   useEffect(() => {
-    const token = searchParams.get("resetToken");
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("resetToken");
     if (token) {
       setResetToken(token);
       setIsResetPasswordOpen(true);
@@ -78,7 +78,7 @@ const Navbar: React.FC<NavbarProps> = ({
       // doesn't re-open the dialog with an already-used token
       router.replace("/");
     }
-  }, [searchParams, router]);
+  }, [router]);
 
   // ── Redirect unauthenticated users away from /account ──────────────────────
   useEffect(() => {
