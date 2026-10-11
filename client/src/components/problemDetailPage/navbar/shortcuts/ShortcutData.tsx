@@ -32,6 +32,8 @@ import {
   Keyboard,
   Search,
   Network,
+  ChevronLeft,
+  ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -345,6 +347,30 @@ export const shortcuts: Shortcut[] = [
     keys: ["Alt", "🡰"],
     category: "help",
     icon: PanelRightClose,
+  },
+  {
+    id: "previous-problem",
+    name: "Previous problem",
+    keys: ["Alt", "P"],
+    category: "help",
+    icon: ChevronLeft,
+    note: "By problem id, same as the ‹ arrow in the navbar",
+  },
+  {
+    id: "next-problem",
+    name: "Next problem",
+    keys: ["Alt", "N"],
+    category: "help",
+    icon: ChevronRight,
+    note: "By problem id, same as the › arrow in the navbar",
+  },
+  {
+    id: "search-problem-list",
+    name: "Search the problem list",
+    keys: ["/"],
+    category: "help",
+    icon: Search,
+    note: "While the problem sidebar is open. Use ↑ ↓ to move through the list and Enter to open a problem",
   },
   {
     id: "open-hints-dialog",
