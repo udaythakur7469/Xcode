@@ -40,12 +40,17 @@ import ShortcutDialog from "./shortcuts/ShortcutDialog";
 import NotesButton from "./stickyNotesSystem/StickyNotesButton";
 import { ForgotPasswordDialog } from "@/components/auth/forgotPasswordPage/ForgotPasswordDialog";
 import { useProblemStore } from "@/features/problemStore";
+import {
+  getProblemDetailUrl,
+  useAdjacentProblems,
+} from "@/hooks/useAdjacentProblems";
 
 type ProblemNavbarProps = {
   onResetLayout?: () => void;
   onRunCode?: () => void;
   onSubmitCode?: () => void;
   onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
   code: string;
   language: string;
 };
@@ -55,12 +60,22 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
   onRunCode,
   onSubmitCode,
   onToggleSidebar,
+  isSidebarOpen = false,
   code,
   language,
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const problemTitle = searchParams.get("title");
+
+  // Previous / next problem by id, looked up for the title in the URL.
+  // Both stay null until the lookup for THIS title has arrived, so the
+  // arrows can never act on the previous problem's neighbours.
+  const {
+    prev: prevProblem,
+    next: nextProblem,
+    isLoading: isAdjacentLoading,
+  } = useAdjacentProblems(problemTitle);
 
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSignupOpen, setIsSignupOpen] = useState(false);
@@ -129,6 +144,38 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
       window.removeEventListener("keydown", keyboardShortcut);
     };
   }, []);
+
+  const goToProblem = (target: { title: string }) => {
+    router.push(getProblemDetailUrl(target.title));
+  };
+
+  // Alt + P / Alt + N: previous / next problem. Uses event.code so it also
+  // works on layouts where Alt + letter types a symbol instead of the letter.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || e.repeat) return;
+      if (e.code === "KeyP") {
+        e.preventDefault();
+        if (prevProblem) router.push(getProblemDetailUrl(prevProblem.title));
+      } else if (e.code === "KeyN") {
+        e.preventDefault();
+        if (nextProblem) router.push(getProblemDetailUrl(nextProblem.title));
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [prevProblem, nextProblem, router]);
+
+  const prevHint = prevProblem
+    ? `Previous: ${prevProblem.id}. ${prevProblem.title} (Alt + P)`
+    : isAdjacentLoading
+      ? "Loading…"
+      : "This are no problems before this";
+  const nextHint = nextProblem
+    ? `Next: ${nextProblem.id}. ${nextProblem.title} (Alt + N)`
+    : isAdjacentLoading
+      ? "Loading…"
+      : "This are no problems after this";
 
   // No mount-effect checkAuth() call here anymore - AuthProvider (mounted
   // once in the root layout) owns the app-wide identity check. This page
@@ -235,19 +282,54 @@ const ProblemNavbar: React.FC<ProblemNavbarProps> = ({
               />
             </div>
             <div className="flex space-x-2 h-full items-center">
-              <div
-                className="flex justify-center items-center rounded-md px-2 bg-secondary h-8 cursor-pointer bg-red-500"
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                aria-expanded={isSidebarOpen}
+                className="flex justify-center items-center rounded-md px-2 bg-secondary h-8 cursor-pointer hover:bg-secondary/80"
                 onClick={handleProblemListClick}
               >
                 <List className="mr-2 h-4 w-4 " />
                 Problem List
-              </div>
-              <div className="flex justify-center items-center rounded-md px-1 bg-secondary h-8 w-8 cursor-pointer">
-                <ChevronLeft className="h-4 w-4" />
-              </div>
-              <div className="flex justify-center items-center rounded-md px-1 bg-secondary h-8 w-8 cursor-pointer">
-                <ChevronRight className="h-4 w-4" />
-              </div>
+              </button>
+              {/* Previous / next problem. aria-disabled (not `disabled`) so
+                  the HoverCard can still explain why it is inactive. */}
+              <HoverCard openDelay={200}>
+                <HoverCardTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Previous problem"
+                    aria-disabled={!prevProblem}
+                    className={`flex justify-center items-center rounded-md px-1 bg-secondary h-8 w-8 ${
+                      prevProblem
+                        ? "cursor-pointer hover:bg-secondary/80"
+                        : "cursor-not-allowed opacity-50"
+                    }`}
+                    onClick={() => prevProblem && goToProblem(prevProblem)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                </HoverCardTrigger>
+                <HoverCardContent className="p-1 px-2">{prevHint}</HoverCardContent>
+              </HoverCard>
+              <HoverCard openDelay={200}>
+                <HoverCardTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Next problem"
+                    aria-disabled={!nextProblem}
+                    className={`flex justify-center items-center rounded-md px-1 bg-secondary h-8 w-8 ${
+                      nextProblem
+                        ? "cursor-pointer hover:bg-secondary/80"
+                        : "cursor-not-allowed opacity-50"
+                    }`}
+                    onClick={() => nextProblem && goToProblem(nextProblem)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </HoverCardTrigger>
+                <HoverCardContent className="p-1 px-2">{nextHint}</HoverCardContent>
+              </HoverCard>
             </div>
           </MenubarMenu>
         </div>
