@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { toTwoDecimals } from "@/services/acceptanceRateService";
 import { formatCount } from "@/services/countService";
+import StatsDialogSkeleton, { type StatsTab } from "./StatsDialogSkeleton";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -172,7 +173,7 @@ const Ring: React.FC<RingProps> = ({
         </div>
       </div>
       <span className="text-sm font-medium leading-tight">{label}</span>
-      <span className="text-center text-[11px] leading-tight text-muted-foreground">
+      <span className="min-h-[27.5px] text-center text-[11px] leading-tight text-muted-foreground">
         {caption}
       </span>
     </div>
@@ -320,9 +321,7 @@ const RangeTrack: React.FC<RangeTrackProps> = ({
             left: `${animated ? bandLeft : 50}%`,
             width: `${animated ? Math.max(bandRight - bandLeft, 1.5) : 0}%`,
           }}
-          title={
-            bandStart !== undefined ? "Middle 50% of solutions" : undefined
-          }
+          title={bandStart !== undefined ? "Middle 50% of solutions" : undefined}
         />
         <div
           className="absolute top-1/2 h-4 w-0.5 -translate-y-1/2 rounded bg-muted-foreground transition-all duration-700 ease-out"
@@ -354,22 +353,6 @@ const RangeTrack: React.FC<RangeTrackProps> = ({
   );
 };
 
-// ── Loading skeleton ─────────────────────────────────────────────────────────
-
-const Pulse: React.FC<{ className: string }> = ({ className }) => (
-  <div className={`animate-pulse rounded-lg bg-secondary ${className}`} />
-);
-
-const StatsSkeleton: React.FC = () => (
-  <div className="flex flex-col gap-3">
-    <div className="grid grid-cols-2 gap-3">
-      <Pulse className="h-24" />
-      <Pulse className="h-24" />
-    </div>
-    <Pulse className="h-20" />
-  </div>
-);
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Dialog
 // ─────────────────────────────────────────────────────────────────────────────
@@ -377,16 +360,18 @@ const StatsSkeleton: React.FC = () => (
 const StatsDialog: React.FC<StatsDialogProps> = ({ title, stats }) => {
   const rate = clampPercent(stats?.acceptanceRate);
 
-  // Start empty, then fill after mount so rings and bars animate on open
-  const [animated, setAnimated] = useState(false);
-  useEffect(() => {
-    const id = requestAnimationFrame(() => setAnimated(true));
-    return () => cancelAnimationFrame(id);
-  }, []);
-
   const [extended, setExtended] = useState<ExtendedStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [tab, setTab] = useState<StatsTab>("overview");
+
+  // Start empty, then fill once the data is on screen so rings and bars animate
+  const [animated, setAnimated] = useState(false);
+  useEffect(() => {
+    if (isLoading) return;
+    const id = requestAnimationFrame(() => setAnimated(true));
+    return () => cancelAnimationFrame(id);
+  }, [isLoading]);
 
   useEffect(() => {
     let cancelled = false;
@@ -421,8 +406,28 @@ const StatsDialog: React.FC<StatsDialogProps> = ({ title, stats }) => {
     [extended],
   );
 
+  // Nothing is shown until everything has loaded. The same DialogContent stays
+  // mounted so the dialog and its overlay do not re-animate when data arrives.
+  const contentClass =
+    "flex max-h-[90vh] max-w-xl flex-col gap-3 overflow-y-auto";
+
+  if (isLoading) {
+    return (
+      <DialogContent className={contentClass}>
+        <StatsDialogSkeleton tab={tab} onTabChange={setTab} />
+      </DialogContent>
+    );
+  }
+
+  // A tab with no data is disabled, so fall back to Overview if it was selected
+  const activeTab: StatsTab =
+    (tab === "languages" && !hasLanguages) ||
+    (tab === "performance" && !hasPerformance)
+      ? "overview"
+      : tab;
+
   return (
-    <DialogContent className="flex max-h-[90vh] max-w-xl flex-col gap-3 overflow-y-auto">
+    <DialogContent className={contentClass}>
       <DialogHeader>
         <DialogTitle className="m-0 flex justify-center p-0">
           <span className="flex justify-center text-4xl">Statistics</span>
@@ -432,8 +437,12 @@ const StatsDialog: React.FC<StatsDialogProps> = ({ title, stats }) => {
         </DialogDescription>
       </DialogHeader>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setTab(value as StatsTab)}
+        className="w-full"
+      >
+        <TabsList className="grid h-11 w-full grid-cols-3 gap-1 p-1.5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="languages" disabled={!hasLanguages}>
             Languages
@@ -500,22 +509,19 @@ const StatsDialog: React.FC<StatsDialogProps> = ({ title, stats }) => {
             {extended?.attemptsToAccept && (
               <StatCard
                 icon={<Repeat className="h-5 w-5 text-orange-500" />}
-                value={formatCount(
-                  oneDecimal(extended.attemptsToAccept.average),
-                )}
+                value={formatCount(oneDecimal(extended.attemptsToAccept.average))}
                 label="Avg. attempts to first accept"
                 hint={`Median ${formatCount(oneDecimal(extended.attemptsToAccept.median))}`}
               />
             )}
           </div>
 
-          {isLoading && <StatsSkeleton />}
           {hasError && (
             <p className="text-center text-xs text-muted-foreground">
               Detailed statistics are unavailable right now.
             </p>
           )}
-          {!isLoading && !hasError && !hasSubmissions && (
+          {!hasError && !hasSubmissions && (
             <p className="text-center text-xs text-muted-foreground">
               No submissions yet — detailed statistics will appear once people
               start solving this problem.
