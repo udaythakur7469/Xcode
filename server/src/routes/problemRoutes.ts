@@ -17,6 +17,10 @@ import {
   updateHintUnlock,
   getRandomProblem,
 } from "../controllers/problemController.js";
+import {
+  getAdjacentProblems,
+  getProblemNavigationList,
+} from "../controllers/problemNavigationController.js";
 import { authMiddleware } from "../middlewares/authMiddleware.js";
 import {
   generateHintsLimiter,
@@ -83,6 +87,36 @@ router.route("/getProblems").get(
     },
   }),
   getProblems,
+);
+
+/**
+ * GET /problem/navigationList — cursor-paginated list for the problem-detail
+ * page's Problem List sidebar (search + filters + infinite scroll).
+ * Not cached: it carries per-user solved/attempted status, which has to be
+ * fresh the moment a submission is accepted.
+ */
+router.route("/navigationList").get(
+  optionalAuthMiddleware,
+  readLimiter,
+  cacheMiddleware(redis, { strategy: "none" }),
+  getProblemNavigationList,
+);
+
+/**
+ * GET /problem/adjacent — previous / next problem by id (navbar arrows).
+ * 10 min TTL, same tag as the list so createProblem invalidates it.
+ */
+router.route("/adjacent").get(
+  readLimiter,
+  cacheMiddleware(redis, {
+    ttl: 600,
+    autoCache: {
+      tags: ["problems:list"],
+      keyGenerator: (req: any) =>
+        `problems:adjacent:id:${req.query.id || ""}:title:${req.query.title || ""}`,
+    },
+  }),
+  getAdjacentProblems,
 );
 
 /**
