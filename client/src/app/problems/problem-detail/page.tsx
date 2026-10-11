@@ -125,6 +125,7 @@ const ProblemDetailsPageContent: React.FC = () => {
           onRunCode={handleNavbarRunCode}
           onSubmitCode={handleNavbarSubmitCode}
           onToggleSidebar={handleToggleSidebar}
+          isSidebarOpen={isSidebarOpen}
           code={code}
           language={language}
         />
@@ -137,23 +138,13 @@ const ProblemDetailsPageContent: React.FC = () => {
           language={language}
           setLanguage={setLanguage}
         />
-        {isSidebarOpen && (
-          <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 bg-black bg-opacity-50 z-40"
-              onClick={() => setIsSidebarOpen(false)}
-            />
-
-            {/* Sidebar */}
-            <div className="fixed top-0 left-0 h-full z-50 transform transition-transform duration-300 ease-in-out">
-              <ProblemSidebar
-                isOpen={isSidebarOpen}
-                onClose={() => setIsSidebarOpen(false)}
-              />
-            </div>
-          </>
-        )}
+        {/* Always mounted: ProblemSidebar owns its backdrop and its slide
+            in / out animation (AnimatePresence can only play the exit
+            animation if the component itself stays mounted). */}
+        <ProblemSidebar
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+        />
       </div>
     </SidebarProvider>
   );
