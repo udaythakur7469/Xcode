@@ -11,7 +11,7 @@ const FeaturesSection: React.FC = () => {
       <div className="max-w-[1280px] mx-auto px-6">
         <RevealOnScroll className="text-center max-w-[640px] mx-auto mb-14">
           <span className="block font-mono text-xs uppercase tracking-wide text-brand mb-3.5">
-            Why xCode
+            Why XCode
           </span>
           <h2 className="text-[1.7rem] md:text-[2.4rem] font-extrabold tracking-tight mb-3.5">
             Everything you need to actually get interview-ready

@@ -28,7 +28,7 @@ const ExploreHero: React.FC = () => {
           }}
         >
           <span className="w-[7px] h-[7px] rounded-full bg-brand animate-pulse-dot" />
-          Everything xCode can do, in one place
+          Everything XCode can do, in one place
         </motion.div>
 
         <motion.h1
@@ -48,7 +48,7 @@ const ExploreHero: React.FC = () => {
           className="text-[1.1rem] text-muted-foreground max-w-[640px] mx-auto leading-relaxed mb-12"
         >
           From a real judged code editor to AI mock interviews, spaced revision,
-          and community discussion — here&apos;s exactly how each part of xCode
+          and community discussion — here&apos;s exactly how each part of XCode
           works, and how it fits together.
         </motion.p>
 

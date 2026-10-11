@@ -36,7 +36,7 @@ const ProductPreviewSection: React.FC = () => {
               Every submission, judged instantly.
             </h3>
             <p className="text-muted-foreground mb-[22px] leading-relaxed">
-              xCode runs your code against real hidden test cases with
+              XCode runs your code against real hidden test cases with
               fail-fast reporting, so you know exactly which case broke and
               why — not just &quot;wrong answer.&quot;
             </p>

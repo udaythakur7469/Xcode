@@ -7,7 +7,7 @@ export type FAQItem = {
 export const FAQ_ITEMS: FAQItem[] = [
   {
     id: "free",
-    question: "Is xCode free to use?",
+    question: "Is XCode free to use?",
     answer:
       "Yes — core problem solving, submissions, and the discussion board are free. Some AI-heavy features may have usage limits.",
   },

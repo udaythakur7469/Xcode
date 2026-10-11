@@ -143,7 +143,7 @@ const ImageCropDialog: React.FC<ImageCropDialogProps> = ({
         </div>
 
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          This is how your profile picture will appear across xCode.
+          This is how your profile picture will appear across XCode.
         </p>
 
         <DialogFooter className="flex flex-row gap-3 sm:justify-center">

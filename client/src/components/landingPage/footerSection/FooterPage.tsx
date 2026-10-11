@@ -38,7 +38,7 @@ const FooterPage: React.FC<FooterPageProps> = () => {
                   className="w-2.5 h-2.5 rounded-full bg-brand"
                   style={{ boxShadow: "0 0 12px var(--brand-glow)" }}
                 />
-                xCode
+                XCode
               </div>
               <p className="text-muted-foreground text-sm leading-relaxed mt-3.5 max-w-[280px]">
                 A modern, judged coding platform to practice, get AI interview
@@ -141,7 +141,7 @@ const FooterPage: React.FC<FooterPageProps> = () => {
 
           <div className="flex flex-wrap justify-between items-center gap-3.5 pt-[26px] border-t border-border text-sm text-muted-foreground">
             <span>
-              © {new Date().getFullYear()} xCode. Built by Uday Thakur.
+              © {new Date().getFullYear()} XCode. Built by Uday Thakur.
             </span>
           </div>
         </div>

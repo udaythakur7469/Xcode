@@ -39,7 +39,7 @@ const CTASection: React.FC = () => {
           </h2>
           <p className="text-muted-foreground mb-[30px]">
             Join thousands of learners already solving, practicing, and
-            improving on xCode.
+            improving on XCode.
           </p>
           <Button
             size="lg"
