@@ -556,7 +556,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 
             {isInRevisionQueue && (
               <div className="relative inline-block">
-                <RevisionInfoButton className="absolute -top-1.5 -right-1.5 z-10" />
+                <RevisionInfoButton className="absolute -top-1.5 -right-1.5 z-5" />
                 <HoverCard>
                   <HoverCardTrigger asChild>
                     <span
